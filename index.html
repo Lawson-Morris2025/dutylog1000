@@ -28,7 +28,6 @@
             background-color: var(--light-bg); 
             -webkit-tap-highlight-color: transparent; 
             overflow-x: hidden;
-            /* Prevents pull-to-refresh and rubber-banding in standalone mode */
             overscroll-behavior-y: contain; 
         }
         
@@ -46,13 +45,12 @@
         .nav-item.active { color: var(--green); transform: translateY(-2px); }
         
         main { max-width: 600px; margin: 0 auto; padding-bottom: 7rem; min-height: 100vh; }
-        /* Safe area padding for iPhones with notches in standalone mode */
         @supports (padding: env(safe-area-inset-top)) {
             main { padding-top: calc(1.5rem + env(safe-area-inset-top)); }
             #bottom-nav { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)); }
         }
 
-        .input-field { width: 100%; padding: 1rem; border-radius: 1rem; border: 1px solid #e2e8f0; outline: none; transition: border-color 0.2s; background: white; font-size: 16px; /* Prevents iOS auto-zoom */ }
+        .input-field { width: 100%; padding: 1rem; border-radius: 1rem; border: 1px solid #e2e8f0; outline: none; transition: border-color 0.2s; background: white; font-size: 16px; }
         .input-field:focus { border-color: var(--green); }
         
         .fade-enter { opacity: 0; transform: translateY(5px); }
@@ -61,8 +59,6 @@
         .msg-bubble { max-width: 80%; padding: 0.75rem 1rem; border-radius: 1.25rem; font-size: 0.9rem; margin-bottom: 0.5rem; position: relative; }
         .msg-sent { background: var(--green); color: white; align-self: flex-end; border-bottom-right-radius: 0.25rem; }
         .msg-received { background: white; color: var(--navy); align-self: flex-start; border-bottom-left-radius: 0.25rem; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        
-        .admin-action { font-size: 10px; color: #ef4444; margin-top: -4px; cursor: pointer; text-decoration: underline; }
         
         .custom-checkbox { width: 18px; height: 18px; border: 2px solid #e2e8f0; border-radius: 4px; appearance: none; cursor: pointer; position: relative; }
         .custom-checkbox:checked { background: var(--green); border-color: var(--green); }
@@ -110,6 +106,7 @@
             user: null, 
             profile: null, 
             activeChat: null,
+            totalHours: 0,
             chatSubscription: null 
         };
 
@@ -164,9 +161,7 @@
                     <h2 class="text-2xl font-bold mb-8 px-2">DutyLog Access</h2>
                     <form onsubmit="handleLogin(event)" class="space-y-4 px-2">
                         <input type="email" id="login-email" value="${savedEmail}" placeholder="Email Address" required class="input-field">
-                        <div class="relative">
-                            <input type="password" id="login-password" placeholder="Password" required class="input-field">
-                        </div>
+                        <input type="password" id="login-password" placeholder="Password" required class="input-field">
                         <div class="flex items-center justify-between px-1">
                             <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-500 font-medium">
                                 <input type="checkbox" id="remember-me" ${savedEmail ? 'checked' : ''} class="custom-checkbox">
@@ -174,7 +169,6 @@
                             </label>
                             <button type="button" class="text-xs text-green-700 font-bold hover:underline">Forgot Password?</button>
                         </div>
-                        <div id="login-error" class="hidden p-3 bg-red-50 text-red-500 text-xs rounded-lg"></div>
                         <button id="login-btn" type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-xl font-bold shadow-lg mt-2 active:scale-95 transition-all">Sign In</button>
                     </form>
                 </div>`;
@@ -183,10 +177,10 @@
             signup: async () => `
                 <div class="pt-4 max-w-sm mx-auto">
                     <button onclick="router.navigate('welcome')" class="text-slate-400 mb-6 p-2"><i class="fas fa-arrow-left"></i></button>
-                    <h2 class="text-2xl font-bold mb-8 px-2">Register with DutyLog</h2>
+                    <h2 class="text-2xl font-bold mb-8 px-2">Register</h2>
                     <form onsubmit="handleSignup(event)" class="space-y-4 px-2">
                         <input type="text" id="signup-name" placeholder="Full Name" required class="input-field">
-                        <input type="text" id="signup-division" placeholder="Division (e.g. Cardiff)" required class="input-field">
+                        <input type="text" id="signup-division" placeholder="Division" required class="input-field">
                         <input type="email" id="signup-email" placeholder="Email" required class="input-field">
                         <input type="password" id="signup-password" placeholder="Password" required class="input-field">
                         <button id="signup-btn" type="submit" class="w-full bg-[#00853F] text-white py-4 rounded-xl font-bold active:scale-95 transition-all">Create Account</button>
@@ -195,81 +189,46 @@
 
             dashboard: async () => {
                 setTimeout(loadDashboardData, 10);
-                return `<div class="space-y-6"><div class="h-40 w-full skeleton"></div><div class="h-60 w-full skeleton"></div></div>`;
+                return `<div class="space-y-6"><div class="h-40 w-full skeleton"></div></div>`;
             },
 
             messages: async () => {
                 setTimeout(loadMessagesList, 10);
-                return `
-                <div class="space-y-6">
-                    <div class="flex justify-between items-center px-2">
-                        <h2 class="text-2xl font-bold">Messages</h2>
-                    </div>
-                    <div id="messages-list" class="space-y-2 px-2">
-                        <div class="h-16 w-full skeleton"></div>
-                        <div class="h-16 w-full skeleton"></div>
-                    </div>
-                </div>`;
+                return `<div class="space-y-6 px-2"><h2 class="text-2xl font-bold">Messages</h2><div id="messages-list"></div></div>`;
             },
 
             chat: async () => {
                 setTimeout(initChatRoom, 10);
-                return `
-                <div class="flex flex-col h-[calc(100vh-100px)] -mt-6 -mx-4 relative">
+                return `<div class="flex flex-col h-[calc(100vh-100px)] -mt-6 -mx-4 relative">
                     <div class="bg-white border-b p-4 flex items-center justify-between sticky top-0 z-10">
                         <div class="flex items-center gap-3">
                             <button onclick="router.navigate('messages')" class="text-slate-400"><i class="fas fa-chevron-left"></i></button>
-                            <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold overflow-hidden" id="chat-header-avatar">?</div>
-                            <div>
-                                <p class="font-bold text-sm leading-none" id="chat-header-name">Loading...</p>
-                                <p class="text-[10px] text-slate-400 mt-1" id="chat-header-status">online</p>
-                            </div>
+                            <div><p class="font-bold text-sm" id="chat-header-name">Loading...</p></div>
                         </div>
                     </div>
                     <div id="chat-messages" class="flex-1 overflow-y-auto p-4 flex flex-col bg-slate-50"></div>
-                    <div class="p-4 bg-white border-t flex gap-2 items-center">
-                        <input type="text" id="chat-input" placeholder="Type a message..." class="flex-1 p-3 bg-slate-100 rounded-xl outline-none text-sm">
-                        <button onclick="sendMessage()" class="w-12 h-12 bg-green-600 text-white rounded-xl flex items-center justify-center active:scale-90 transition-all"><i class="fas fa-paper-plane"></i></button>
+                    <div class="p-4 bg-white border-t flex gap-2">
+                        <input type="text" id="chat-input" class="flex-1 p-3 bg-slate-100 rounded-xl outline-none" placeholder="Message...">
+                        <button onclick="sendMessage()" class="bg-green-600 text-white w-12 rounded-xl"><i class="fas fa-paper-plane"></i></button>
                     </div>
                 </div>`;
             },
 
-            'add-duty': async () => {
-                return `
-                <div>
-                    <h2 class="text-2xl font-bold mb-6 px-2 flex items-center gap-3">
-                        <i class="fas fa-plus-circle text-green-600"></i> New Duty Log
-                    </h2>
-                    <form onsubmit="handleSaveDuty(event)" class="space-y-4 px-2">
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-2 mb-1 block">Duty Details</label>
-                            <input type="text" id="duty-title" placeholder="Title (e.g. Football Standby)" required class="input-field mb-3">
-                            <input type="text" id="duty-location" placeholder="Location" required class="input-field">
+            'add-duty': async () => `
+                <div class="px-2">
+                    <h2 class="text-2xl font-bold mb-6">New Duty Log</h2>
+                    <form onsubmit="handleSaveDuty(event)" class="space-y-4">
+                        <input type="text" id="duty-title" placeholder="Title" required class="input-field">
+                        <input type="text" id="duty-location" placeholder="Location" required class="input-field">
+                        <input type="date" id="duty-date" required class="input-field">
+                        <div class="grid grid-cols-2 gap-3">
+                            <input type="time" id="duty-start" required class="input-field" onchange="calculateHours()">
+                            <input type="time" id="duty-end" required class="input-field" onchange="calculateHours()">
                         </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-2 mb-1 block">Date & Times</label>
-                            <input type="date" id="duty-date" required class="input-field mb-3">
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="relative">
-                                    <span class="absolute left-3 top-1 text-[8px] font-bold text-slate-400">START</span>
-                                    <input type="time" id="duty-start" required class="input-field pt-5" onchange="calculateHours()">
-                                </div>
-                                <div class="relative">
-                                    <span class="absolute left-3 top-1 text-[8px] font-bold text-slate-400">END</span>
-                                    <input type="time" id="duty-end" required class="input-field pt-5" onchange="calculateHours()">
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-2 mb-1 block">Total Hours</label>
-                            <input type="number" step="0.1" id="duty-hours" placeholder="Total Hours" required class="input-field bg-slate-50 border-dashed">
-                        </div>
-                        <button type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-xl font-bold shadow-lg mt-4 active:scale-95 transition-all">
-                            Save Log
-                        </button>
+                        <input type="number" step="0.1" id="duty-hours" placeholder="Total Hours" required class="input-field">
+                        <button type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-xl font-bold">Save Log</button>
                     </form>
-                </div>`;
-            },
+                </div>`,
 
             community: async () => {
                 setTimeout(loadFeedData, 10);
@@ -280,151 +239,156 @@
                 <div class="space-y-8 text-center pt-4 px-4">
                     <div class="relative inline-block">
                         <img src="${state.profile?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+state.user.id}" class="w-24 h-24 mx-auto rounded-full border-4 border-green-500 object-cover shadow-lg">
-                        <div class="absolute -bottom-1 -right-1 bg-green-600 text-white w-8 h-8 rounded-full border-4 border-white flex items-center justify-center">
-                            <i class="fas fa-plus text-[10px]"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold">${state.profile?.name || 'Member'} ${state.profile?.is_admin ? '<i class="fas fa-shield-alt text-green-600 text-sm"></i>' : ''}</h2>
+                    
+                    <!-- Wallet.dev API Integration -->
+                    <div class="px-2">
+                        <button id="wallet-btn" onclick="generateWalletPass()" class="w-full bg-black text-white p-4 rounded-2xl flex items-center justify-between font-bold shadow-xl active:scale-95 transition-all">
+                            <div class="flex items-center gap-3">
+                                <i class="fab fa-apple text-2xl"></i>
+                                <span id="wallet-btn-text">Add to Apple Wallet</span>
+                            </div>
+                            <i id="wallet-btn-icon" class="fas fa-plus text-xs"></i>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="glass-card p-4 text-left">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Division</p>
+                            <p class="font-bold text-slate-700">${state.profile?.division || 'Not Set'}</p>
+                        </div>
+                        <div class="glass-card p-4 text-left">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Total Hours</p>
+                            <p class="font-bold text-green-600">${state.totalHours.toFixed(1)}</p>
                         </div>
                     </div>
-                    <h2 class="text-2xl font-bold">${state.profile?.name || 'Member'} ${state.profile?.is_admin ? '<i class="fas fa-shield-alt text-green-600 text-sm" title="Admin"></i>' : ''}</h2>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="glass-card p-4"><p class="text-[10px] font-bold text-slate-400 uppercase">Division</p><p class="font-bold text-slate-700">${state.profile?.division || 'Not Set'}</p></div>
-                        <div class="glass-card p-4"><p class="text-[10px] font-bold text-slate-400 uppercase">Status</p><p class="font-bold text-green-600">Active</p></div>
-                    </div>
+                    
                     <button onclick="handleLogout()" class="w-full p-4 bg-red-50 text-red-500 rounded-2xl font-bold mt-10">Sign Out</button>
                 </div>`
         };
 
-        window.calculateHours = function() {
-            const start = document.getElementById('duty-start').value;
-            const end = document.getElementById('duty-end').value;
-            const hoursField = document.getElementById('duty-hours');
-            if (start && end) {
-                const startTime = new Date(`2000-01-01T${start}`);
-                let endTime = new Date(`2000-01-01T${end}`);
-                if (endTime < startTime) endTime = new Date(`2000-01-02T${end}`);
-                const diff = (endTime - startTime) / 1000 / 60 / 60;
-                hoursField.value = diff.toFixed(1);
+        // WalletWallet.dev API Integration
+        window.generateWalletPass = async () => {
+            const btn = document.getElementById('wallet-btn');
+            const btnText = document.getElementById('wallet-btn-text');
+            const btnIcon = document.getElementById('wallet-btn-icon');
+            const apiKey = "ww_live_42526f30b535128e1ec2ae5d863ff5fd";
+
+            btn.disabled = true;
+            btn.classList.add('opacity-70');
+            btnText.innerText = "Generating...";
+            btnIcon.className = "fas fa-circle-notch fa-spin text-xs";
+
+            const passData = {
+                template: "generic",
+                fields: {
+                    headerFields: [{ key: "org", label: "ORG", value: "DutyLog" }],
+                    primaryFields: [{ key: "name", label: "NAME", value: state.profile?.name || "Member" }],
+                    secondaryFields: [
+                        { key: "division", label: "DIVISION", value: state.profile?.division || "Active" }
+                    ],
+                    auxiliaryFields: [
+                        { key: "hours", label: "TOTAL HOURS", value: `${state.totalHours.toFixed(1)} hrs` }
+                    ],
+                    backFields: [
+                        { key: "id", label: "MEMBER ID", value: state.user.id.substring(0,8).toUpperCase() }
+                    ]
+                },
+                style: {
+                    backgroundColor: "#1B263B",
+                    foregroundColor: "#FFFFFF",
+                    labelColor: "#94A3B8"
+                }
+            };
+
+            try {
+                const response = await fetch('https://walletwallet.dev/api/v1/pass', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify(passData)
+                });
+
+                if (!response.ok) throw new Error('Generation failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `DutyLogPass.pkpass`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                btnText.innerText = "Pass Created!";
+                btnIcon.className = "fas fa-check text-xs";
+            } catch (err) {
+                console.error(err);
+                btnText.innerText = "Error Generating";
+                btnIcon.className = "fas fa-exclamation-triangle text-xs";
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-70');
             }
         };
 
         async function loadDashboardData() {
             const { data: duties } = await sb.from('duties').select('*').eq('user_id', state.user.id).order('date', {ascending:false});
-            const totalHours = (duties || []).reduce((acc, curr) => acc + (parseFloat(curr.total_hours) || 0), 0);
+            state.totalHours = (duties || []).reduce((acc, curr) => acc + (parseFloat(curr.total_hours) || 0), 0);
+            
             document.getElementById('view-container').innerHTML = `
                 <div class="space-y-6">
                     <header class="flex justify-between items-center px-2">
                         <div><h1 class="text-xl font-bold">DutyLog</h1><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${state.profile?.name || 'Member'}</p></div>
                         <img src="${state.profile?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+state.user.id}" class="w-10 h-10 rounded-full border-2 border-green-500 object-cover">
                     </header>
-                    <div class="glass-card p-6 bg-gradient-to-br from-[#1B263B] to-[#0D1B2A] text-white relative overflow-hidden">
-                        <i class="fas fa-plus absolute -right-4 -bottom-4 text-7xl opacity-10 -rotate-12"></i>
+                    <div class="glass-card p-6 bg-gradient-to-br from-[#1B263B] to-[#0D1B2A] text-white">
                         <p class="text-[10px] opacity-70 uppercase font-bold tracking-widest">Logged Total</p>
-                        <h2 class="text-4xl font-black">${totalHours.toFixed(1)} <span class="text-sm font-normal opacity-60">Hours</span></h2>
+                        <h2 class="text-4xl font-black">${state.totalHours.toFixed(1)} <span class="text-sm font-normal opacity-60">Hours</span></h2>
                     </div>
                     <div class="space-y-3 px-2">
-                        <h3 class="font-bold flex justify-between"><span>Recent Activity</span> <button onclick="router.navigate('community')" class="text-green-600 text-[10px] font-bold">FEED</button></h3>
-                        ${(duties || []).slice(0,3).map(d => `<div class="glass-card p-4 flex justify-between items-center"><div><p class="font-bold text-sm">${d.title}</p><p class="text-[10px] text-slate-400">${d.date}</p></div><p class="font-black text-[#00853F]">+${d.total_hours}</p></div>`).join('') || '<p class="py-10 text-center text-slate-400 text-sm italic">No entries yet.</p>'}
+                        <h3 class="font-bold">Recent Activity</h3>
+                        ${(duties || []).slice(0,3).map(d => `<div class="glass-card p-4 flex justify-between items-center"><div><p class="font-bold text-sm">${d.title}</p><p class="text-[10px] text-slate-400">${d.date}</p></div><p class="font-black text-[#00853F]">+${d.total_hours}</p></div>`).join('') || '<p class="text-slate-400 italic py-4">No logs yet.</p>'}
                     </div>
                 </div>`;
         }
 
         async function loadMessagesList() {
-            const { data: users } = await sb.from('profiles').select('*').neq('id', state.user.id).limit(20);
-            const customGroupName = localStorage.getItem('chat_group_name') || 'Main Division';
-            const customGroupPic = localStorage.getItem('chat_group_pic') || null;
-
+            const { data: users } = await sb.from('profiles').select('*').neq('id', state.user.id);
             document.getElementById('messages-list').innerHTML = `
-                <div onclick="openChat('group', 'city_cadets', '${customGroupName}')" class="glass-card p-4 flex items-center gap-4 cursor-pointer border-l-4 border-green-600">
-                    <div class="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center text-green-700 font-bold overflow-hidden">
-                        ${customGroupPic ? `<img src="${customGroupPic}" class="w-full h-full object-cover">` : '<i class="fas fa-plus"></i>'}
-                    </div>
-                    <div class="flex-1">
-                        <p class="font-bold text-sm">${customGroupName}</p>
-                        <p class="text-[10px] text-slate-400 truncate">Division Chatroom</p>
-                    </div>
-                    <i class="fas fa-chevron-right text-slate-300 text-xs"></i>
+                <div onclick="openChat('group', 'city_cadets', 'Main Division')" class="glass-card p-4 flex items-center gap-4 mb-2 border-l-4 border-green-600 cursor-pointer">
+                    <div class="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center text-green-700 font-bold"><i class="fas fa-plus"></i></div>
+                    <div><p class="font-bold text-sm">Main Division</p><p class="text-[10px] text-slate-400">Division Chatroom</p></div>
                 </div>
-                <p class="text-[10px] font-bold text-slate-400 uppercase mt-6 mb-2 ml-2">Direct Messages</p>
                 ${users?.map(u => `
-                    <div onclick="openChat('private', '${u.id}', '${u.name}')" class="glass-card p-4 flex items-center gap-4 cursor-pointer">
+                    <div onclick="openChat('private', '${u.id}', '${u.name}')" class="glass-card p-4 flex items-center gap-4 mb-2 cursor-pointer">
                         <img src="${u.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+u.id}" class="w-12 h-12 rounded-full object-cover">
-                        <div class="flex-1">
-                            <p class="font-bold text-sm">${u.name} ${u.is_admin ? '🛡️' : ''}</p>
-                            <p class="text-[10px] text-slate-400 truncate">${u.division || 'Member'}</p>
-                        </div>
-                        <i class="fas fa-chevron-right text-slate-300 text-xs"></i>
+                        <div><p class="font-bold text-sm">${u.name}</p><p class="text-[10px] text-slate-400">${u.division || 'Member'}</p></div>
                     </div>
                 `).join('')}
             `;
         }
 
-        function openChat(type, id, name) {
-            state.activeChat = { type, id, name };
-            router.navigate('chat');
-        }
+        function openChat(type, id, name) { state.activeChat = { type, id, name }; router.navigate('chat'); }
 
         async function initChatRoom() {
-            const headerName = document.getElementById('chat-header-name');
-            const headerAvatar = document.getElementById('chat-header-avatar');
             const container = document.getElementById('chat-messages');
-            headerName.innerText = state.activeChat.name;
-            
-            if (state.activeChat.type === 'group') {
-                const customPic = localStorage.getItem('chat_group_pic');
-                headerAvatar.innerHTML = customPic ? `<img src="${customPic}" class="w-full h-full object-cover">` : '<i class="fas fa-plus"></i>';
-            } else {
-                headerAvatar.innerHTML = `<img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${state.activeChat.id}" class="w-full h-full rounded-full">`;
-            }
-
-            let query = sb.from('messages').select('*, profiles:sender_id(name, avatar_url, is_admin)');
-            if (state.activeChat.type === 'group') {
-                query = query.eq('group_id', state.activeChat.id);
-            } else {
-                query = query.or(`and(sender_id.eq.${state.user.id},receiver_id.eq.${state.activeChat.id}),and(sender_id.eq.${state.activeChat.id},receiver_id.eq.${state.user.id})`);
-            }
+            document.getElementById('chat-header-name').innerText = state.activeChat.name;
+            let query = sb.from('messages').select('*, profiles:sender_id(name)');
+            if (state.activeChat.type === 'group') query = query.eq('group_id', state.activeChat.id);
+            else query = query.or(`and(sender_id.eq.${state.user.id},receiver_id.eq.${state.activeChat.id}),and(sender_id.eq.${state.activeChat.id},receiver_id.eq.${state.user.id})`);
 
             const { data: messages } = await query.order('created_at', { ascending: true });
-            container.innerHTML = '';
-            messages?.forEach(renderMessage);
-            container.scrollTop = container.scrollHeight;
-
-            state.chatSubscription = sb.channel('any')
-                .on('postgres_changes', { event: '*', table: 'messages' }, async payload => {
-                    if (payload.eventType === 'INSERT') {
-                        const msg = payload.new;
-                        const isRelevant = state.activeChat.type === 'group' 
-                            ? msg.group_id === state.activeChat.id 
-                            : (msg.sender_id === state.activeChat.id && msg.receiver_id === state.user.id) || 
-                            (msg.sender_id === state.user.id && msg.receiver_id === state.activeChat.id);
-                        
-                        if (isRelevant) {
-                            const { data: profile } = await sb.from('profiles').select('name, avatar_url, is_admin').eq('id', msg.sender_id).single();
-                            renderMessage({...msg, profiles: profile});
-                            container.scrollTop = container.scrollHeight;
-                        }
-                    }
-                })
-                .subscribe();
-            
-            document.getElementById('chat-input').addEventListener('keypress', e => {
-                if (e.key === 'Enter') sendMessage();
-            });
-        }
-
-        function renderMessage(msg) {
-            const container = document.getElementById('chat-messages');
-            const isMe = msg.sender_id === state.user.id;
-            const div = document.createElement('div');
-            div.id = `msg-${msg.id}`;
-            div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} mb-4`;
-            const showName = state.activeChat.type === 'group' && !isMe;
-
-            div.innerHTML = `
-                ${showName ? `<span class="text-[10px] text-slate-400 ml-2 mb-1">${msg.profiles?.name || 'User'}</span>` : ''}
-                <div class="msg-bubble ${isMe ? 'msg-sent' : 'msg-received'}">
-                    ${msg.content}
+            container.innerHTML = messages?.map(m => `
+                <div class="flex flex-col ${m.sender_id === state.user.id ? 'items-end' : 'items-start'} mb-4">
+                    ${state.activeChat.type === 'group' && m.sender_id !== state.user.id ? `<span class="text-[10px] text-slate-400 mb-1 ml-2">${m.profiles?.name}</span>` : ''}
+                    <div class="msg-bubble ${m.sender_id === state.user.id ? 'msg-sent' : 'msg-received'}">${m.content}</div>
                 </div>
-            `;
-            container.appendChild(div);
+            `).join('') || '';
+            container.scrollTop = container.scrollHeight;
         }
 
         async function sendMessage() {
@@ -432,31 +396,27 @@
             const content = input.value.trim();
             if (!content) return;
             input.value = '';
-            const payload = {
-                sender_id: state.user.id,
-                content: content,
+            await sb.from('messages').insert([{ 
+                sender_id: state.user.id, 
+                content,
                 group_id: state.activeChat.type === 'group' ? state.activeChat.id : null,
                 receiver_id: state.activeChat.type === 'private' ? state.activeChat.id : null
-            };
-            await sb.from('messages').insert([payload]);
+            }]);
+            initChatRoom();
         }
 
         async function loadFeedData() {
-            const { data: feeds } = await sb.from('duties').select('*, profiles(name, avatar_url, division)').limit(15).order('created_at', { ascending: false });
+            const { data: feeds } = await sb.from('duties').select('*, profiles(name, avatar_url)').limit(10).order('created_at', { ascending: false });
             document.getElementById('view-container').innerHTML = `
                 <div class="space-y-6">
                     <h2 class="text-2xl font-bold px-2">Feed</h2>
                     <div class="space-y-4 px-2">
                         ${feeds?.map(f => `
                             <div class="glass-card p-4 flex gap-3">
-                                <img src="${f.profiles?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+f.user_id}" class="w-10 h-10 rounded-full object-cover">
-                                <div class="flex-1">
-                                    <p class="text-xs"><b>${f.profiles?.name || 'Member'}</b> logged <span class="text-green-600 font-bold">${f.total_hours}h</span></p>
-                                    <p class="text-[10px] text-slate-400">${f.title}</p>
-                                </div>
-                                <div class="text-green-200"><i class="fas fa-plus-circle"></i></div>
+                                <img src="${f.profiles?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+f.user_id}" class="w-10 h-10 rounded-full">
+                                <div><p class="text-xs"><b>${f.profiles?.name || 'Member'}</b> logged <span class="text-green-600 font-bold">${f.total_hours}h</span></p><p class="text-[10px] text-slate-400">${f.title}</p></div>
                             </div>
-                        `).join('') || '<p class="text-slate-400 text-center py-10 italic">Quiet feed.</p>'}
+                        `).join('') || '<p class="text-center py-10 italic text-slate-400">Quiet day.</p>'}
                     </div>
                 </div>`;
         }
@@ -471,25 +431,31 @@
             e.preventDefault();
             const { error } = await sb.auth.signUp({ 
                 email: document.getElementById('signup-email').value, 
-                password: document.getElementById('signup-password').value, 
+                password: document.getElementById('signup-password').value,
                 options: { data: { full_name: document.getElementById('signup-name').value, division: document.getElementById('signup-division').value } }
             });
-            if (error) alert(error.message); else { alert("Verification sent!"); router.navigate('login'); }
+            if (error) alert(error.message); else alert("Check your email!");
         }
 
         async function handleSaveDuty(e) {
             e.preventDefault();
-            const payload = {
+            await sb.from('duties').insert([{
                 user_id: state.user.id, title: document.getElementById('duty-title').value,
                 location: document.getElementById('duty-location').value, date: document.getElementById('duty-date').value,
-                start_time: document.getElementById('duty-start').value, end_time: document.getElementById('duty-end').value,
                 total_hours: parseFloat(document.getElementById('duty-hours').value)
-            };
-            await sb.from('duties').insert([payload]);
+            }]);
             router.navigate('dashboard');
         }
 
         async function handleLogout() { await sb.auth.signOut(); location.reload(); }
+
+        window.calculateHours = () => {
+            const s = document.getElementById('duty-start').value, e = document.getElementById('duty-end').value;
+            if (s && e) {
+                const start = new Date(`2000-01-01T${s}`), end = new Date(`2000-01-01T${e}`);
+                document.getElementById('duty-hours').value = ((end < start ? new Date(`2000-01-02T${e}`) : end) - start) / 3600000;
+            }
+        };
 
         function init() {
             sb.auth.onAuthStateChange(async (event, session) => {
@@ -497,10 +463,10 @@
                     state.user = session.user;
                     const { data } = await sb.from('profiles').select('*').eq('id', state.user.id).single();
                     state.profile = data || {};
+                    const { data: hoursData } = await sb.from('duties').select('total_hours').eq('user_id', state.user.id);
+                    state.totalHours = (hoursData || []).reduce((acc, curr) => acc + (parseFloat(curr.total_hours) || 0), 0);
                     router.navigate('dashboard');
-                } else {
-                    router.navigate('welcome');
-                }
+                } else router.navigate('welcome');
             });
         }
         window.addEventListener('DOMContentLoaded', init);
