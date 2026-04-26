@@ -17,13 +17,12 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         :root { --navy: #1B263B; --green: #00853F; --light-bg: #F8F9FA; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--light-bg); -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--light-bg); -webkit-tap-highlight-color: transparent; margin: 0; }
         .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-radius: 1.5rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); }
         .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 0.7rem; color: #94A3B8; cursor: pointer; flex: 1; }
         .nav-item.active { color: var(--green); }
         .input-field { width: 100%; padding: 1rem; border-radius: 1rem; border: 1px solid #e2e8f0; outline: none; font-size: 16px; transition: border 0.2s; }
         .input-field:focus { border-color: var(--green); }
-        /* Prevent elastic scrolling on iOS */
         html, body { overflow: hidden; height: 100%; position: fixed; width: 100%; }
         #view-container { overflow-y: auto; height: 100vh; -webkit-overflow-scrolling: touch; }
     </style>
@@ -111,7 +110,7 @@
                             </div>
                             <i id="wallet-btn-icon" class="fas fa-sync-alt text-xs"></i>
                         </button>
-                        <p class="text-[10px] text-slate-400 mt-2">Tap to sync your latest hours to Apple Wallet</p>
+                        <p class="text-[10px] text-slate-400 mt-2">Current Total: ${(state.totalHours || 0).toFixed(1)} Hours</p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
@@ -161,24 +160,24 @@
             const btnText = document.getElementById('wallet-btn-text');
             const apiKey = "ww_live_42526f30b535128e1ec2ae5d863ff5fd";
 
-            // Force recalculate total hours before sending
+            // Sync latest hours from DB
             const { data: duties } = await sb.from('duties').select('total_hours').eq('user_id', state.user.id);
             state.totalHours = (duties || []).reduce((acc, curr) => acc + (parseFloat(curr.total_hours) || 0), 0);
 
             const name = String(state.profile?.name || state.user?.user_metadata?.full_name || "Volunteer");
             const division = String(state.profile?.division || state.user?.user_metadata?.division || "St John Ambulance Cymru");
             const hours = String(state.totalHours.toFixed(1));
-            const barcode = "123456"; // Requested barcode
+            const barcode = "123456";
 
             btn.disabled = true;
-            btnText.innerText = "Syncing Hours...";
+            btnText.innerText = "Syncing...";
 
             try {
                 const passData = {
                     title: "SJA DutyLog",
                     colorPreset: "green",
                     barcodeValue: barcode,
-                    barcodeFormat: "PKBarcodeFormatCode128", 
+                    barcodeFormat: "Code128", // FIXED: Removed PKBarcodeFormat prefix as requested by API error
                     fields: {
                         primaryFields: [{ key: "name", label: "VOLUNTEER", value: name }],
                         secondaryFields: [
@@ -203,15 +202,15 @@
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `SJA_ID_${hours}_hrs.pkpass`;
+                a.download = `SJA_ID_${hours}.pkpass`;
                 document.body.appendChild(a);
                 a.click();
                 
-                btnText.innerText = "Synced to Wallet!";
+                btnText.innerText = "Updated!";
             } catch (err) {
                 console.error("Wallet Error:", err);
                 alert("Creation Failed: " + err.message);
-                btnText.innerText = "Try Again";
+                btnText.innerText = "Error - Try Again";
             } finally {
                 setTimeout(() => {
                     btn.disabled = false;
@@ -251,7 +250,7 @@
                                         </div>
                                         <p class="font-black text-green-600">+${parseFloat(d.total_hours).toFixed(1)}</p>
                                     </div>
-                                `).join('') : '<p class="text-center text-slate-400 py-10 text-sm">You haven\'t logged any duties yet.</p>'}
+                                `).join('') : '<p class="text-center text-slate-400 py-10 text-sm">No duties logged yet.</p>'}
                             </div>
                         </div>
                     </div>`;
@@ -277,24 +276,29 @@
                 options: { data: { full_name: name, division: division } }
             });
             if (error) alert(error.message);
-            else alert("Check email for confirmation, then log in!");
+            else alert("Account created! Check email if required, otherwise log in.");
         }
 
         async function handleSaveDuty(e) {
             e.preventDefault();
+            const title = document.getElementById('duty-title').value;
+            const hours = parseFloat(document.getElementById('duty-hours').value);
+            const start = document.getElementById('duty-start').value;
+            const end = document.getElementById('duty-end').value;
+
             const { error } = await sb.from('duties').insert([{
                 user_id: state.user.id,
-                title: document.getElementById('duty-title').value,
-                total_hours: parseFloat(document.getElementById('duty-hours').value),
+                title: title,
+                total_hours: hours,
                 date: new Date().toISOString().split('T')[0],
-                start_time: document.getElementById('duty-start').value,
-                end_time: document.getElementById('duty-end').value
+                start_time: start,
+                end_time: end
             }]);
             
             if (error) {
                 alert(error.message);
             } else {
-                // Success - navigate home and reload data
+                // Return to dashboard and refresh state
                 router.navigate('dashboard');
             }
         }
@@ -317,7 +321,7 @@
                     state.user = session.user;
                     const { data } = await sb.from('profiles').select('*').eq('id', state.user.id).single();
                     state.profile = data || {};
-                    if (event === 'SIGNED_IN') router.navigate('dashboard');
+                    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') router.navigate('dashboard');
                 } else {
                     state.user = null;
                     state.profile = null;
