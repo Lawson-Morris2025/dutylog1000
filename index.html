@@ -104,6 +104,473 @@
     </div>
 
     <script>
+        // Admin Config
+        const ADMIN_UID = '8c921f70-8577-41ef-83c4-719afb499408';
+        const ADMIN_AVATAR = 'https://qgyjfyazkkepmkztnezv.supabase.co/storage/v1/object/public/avatars/me%20animated.png';
+        
+        // Default Avatars
+        const DEFAULT_AVATARS = [
+            ADMIN_AVATAR, 
+            'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
+            'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka',
+            'https://api.dicebear.com/7.x/avataaars/svg?seed=Sawyer',
+            'https://api.dicebear.com/7.x/avataaars/svg?seed=Jasper',
+            'https://api.dicebear.com/7.x/avataaars/svg?seed=Luna',
+            'https://api.dicebear.com/7.x/avataaars/svg?seed=Milo',
+            'https://api.dicebear.com/7.x/big-ears/svg?seed=Leo',
+            'https://api.dicebear.com/7.x/big-ears/svg?seed=Zoe',
+            'https://api.dicebear.com/7.x/bottts/svg?seed=S01',
+            'https://api.dicebear.com/7.x/bottts/svg?seed=S05',
+            'https://api.dicebear.com/7.x/notionists/svg?seed=SJA',
+            'https://api.dicebear.com/7.x/micah/svg?seed=Cymru',
+            'https://api.dicebear.com/7.x/avataaars/svg?seed=SJA1',
+            'https://api.dicebear.com/7.x/avataaars/svg?seed=SJA2'
+        ];
+
+        const state = {
+            user: null,
+            profile: null,
+            duties: [],
+            isAdmin: false,
+            initialized: false
+        };
+
+        const router = {
+            current: null,
+            navigate: async (view, params = null) => {
+                router.current = view;
+                const container = document.getElementById('view-container');
+                const nav = document.getElementById('bottom-nav');
+                const isAuthView = ['welcome', 'login', 'signup'].includes(view);
+                
+                if (nav) {
+                    nav.classList.toggle('hidden', isAuthView);
+                    nav.classList.toggle('flex', !isAuthView);
+                }
+
+                document.querySelectorAll('.nav-item').forEach(el => {
+                    el.classList.toggle('active', el.dataset.view === view);
+                });
+
+                window.scrollTo(0, 0);
+                container.innerHTML = `<div class="flex justify-center py-20"><div class="loader"></div></div>`;
+                
+                try {
+                    const content = await views[view](params);
+                    container.innerHTML = content;
+                    if (view === 'dashboard') {
+                        setTimeout(() => {
+                            const bar = document.querySelector('.progress-fill');
+                            if (bar) bar.style.width = bar.dataset.target + '%';
+                        }, 100);
+                    }
+                } catch (e) {
+                    console.error("View Error:", e);
+                    container.innerHTML = `<p class="text-center text-red-500 py-10">Error loading view.</p>`;
+                }
+            }
+        };
+
+        const views = {
+            welcome: async () => `
+                <div class="flex flex-col items-center justify-center min-h-[85vh] text-center space-y-8 animate-fade-in">
+                    <div class="w-24 h-24 bg-[#00853F] rounded-3xl flex items-center justify-center shadow-2xl">
+                        <i class="fas fa-plus-square text-white text-5xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-4xl font-extrabold text-[#1B263B]">Duty Log</h1>
+                        <p class="text-slate-500 mt-2 px-6">Official hour tracking for St John Ambulance Cymru.</p>
+                    </div>
+                    <div class="w-full space-y-4 px-4 max-w-sm">
+                        <button onclick="router.navigate('login')" class="w-full bg-[#1B263B] text-white py-4 rounded-2xl font-bold shadow-lg">Login</button>
+                        <button onclick="router.navigate('signup')" class="w-full bg-white border-2 border-[#1B263B] py-4 rounded-2xl font-bold">Sign Up</button>
+                    </div>
+                </div>
+            `,
+            login: async () => `
+                <div class="max-w-md mx-auto pt-10 px-2 animate-fade-in">
+                    <button onclick="router.navigate('welcome')" class="mb-6 text-slate-400"><i class="fas fa-arrow-left"></i> Back</button>
+                    <h2 class="text-3xl font-bold mb-2">Welcome Back</h2>
+                    <form onsubmit="handleLogin(event)" class="space-y-4 mt-8">
+                        <input type="email" id="login-email" placeholder="Email" required class="w-full p-4 rounded-2xl bg-white border outline-none">
+                        <input type="password" id="login-password" placeholder="Password" required class="w-full p-4 rounded-2xl bg-white border outline-none">
+                        <button id="login-btn" type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-2xl font-bold">Sign In</button>
+                    </form>
+                </div>
+            `,
+            signup: async () => `
+                <div class="max-w-md mx-auto pt-6 px-2 animate-fade-in">
+                    <button onclick="router.navigate('welcome')" class="mb-4 text-slate-400"><i class="fas fa-arrow-left"></i> Back</button>
+                    <h2 class="text-3xl font-bold mb-2">Join the Team</h2>
+                    <form onsubmit="handleSignup(event)" class="space-y-4">
+                        <input type="text" id="signup-name" placeholder="Full Name" required class="w-full p-4 rounded-2xl bg-white border outline-none">
+                        <input type="text" id="signup-division" placeholder="Division (e.g. Cardiff)" required class="w-full p-4 rounded-2xl bg-white border outline-none">
+                        <input type="text" id="signup-tag" placeholder="Tag (e.g. First Aider)" required class="w-full p-4 rounded-2xl bg-white border outline-none">
+                        <input type="email" id="signup-email" placeholder="Email" required class="w-full p-4 rounded-2xl bg-white border outline-none">
+                        <input type="password" id="signup-password" placeholder="Password" required class="w-full p-4 rounded-2xl bg-white border outline-none">
+                        <button id="signup-btn" type="submit" class="w-full bg-[#00853F] text-white py-4 rounded-2xl font-bold">Register</button>
+                    </form>
+                </div>
+            `,
+            dashboard: async () => {
+                const { data: duties } = await window.supabaseClient.from('duties').select('*').eq('user_id', state.user.id).order('date', { ascending: false });
+                state.duties = duties || [];
+                const totalHours = state.duties.reduce((acc, curr) => acc + (parseFloat(curr.total_hours) || 0), 0);
+                const currentGoal = state.profile?.goal || 50;
+                const progress = Math.min((totalHours / currentGoal) * 100, 100);
+                
+                const avatar = state.profile?.avatar_url || (state.isAdmin ? ADMIN_AVATAR : 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + state.user.id);
+
+                return `
+                    <div class="space-y-6 animate-fade-in">
+                        <header class="flex justify-between items-center">
+                            <div>
+                                <h1 class="text-2xl font-bold">${state.profile?.name || 'Member'}</h1>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">${state.profile?.division || 'Set Division'}</span>
+                                    <span class="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">${state.profile?.tag || 'Set Tag'}</span>
+                                </div>
+                            </div>
+                            <img src="${avatar}" class="w-12 h-12 rounded-full border-2 border-green-500 shadow-md object-cover" onclick="router.navigate('profile')">
+                        </header>
+                        
+                        <div class="glass-card p-6">
+                            <div class="flex justify-between items-end mb-2">
+                                <h3 class="font-bold text-sm">Target (${currentGoal}h)</h3>
+                                <span class="text-[10px] font-bold text-slate-400">${totalHours.toFixed(1)} / ${currentGoal} hrs</span>
+                            </div>
+                            <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                                <div class="bg-green-500 h-full progress-fill" data-target="${progress}"></div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <h3 class="font-bold">Recent Log</h3>
+                            ${state.duties.length ? state.duties.slice(0, 3).map(d => `
+                                <div class="glass-card p-4 flex items-center gap-4">
+                                    <div class="flex-1">
+                                        <h4 class="font-bold text-sm">${d.title}</h4>
+                                        <p class="text-[10px] text-slate-400">${d.date}</p>
+                                    </div>
+                                    <p class="font-black text-green-600">+${d.total_hours}h</p>
+                                </div>
+                            `).join('') : '<p class="text-center py-10 text-slate-400 text-sm">No duties logged yet.</p>'}
+                        </div>
+                    </div>
+                `;
+            },
+            profile: async () => {
+                const avatar = state.profile?.avatar_url || (state.isAdmin ? ADMIN_AVATAR : 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + state.user.id);
+                return `
+                    <div class="space-y-8 animate-fade-in pt-4 text-center">
+                        <div class="relative w-28 h-28 mx-auto mb-4 group cursor-pointer" onclick="router.navigate('avatar-picker')">
+                            <img id="profile-img" src="${avatar}" class="w-full h-full rounded-full border-4 border-green-500 shadow-xl object-cover">
+                            <div class="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i class="fas fa-camera text-white"></i>
+                            </div>
+                            ${state.isAdmin ? '<div class="absolute -bottom-1 -right-1 bg-amber-400 text-white w-8 h-8 rounded-full flex items-center justify-center border-2 border-white shadow-lg"><i class="fas fa-crown text-[10px]"></i></div>' : ''}
+                        </div>
+                        
+                        <h2 class="text-2xl font-black">${state.profile?.name || 'Member'}</h2>
+                        
+                        <div class="flex flex-col items-center gap-3">
+                            <div class="flex gap-2">
+                                <span onclick="editProfile('division')" class="bg-green-50 text-green-700 px-4 py-2 rounded-xl text-xs font-bold uppercase cursor-pointer border border-green-100">
+                                    ${state.profile?.division || 'Set Division'} <i class="fas fa-pen ml-2 opacity-50"></i>
+                                </span>
+                                <span onclick="editProfile('tag')" class="bg-blue-50 text-blue-700 px-4 py-2 rounded-xl text-xs font-bold uppercase cursor-pointer border border-blue-100">
+                                    ${state.profile?.tag || 'Set Tag'} <i class="fas fa-pen ml-2 opacity-50"></i>
+                                </span>
+                            </div>
+                            <div onclick="editProfile('goal')" class="glass-card w-full p-6 cursor-pointer active:scale-95 transition-transform">
+                                <h3 class="text-[10px] font-black uppercase text-slate-400 mb-1">Annual Goal</h3>
+                                <p class="text-3xl font-black text-[#1B263B]">${state.profile?.goal || 50} <span class="text-sm font-normal text-slate-400">Hours</span></p>
+                                <p class="text-[10px] text-green-600 font-bold mt-2"><i class="fas fa-edit"></i> Tap to change</p>
+                            </div>
+                        </div>
+
+                        <button onclick="handleLogout()" class="w-full p-4 bg-red-50 text-red-500 rounded-2xl font-bold mt-10"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
+                    </div>
+                `;
+            },
+            'avatar-picker': async () => `
+                <div class="space-y-6 animate-fade-in">
+                    <div class="flex items-center gap-4">
+                        <button onclick="router.navigate('profile')" class="text-slate-400 p-2"><i class="fas fa-arrow-left"></i></button>
+                        <h2 class="text-2xl font-bold">Avatar Gallery</h2>
+                    </div>
+
+                    <div class="glass-card p-6">
+                        <h3 class="text-xs font-bold uppercase text-slate-400 mb-4 tracking-wider">Choose a Character</h3>
+                        <div class="grid grid-cols-3 sm:grid-cols-4 gap-4">
+                            ${DEFAULT_AVATARS.map(url => `
+                                <div class="avatar-option ${state.profile?.avatar_url === url ? 'selected' : ''}" onclick="updateAvatar('${url}')">
+                                    <img src="${url}" class="w-full h-full object-cover rounded-xl">
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-6">
+                        <h3 class="text-xs font-bold uppercase text-slate-400 mb-4 tracking-wider">Upload Custom Photo</h3>
+                        <div class="p-4 bg-amber-50 border border-amber-200 rounded-xl mb-4 text-amber-800 text-[10px]">
+                            <b>Important:</b> To upload photos, ensure your bucket named 'avatars' is set to <b>Public</b> and has Row Level Security (RLS) policies allowing "Insert" and "Select" for authenticated users.
+                        </div>
+                        <label class="w-full flex flex-col items-center justify-center border-2 border-dashed border-slate-200 py-8 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors">
+                            <i class="fas fa-cloud-upload-alt text-2xl text-slate-300 mb-2"></i>
+                            <span class="text-sm font-bold text-slate-500" id="upload-status">Tap to select photo</span>
+                            <input type="file" class="hidden" accept="image/*" onchange="handlePhotoUpload(this)">
+                        </label>
+                    </div>
+                </div>
+            `,
+            'add-duty': async () => `
+                <div class="max-w-md mx-auto animate-fade-in">
+                    <h2 class="text-2xl font-bold mb-6">New Log</h2>
+                    <form onsubmit="handleSaveDuty(event)" class="space-y-4">
+                        <input type="text" id="duty-title" placeholder="Duty Title (e.g. Football)" required class="w-full p-4 rounded-2xl bg-white border outline-none">
+                        <input type="text" id="duty-location" placeholder="Location" required class="w-full p-4 rounded-2xl bg-white border outline-none">
+                        <input type="date" id="duty-date" required class="w-full p-4 rounded-2xl bg-white border outline-none">
+                        <div class="grid grid-cols-2 gap-4">
+                            <input type="time" id="duty-start" required class="w-full p-4 rounded-2xl bg-white border outline-none">
+                            <input type="time" id="duty-end" required class="w-full p-4 rounded-2xl bg-white border outline-none">
+                        </div>
+                        <button type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-2xl font-bold shadow-lg">Save Log</button>
+                    </form>
+                </div>
+            `,
+            community: async () => {
+                const { data: feeds } = await window.supabaseClient.from('duties').select('*, profiles(*)').limit(20).order('created_at', { ascending: false });
+                return `
+                    <div class="space-y-6 animate-fade-in">
+                        <h2 class="text-2xl font-bold">Live Feed</h2>
+                        <div class="space-y-3">
+                            ${feeds?.map(f => {
+                                const feedAvatar = f.profiles?.avatar_url || (f.user_id === ADMIN_UID ? ADMIN_AVATAR : 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + f.user_id);
+                                return `
+                                    <div class="glass-card p-4 flex gap-3 items-center">
+                                        <img src="${feedAvatar}" class="w-10 h-10 rounded-full border border-green-500 object-cover">
+                                        <div class="flex-1">
+                                            <p class="text-xs"><b>${f.profiles?.name || 'Member'}</b> logged <span class="text-green-600 font-bold">${f.total_hours}h</span></p>
+                                            <p class="text-[10px] text-slate-400">${f.title} • ${f.profiles?.division || ''}</p>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('') || '<p class="text-center text-slate-400 py-10">No public logs yet.</p>'}
+                        </div>
+                    </div>
+                `;
+            },
+            progress: async () => `
+                <div class="space-y-6 animate-fade-in">
+                    <h2 class="text-2xl font-bold">Activity History</h2>
+                    <div class="glass-card p-4">
+                        <canvas id="hoursChart"></canvas>
+                    </div>
+                    <div class="space-y-3" id="history-list">
+                        ${state.duties.map(d => `
+                            <div class="glass-card p-4 flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-bold text-sm">${d.title}</h4>
+                                    <p class="text-[10px] text-slate-400">${d.date} • ${d.location}</p>
+                                </div>
+                                <span class="font-black text-slate-700">${d.total_hours}h</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `
+        };
+
+        async function updateAvatar(url) {
+            const { error } = await window.supabaseClient.from('profiles').update({ avatar_url: url }).eq('id', state.user.id);
+            if (!error) { state.profile.avatar_url = url; router.navigate('profile'); }
+        }
+
+        async function handlePhotoUpload(input) {
+            if (!input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            const status = document.getElementById('upload-status');
+            status.innerText = "Uploading...";
+            const fileName = `${state.user.id}-${Date.now()}.${file.name.split('.').pop()}`;
+            const { error: uploadError } = await window.supabaseClient.storage.from('avatars').upload(fileName, file);
+            if (uploadError) { status.innerText = "Upload failed!"; return; }
+            const { data: { publicUrl } } = window.supabaseClient.storage.from('avatars').getPublicUrl(fileName);
+            await updateAvatar(publicUrl);
+        }
+
+        async function editProfile(field) {
+            const currentVal = state.profile?.[field] || (field === 'goal' ? 50 : '');
+            const newVal = prompt(`Enter new ${field}:`, currentVal);
+            if (newVal !== null && newVal !== "") {
+                const valToSave = (field === 'goal') ? parseInt(newVal) : newVal;
+                const { error } = await window.supabaseClient.from('profiles').update({ [field]: valToSave }).eq('id', state.user.id);
+                if (!error) { state.profile[field] = valToSave; router.navigate('profile'); }
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const btn = document.getElementById('login-btn');
+            btn.innerText = 'Signing In...';
+            const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+            if (error) { alert(error.message); btn.innerText = 'Sign In'; }
+        }
+
+        async function handleSignup(event) {
+            event.preventDefault();
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const name = document.getElementById('signup-name').value;
+            const div = document.getElementById('signup-division').value;
+            const tag = document.getElementById('signup-tag').value;
+            const btn = document.getElementById('signup-btn');
+            btn.innerText = 'Creating...';
+            const { error } = await window.supabaseClient.auth.signUp({
+                email, password, options: { data: { full_name: name, division: div, tag: tag } }
+            });
+            if (error) { alert(error.message); btn.innerText = 'Register'; }
+            else { alert("Check email for confirmation!"); router.navigate('login'); }
+        }
+
+        async function handleSaveDuty(e) {
+            e.preventDefault();
+            const title = document.getElementById('duty-title').value;
+            const date = document.getElementById('duty-date').value;
+            const start = document.getElementById('duty-start').value;
+            const end = document.getElementById('duty-end').value;
+            const location = document.getElementById('duty-location').value;
+            const sTime = new Date(`1970-01-01T${start}:00`);
+            const eTime = new Date(`1970-01-01T${end}:00`);
+            let diff = (eTime - sTime) / 3600000;
+            if (diff < 0) diff += 24;
+            const { error } = await window.supabaseClient.from('duties').insert([{
+                user_id: state.user.id, title, date, start_time: start, end_time: end,
+                total_hours: parseFloat(diff.toFixed(1)), location
+            }]);
+            if (!error) router.navigate('dashboard');
+        }
+
+        async function handleLogout() { await window.supabaseClient.auth.signOut(); location.reload(); }
+
+        function hideLoader() {
+            const loader = document.getElementById('global-loader');
+            if (loader) loader.style.display = 'none';
+        }
+
+        function init() {
+            const supabaseUrl = 'https://qgyjfyazkkepmkztnezv.supabase.co';
+            const supabaseKey = 'sb_publishable_xea7e2zxnarbh2bT6vG5ew__2DhOj34';
+            
+            // Safety timeout: If Supabase doesn't respond in 2 seconds, show the welcome screen
+            const safetyTimeout = setTimeout(() => {
+                if (!state.initialized) {
+                    hideLoader();
+                    router.navigate('welcome');
+                }
+            }, 2500);
+
+            if (typeof window.supabase === 'undefined') { 
+                setTimeout(init, 100); 
+                return; 
+            }
+            
+            window.supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+            
+            window.supabaseClient.auth.onAuthStateChange(async (event, session) => {
+                state.initialized = true;
+                clearTimeout(safetyTimeout);
+                
+                if (session) {
+                    state.user = session.user;
+                    state.isAdmin = (state.user.id === ADMIN_UID);
+                    const { data } = await window.supabaseClient.from('profiles').select('*').eq('id', state.user.id).single();
+                    state.profile = data || {};
+                    if (state.isAdmin && !state.profile.avatar_url) state.profile.avatar_url = ADMIN_AVATAR;
+                    
+                    hideLoader();
+                    router.navigate('dashboard');
+                } else {
+                    hideLoader();
+                    router.navigate('welcome');
+                }
+            });
+        }
+        window.onload = init;
+    </script>
+</body>
+</html>        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.7rem;
+            color: #94A3B8;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+        }
+        .nav-item.active { color: var(--green); }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--green);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        main { max-width: 600px; margin: 0 auto; padding-bottom: 6rem; }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .progress-fill { width: 0%; transition: width 1.5s cubic-bezier(0.1, 0.5, 0.1, 1); }
+        
+        .avatar-option {
+            width: 100%;
+            aspect-ratio: 1/1;
+            border-radius: 1rem;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.2s;
+            background: #f1f5f9;
+            overflow: hidden;
+        }
+        .avatar-option:hover { transform: scale(1.05); }
+        .avatar-option.selected { border-color: var(--green); background: #f0fdf4; }
+    </style>
+</head>
+<body class="transition-colors duration-200">
+    <div id="app" class="min-h-screen">
+        <div id="global-loader" class="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-slate-900">
+            <div class="flex flex-col items-center gap-4">
+                <div class="loader"></div>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center">St John Ambulance Cymru</p>
+            </div>
+        </div>
+
+        <main id="view-container" class="px-4 pt-6"></main>
+
+        <nav id="bottom-nav" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] hidden bg-white dark:bg-slate-900 border-t dark:border-slate-800 px-6 py-3 justify-between items-center z-40">
+            <button onclick="router.navigate('dashboard')" class="nav-item active" data-view="dashboard">
+                <i class="fas fa-home text-lg"></i><span>Home</span>
+            </button>
+            <button onclick="router.navigate('progress')" class="nav-item" data-view="progress">
+                <i class="fas fa-chart-line text-lg"></i><span>History</span>
+            </button>
+            <button onclick="router.navigate('add-duty')" class="nav-item bg-[#00853F] !text-white p-3 -mt-8 rounded-full shadow-lg h-12 w-12 justify-center active:scale-90 transition-transform">
+                <i class="fas fa-plus text-xl"></i>
+            </button>
+            <button onclick="router.navigate('community')" class="nav-item" data-view="community">
+                <i class="fas fa-users text-lg"></i><span>Feed</span>
+            </button>
+            <button onclick="router.navigate('profile')" class="nav-item" data-view="profile">
+                <i class="fas fa-user text-lg"></i><span>Profile</span>
+            </button>
+        </nav>
+    </div>
+
+    <script>
         // Restored Admin UID
         const ADMIN_UID = '8c921f70-8577-41ef-83c4-719afb499408';
         const ADMIN_AVATAR = 'https://qgyjfyazkkepmkztnezv.supabase.co/storage/v1/object/public/avatars/me%20animated.png';
