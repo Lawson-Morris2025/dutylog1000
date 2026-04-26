@@ -11,7 +11,6 @@
         :root { --navy: #1B263B; --green: #00853F; --light-bg: #F8F9FA; }
         body { font-family: 'Inter', sans-serif; background-color: var(--light-bg); -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
         
-        /* Skeleton Shimmer Effect */
         .skeleton { background: #e2e8f0; position: relative; overflow: hidden; border-radius: 0.5rem; }
         .skeleton::after {
             content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0;
@@ -29,23 +28,30 @@
         .input-field { width: 100%; padding: 1rem; border-radius: 1rem; border: 1px solid #e2e8f0; outline: none; transition: border-color 0.2s; background: white; }
         .input-field:focus { border-color: var(--green); }
         
-        /* Faster transitions */
         .fade-enter { opacity: 0; transform: translateY(5px); }
         .fade-enter-active { opacity: 1; transform: translateY(0); transition: all 0.2s ease-out; }
+
+        .msg-bubble { max-width: 80%; padding: 0.75rem 1rem; border-radius: 1.25rem; font-size: 0.9rem; margin-bottom: 0.5rem; position: relative; }
+        .msg-sent { background: var(--green); color: white; align-self: flex-end; border-bottom-right-radius: 0.25rem; }
+        .msg-received { background: white; color: var(--navy); align-self: flex-start; border-bottom-left-radius: 0.25rem; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        .admin-action { font-size: 10px; color: #ef4444; margin-top: -4px; cursor: pointer; text-decoration: underline; }
+        
+        .custom-checkbox { width: 18px; height: 18px; border: 2px solid #e2e8f0; border-radius: 4px; appearance: none; cursor: pointer; position: relative; }
+        .custom-checkbox:checked { background: var(--green); border-color: var(--green); }
+        .custom-checkbox:checked::after { content: '✓'; color: white; position: absolute; top: -2px; left: 2px; font-size: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
     <div id="app">
-        <!-- The UI is visible immediately, only data is swapped -->
         <main id="view-container" class="px-4 pt-6"></main>
 
-        <!-- Bottom Navigation - Hidden until session is confirmed -->
         <nav id="bottom-nav" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] hidden bg-white border-t px-6 py-3 justify-between items-center z-40 shadow-[0_-5px_15px_rgba(0,0,0,0.03)]">
             <button onclick="router.navigate('dashboard')" class="nav-item active" data-view="dashboard">
                 <i class="fas fa-home text-lg"></i><span>Home</span>
             </button>
-            <button onclick="router.navigate('progress')" class="nav-item" data-view="progress">
-                <i class="fas fa-history text-lg"></i><span>History</span>
+            <button onclick="router.navigate('messages')" class="nav-item" data-view="messages">
+                <i class="fas fa-comment-dots text-lg"></i><span>Chat</span>
             </button>
             <button onclick="router.navigate('add-duty')" class="nav-item bg-[#00853F] !text-white p-3 -mt-10 rounded-full shadow-lg h-14 w-14 justify-center active:scale-95 transition-all">
                 <i class="fas fa-plus text-xl"></i>
@@ -64,10 +70,16 @@
         const supabaseKey = 'sb_publishable_xea7e2zxnarbh2bT6vG5ew__2DhOj34';
         const sb = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        const state = { user: null, profile: null };
+        const state = { 
+            user: null, 
+            profile: null, 
+            activeChat: null,
+            chatSubscription: null 
+        };
 
         const router = {
             navigate: async (view) => {
+                if (state.chatSubscription) { state.chatSubscription.unsubscribe(); state.chatSubscription = null; }
                 const container = document.getElementById('view-container');
                 const nav = document.getElementById('bottom-nav');
                 const isAuthView = ['welcome', 'login', 'signup'].includes(view);
@@ -79,7 +91,6 @@
                     el.classList.toggle('active', el.dataset.view === view);
                 });
 
-                // Immediate transition
                 container.classList.add('fade-enter');
                 container.innerHTML = await views[view]();
                 
@@ -106,17 +117,33 @@
                     </div>
                 </div>`,
 
-            login: async () => `
+            login: async () => {
+                const savedEmail = localStorage.getItem('duty_log_remember_email') || '';
+                return `
                 <div class="pt-4 max-w-sm mx-auto">
                     <button onclick="router.navigate('welcome')" class="text-slate-400 mb-6 p-2"><i class="fas fa-arrow-left"></i></button>
                     <h2 class="text-2xl font-bold mb-8 px-2">Welcome Back</h2>
                     <form onsubmit="handleLogin(event)" class="space-y-4 px-2">
-                        <input type="email" id="login-email" placeholder="Email Address" required class="input-field">
-                        <input type="password" id="login-password" placeholder="Password" required class="input-field">
+                        <input type="email" id="login-email" value="${savedEmail}" placeholder="Email Address" required class="input-field">
+                        <div class="relative">
+                            <input type="password" id="login-password" placeholder="Password" required class="input-field">
+                        </div>
+                        
+                        <div class="flex items-center justify-between px-1">
+                            <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-500 font-medium">
+                                <input type="checkbox" id="remember-me" ${savedEmail ? 'checked' : ''} class="custom-checkbox">
+                                Remember Me
+                            </label>
+                            <button type="button" onclick="handleForgotPassword()" class="text-xs text-green-700 font-bold hover:underline">Forgot Password?</button>
+                        </div>
+
                         <div id="login-error" class="hidden p-3 bg-red-50 text-red-500 text-xs rounded-lg"></div>
-                        <button id="login-btn" type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-xl font-bold">Sign In</button>
+                        <div id="login-success" class="hidden p-3 bg-green-50 text-green-700 text-xs rounded-lg"></div>
+                        
+                        <button id="login-btn" type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-xl font-bold shadow-lg mt-2">Sign In</button>
                     </form>
-                </div>`,
+                </div>`;
+            },
 
             signup: async () => `
                 <div class="pt-4 max-w-sm mx-auto">
@@ -132,25 +159,47 @@
                 </div>`,
 
             dashboard: async () => {
-                // Show skeleton first
                 setTimeout(loadDashboardData, 10);
+                return `<div class="space-y-6"><div class="h-40 w-full skeleton"></div><div class="h-60 w-full skeleton"></div></div>`;
+            },
+
+            messages: async () => {
+                setTimeout(loadMessagesList, 10);
                 return `
                 <div class="space-y-6">
-                    <header class="flex justify-between items-center px-2">
-                        <div class="space-y-1">
-                            <div class="h-6 w-32 skeleton"></div>
-                            <div class="h-3 w-20 skeleton"></div>
-                        </div>
-                        <div class="w-10 h-10 rounded-full skeleton"></div>
-                    </header>
-                    <div class="glass-card p-6 bg-[#1B263B] text-white relative overflow-hidden">
-                        <div class="h-3 w-24 skeleton opacity-20 mb-2"></div>
-                        <div class="h-10 w-20 skeleton opacity-20"></div>
+                    <div class="flex justify-between items-center px-2">
+                        <h2 class="text-2xl font-bold">Messages</h2>
                     </div>
-                    <div class="space-y-3 px-2">
-                        <div class="h-4 w-28 skeleton"></div>
-                        <div class="h-20 w-full skeleton"></div>
-                        <div class="h-20 w-full skeleton"></div>
+                    <div id="messages-list" class="space-y-2 px-2">
+                        <div class="h-16 w-full skeleton"></div>
+                        <div class="h-16 w-full skeleton"></div>
+                    </div>
+                </div>`;
+            },
+
+            chat: async () => {
+                setTimeout(initChatRoom, 10);
+                return `
+                <div class="flex flex-col h-[calc(100vh-100px)] -mt-6 -mx-4 relative">
+                    <div class="bg-white border-b p-4 flex items-center justify-between sticky top-0 z-10">
+                        <div class="flex items-center gap-3">
+                            <button onclick="router.navigate('messages')" class="text-slate-400"><i class="fas fa-chevron-left"></i></button>
+                            <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold overflow-hidden" id="chat-header-avatar">?</div>
+                            <div>
+                                <p class="font-bold text-sm leading-none" id="chat-header-name">Loading...</p>
+                                <p class="text-[10px] text-slate-400 mt-1" id="chat-header-status">online</p>
+                            </div>
+                        </div>
+                        ${state.profile?.is_admin ? `
+                            <div class="flex gap-4 text-slate-400">
+                                <button onclick="adminEditChat()" title="Edit Name/Pic"><i class="fas fa-cog"></i></button>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div id="chat-messages" class="flex-1 overflow-y-auto p-4 flex flex-col bg-slate-50"></div>
+                    <div class="p-4 bg-white border-t flex gap-2 items-center">
+                        <input type="text" id="chat-input" placeholder="Type a message..." class="flex-1 p-3 bg-slate-100 rounded-xl outline-none text-sm">
+                        <button onclick="sendMessage()" class="w-12 h-12 bg-green-600 text-white rounded-xl flex items-center justify-center active:scale-90 transition-all"><i class="fas fa-paper-plane"></i></button>
                     </div>
                 </div>`;
             },
@@ -169,108 +218,203 @@
                     </form>
                 </div>`,
 
-            progress: async () => {
-                setTimeout(loadHistoryData, 10);
-                return `<div class="space-y-6">
-                    <h2 class="text-2xl font-bold px-2">Duty History</h2>
-                    <div class="space-y-3 px-2">
-                        <div class="h-20 w-full skeleton"></div>
-                        <div class="h-20 w-full skeleton"></div>
-                        <div class="h-20 w-full skeleton"></div>
-                    </div>
-                </div>`;
-            },
-
             community: async () => {
                 setTimeout(loadFeedData, 10);
-                return `<div class="space-y-6">
-                    <h2 class="text-2xl font-bold px-2">Member Feed</h2>
-                    <div class="space-y-4 px-2">
-                        <div class="h-16 w-full skeleton"></div>
-                        <div class="h-16 w-full skeleton"></div>
-                        <div class="h-16 w-full skeleton"></div>
-                    </div>
-                </div>`;
+                return `<div class="h-96 w-full skeleton"></div>`;
             },
 
             profile: async () => `
                 <div class="space-y-8 text-center pt-4 px-4">
                     <img src="${state.profile?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+state.user.id}" class="w-24 h-24 mx-auto rounded-full border-4 border-green-500 object-cover shadow-lg">
-                    <div>
-                        <h2 class="text-2xl font-bold">${state.profile?.name || 'Member'}</h2>
-                        <p class="text-slate-400 text-sm">${state.user.email}</p>
-                    </div>
+                    <h2 class="text-2xl font-bold">${state.profile?.name || 'Member'} ${state.profile?.is_admin ? '<i class="fas fa-shield-alt text-green-600 text-sm" title="Admin"></i>' : ''}</h2>
                     <div class="grid grid-cols-2 gap-4">
-                        <div class="glass-card p-4">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase">Division</p>
-                            <p class="font-bold text-slate-700">${state.profile?.division || 'Not Set'}</p>
-                        </div>
-                        <div class="glass-card p-4">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase">Status</p>
-                            <p class="font-bold text-slate-700">Active</p>
-                        </div>
+                        <div class="glass-card p-4"><p class="text-[10px] font-bold text-slate-400 uppercase">Division</p><p class="font-bold text-slate-700">${state.profile?.division || 'Not Set'}</p></div>
+                        <div class="glass-card p-4"><p class="text-[10px] font-bold text-slate-400 uppercase">Status</p><p class="font-bold text-green-600">Active</p></div>
                     </div>
                     <button onclick="handleLogout()" class="w-full p-4 bg-red-50 text-red-500 rounded-2xl font-bold mt-10">Sign Out</button>
                 </div>`
         };
 
-        // --- Data Loading Functions (Background) ---
+        // --- Data Fetchers ---
 
         async function loadDashboardData() {
             const { data: duties } = await sb.from('duties').select('*').eq('user_id', state.user.id).order('date', {ascending:false});
             const totalHours = (duties || []).reduce((acc, curr) => acc + (parseFloat(curr.total_hours) || 0), 0);
-            
             document.getElementById('view-container').innerHTML = `
-                <div class="space-y-6 fade-enter-active">
+                <div class="space-y-6">
                     <header class="flex justify-between items-center px-2">
-                        <div>
-                            <h1 class="text-xl font-bold">Hi, ${state.profile?.name || 'Member'}</h1>
-                            <p class="text-[10px] text-slate-400 font-bold uppercase">${state.profile?.division || 'Division Not Set'}</p>
-                        </div>
-                        <img src="${state.profile?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+state.user.id}" class="w-10 h-10 rounded-full border-2 border-green-500 object-cover" onclick="router.navigate('profile')">
+                        <div><h1 class="text-xl font-bold">Hi, ${state.profile?.name?.split(' ')[0] || 'Member'}</h1><p class="text-[10px] text-slate-400 font-bold uppercase">${state.profile?.division || 'Volunteer'}</p></div>
+                        <img src="${state.profile?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+state.user.id}" class="w-10 h-10 rounded-full border-2 border-green-500 object-cover">
                     </header>
                     <div class="glass-card p-6 bg-gradient-to-br from-[#1B263B] to-[#0D1B2A] text-white">
                         <p class="text-[10px] opacity-70 uppercase font-bold tracking-widest">Logged Total</p>
-                        <div class="flex items-baseline gap-2 mt-1">
-                            <h2 class="text-4xl font-black">${totalHours.toFixed(1)}</h2>
-                            <span class="text-sm opacity-60">Hours</span>
-                        </div>
+                        <h2 class="text-4xl font-black">${totalHours.toFixed(1)} <span class="text-sm font-normal opacity-60">Hours</span></h2>
                     </div>
                     <div class="space-y-3 px-2">
-                        <h3 class="font-bold flex justify-between"><span>Recent Duty</span> <button onclick="router.navigate('progress')" class="text-green-600 text-[10px] font-bold">VIEW ALL</button></h3>
-                        ${(duties || []).slice(0,3).map(d => `
-                            <div class="glass-card p-4 flex justify-between items-center">
-                                <div><p class="font-bold text-sm">${d.title}</p><p class="text-[10px] text-slate-400">${d.date}</p></div>
-                                <p class="font-black text-[#00853F]">+${d.total_hours}</p>
-                            </div>
-                        `).join('') || '<p class="text-slate-400 text-center py-10">No logs yet.</p>'}
+                        <h3 class="font-bold flex justify-between"><span>Activity</span> <button onclick="router.navigate('community')" class="text-green-600 text-[10px]">FEED</button></h3>
+                        ${(duties || []).slice(0,3).map(d => `<div class="glass-card p-4 flex justify-between items-center"><div><p class="font-bold text-sm">${d.title}</p><p class="text-[10px] text-slate-400">${d.date}</p></div><p class="font-black text-[#00853F]">+${d.total_hours}</p></div>`).join('') || '<p class="py-10 text-center text-slate-400 text-sm">No duties logged yet.</p>'}
                     </div>
                 </div>`;
         }
 
-        async function loadHistoryData() {
-            const { data: duties } = await sb.from('duties').select('*').eq('user_id', state.user.id).order('date', {ascending:false});
-            document.getElementById('view-container').innerHTML = `
-                <div class="space-y-6 fade-enter-active">
-                    <h2 class="text-2xl font-bold px-2">Duty History</h2>
-                    <div class="space-y-3 px-2">
-                        ${(duties || []).map(d => `
-                            <div class="glass-card p-4 flex justify-between items-center">
-                                <div><p class="font-bold text-sm">${d.title}</p><p class="text-[10px] text-slate-400">${d.date} • ${d.location}</p></div>
-                                <div class="text-right">
-                                    <p class="font-black text-slate-700">${d.total_hours}h</p>
-                                    <button onclick="deleteDuty(${d.id})" class="text-red-400 text-[10px]"><i class="fas fa-trash"></i></button>
-                                </div>
-                            </div>
-                        `).join('') || '<p class="text-slate-400 text-center py-10">Empty.</p>'}
+        async function loadMessagesList() {
+            const { data: users } = await sb.from('profiles').select('*').neq('id', state.user.id).limit(20);
+            const division = state.profile?.division || 'Division';
+            
+            // Check for custom group name/pic if stored, otherwise default to City Cadets
+            const customGroupName = localStorage.getItem('chat_group_name') || 'City Cadets';
+            const customGroupPic = localStorage.getItem('chat_group_pic') || null;
+
+            document.getElementById('messages-list').innerHTML = `
+                <div onclick="openChat('group', 'city_cadets', '${customGroupName}')" class="glass-card p-4 flex items-center gap-4 cursor-pointer border-l-4 border-green-600">
+                    <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold overflow-hidden">
+                        ${customGroupPic ? `<img src="${customGroupPic}" class="w-full h-full object-cover">` : '<i class="fas fa-users"></i>'}
                     </div>
-                </div>`;
+                    <div class="flex-1">
+                        <p class="font-bold text-sm">${customGroupName}</p>
+                        <p class="text-[10px] text-slate-400 truncate">Join the main cadets chat</p>
+                    </div>
+                    <i class="fas fa-chevron-right text-slate-300 text-xs"></i>
+                </div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase mt-6 mb-2">Direct Messages</p>
+                ${users?.map(u => `
+                    <div onclick="openChat('private', '${u.id}', '${u.name}')" class="glass-card p-4 flex items-center gap-4 cursor-pointer">
+                        <img src="${u.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+u.id}" class="w-12 h-12 rounded-full object-cover">
+                        <div class="flex-1">
+                            <p class="font-bold text-sm">${u.name} ${u.is_admin ? '🛡️' : ''}</p>
+                            <p class="text-[10px] text-slate-400 truncate">${u.division || 'Volunteer'}</p>
+                        </div>
+                        <i class="fas fa-chevron-right text-slate-300 text-xs"></i>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        function openChat(type, id, name) {
+            state.activeChat = { type, id, name };
+            router.navigate('chat');
+        }
+
+        async function initChatRoom() {
+            const headerName = document.getElementById('chat-header-name');
+            const headerAvatar = document.getElementById('chat-header-avatar');
+            const container = document.getElementById('chat-messages');
+            
+            headerName.innerText = state.activeChat.name;
+            
+            if (state.activeChat.type === 'group') {
+                const customPic = localStorage.getItem('chat_group_pic');
+                headerAvatar.innerHTML = customPic ? `<img src="${customPic}" class="w-full h-full object-cover">` : '<i class="fas fa-users"></i>';
+            } else {
+                headerAvatar.innerHTML = `<img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${state.activeChat.id}" class="w-full h-full rounded-full">`;
+            }
+
+            let query = sb.from('messages').select('*, profiles:sender_id(name, avatar_url, is_admin)');
+            if (state.activeChat.type === 'group') {
+                query = query.eq('group_id', state.activeChat.id);
+            } else {
+                query = query.or(`and(sender_id.eq.${state.user.id},receiver_id.eq.${state.activeChat.id}),and(sender_id.eq.${state.activeChat.id},receiver_id.eq.${state.user.id})`);
+            }
+
+            const { data: messages } = await query.order('created_at', { ascending: true });
+            
+            container.innerHTML = '';
+            messages?.forEach(renderMessage);
+            container.scrollTop = container.scrollHeight;
+
+            state.chatSubscription = sb.channel('any')
+                .on('postgres_changes', { event: '*', table: 'messages' }, async payload => {
+                    if (payload.eventType === 'INSERT') {
+                        const msg = payload.new;
+                        const isRelevant = state.activeChat.type === 'group' 
+                            ? msg.group_id === state.activeChat.id 
+                            : (msg.sender_id === state.activeChat.id && msg.receiver_id === state.user.id) || 
+                            (msg.sender_id === state.user.id && msg.receiver_id === state.activeChat.id);
+                        
+                        if (isRelevant) {
+                            const { data: profile } = await sb.from('profiles').select('name, avatar_url, is_admin').eq('id', msg.sender_id).single();
+                            renderMessage({...msg, profiles: profile});
+                            container.scrollTop = container.scrollHeight;
+                        }
+                    } else if (payload.eventType === 'DELETE') {
+                        const el = document.getElementById(`msg-${payload.old.id}`);
+                        if (el) el.remove();
+                    }
+                })
+                .subscribe();
+            
+            document.getElementById('chat-input').addEventListener('keypress', e => {
+                if (e.key === 'Enter') sendMessage();
+            });
+        }
+
+        function renderMessage(msg) {
+            const container = document.getElementById('chat-messages');
+            const isMe = msg.sender_id === state.user.id;
+            const div = document.createElement('div');
+            div.id = `msg-${msg.id}`;
+            div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} mb-4`;
+            
+            const showName = state.activeChat.type === 'group' && !isMe;
+
+            div.innerHTML = `
+                ${showName ? `<span class="text-[10px] text-slate-400 ml-2 mb-1">${msg.profiles?.name || 'User'}</span>` : ''}
+                <div class="msg-bubble ${isMe ? 'msg-sent' : 'msg-received'}">
+                    ${msg.content}
+                </div>
+                ${state.profile?.is_admin ? `<span class="admin-action px-2" onclick="adminDeleteMsg(${msg.id})">Delete</span>` : ''}
+            `;
+            container.appendChild(div);
+        }
+
+        // --- Admin Functions ---
+
+        async function adminDeleteMsg(msgId) {
+            if (!confirm('Permanently delete this message?')) return;
+            const { error } = await sb.from('messages').delete().eq('id', msgId);
+            if (error) alert('Error: ' + error.message);
+        }
+
+        function adminEditChat() {
+            if (state.activeChat.type !== 'group') {
+                alert('Profile editing is coming soon. Use the cog for group settings.');
+                return;
+            }
+            const newName = prompt('Enter new group name:', state.activeChat.name);
+            const newPic = prompt('Enter group image URL (or leave blank for default):', localStorage.getItem('chat_group_pic') || '');
+            
+            if (newName) {
+                localStorage.setItem('chat_group_name', newName);
+                state.activeChat.name = newName;
+                document.getElementById('chat-header-name').innerText = newName;
+            }
+            if (newPic !== null) {
+                localStorage.setItem('chat_group_pic', newPic);
+                const headerAvatar = document.getElementById('chat-header-avatar');
+                headerAvatar.innerHTML = newPic ? `<img src="${newPic}" class="w-full h-full object-cover">` : '<i class="fas fa-users"></i>';
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const content = input.value.trim();
+            if (!content) return;
+            input.value = '';
+
+            const payload = {
+                sender_id: state.user.id,
+                content: content,
+                group_id: state.activeChat.type === 'group' ? state.activeChat.id : null,
+                receiver_id: state.activeChat.type === 'private' ? state.activeChat.id : null
+            };
+
+            await sb.from('messages').insert([payload]);
         }
 
         async function loadFeedData() {
             const { data: feeds } = await sb.from('duties').select('*, profiles(name, avatar_url, division)').limit(15).order('created_at', { ascending: false });
             document.getElementById('view-container').innerHTML = `
-                <div class="space-y-6 fade-enter-active">
+                <div class="space-y-6">
                     <h2 class="text-2xl font-bold px-2">Member Feed</h2>
                     <div class="space-y-4 px-2">
                         ${feeds?.map(f => `
@@ -286,25 +430,79 @@
                 </div>`;
         }
 
-        // --- Core Auth & Logic ---
+        // --- Auth Logic ---
 
         async function handleLogin(e) {
             e.preventDefault();
             const btn = document.getElementById('login-btn');
-            btn.disabled = true; btn.innerText = "Checking...";
+            const emailEl = document.getElementById('login-email');
+            const passEl = document.getElementById('login-password');
+            const rememberEl = document.getElementById('remember-me');
+            const errorEl = document.getElementById('login-error');
+            
+            errorEl.classList.add('hidden');
+            btn.disabled = true; 
+            btn.innerText = "Checking...";
+
+            const { error } = await sb.auth.signInWithPassword({ 
+                email: emailEl.value, 
+                password: passEl.value 
+            });
+
+            if (error) { 
+                errorEl.innerText = error.message; 
+                errorEl.classList.remove('hidden'); 
+                btn.disabled = false; 
+                btn.innerText = "Sign In"; 
+            } else {
+                if (rememberEl.checked) {
+                    localStorage.setItem('duty_log_remember_email', emailEl.value);
+                } else {
+                    localStorage.removeItem('duty_log_remember_email');
+                }
+            }
+        }
+
+        async function handleForgotPassword() {
             const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            const { error } = await sb.auth.signInWithPassword({ email, password });
-            if (error) { document.getElementById('login-error').innerText = error.message; document.getElementById('login-error').classList.remove('hidden'); btn.disabled = false; btn.innerText = "Sign In"; }
+            const errorEl = document.getElementById('login-error');
+            const successEl = document.getElementById('login-success');
+            
+            errorEl.classList.add('hidden');
+            successEl.classList.add('hidden');
+
+            if (!email) {
+                errorEl.innerText = "Please enter your email address first.";
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            const { error } = await sb.auth.resetPasswordForEmail(email);
+
+            if (error) {
+                errorEl.innerText = error.message;
+                errorEl.classList.remove('hidden');
+            } else {
+                successEl.innerText = "Password reset link sent to your email.";
+                successEl.classList.remove('hidden');
+            }
+        }
+
+        async function handleSignup(e) {
+            e.preventDefault();
+            const { error } = await sb.auth.signUp({ 
+                email: document.getElementById('signup-email').value, 
+                password: document.getElementById('signup-password').value, 
+                options: { data: { full_name: document.getElementById('signup-name').value, division: document.getElementById('signup-division').value } }
+            });
+            if (error) alert(error.message); else { alert("Check email for verification!"); router.navigate('login'); }
         }
 
         async function handleSaveDuty(e) {
             e.preventDefault();
             const payload = {
-                user_id: state.user.id,
-                title: document.getElementById('duty-title').value,
-                location: document.getElementById('duty-location').value,
-                date: document.getElementById('duty-date').value,
+                user_id: state.user.id, title: document.getElementById('duty-title').value,
+                location: document.getElementById('duty-location').value, date: document.getElementById('duty-date').value,
                 total_hours: parseFloat(document.getElementById('duty-hours').value),
                 start_time: '09:00', end_time: '17:00'
             };
@@ -315,7 +513,6 @@
         async function handleLogout() { await sb.auth.signOut(); location.reload(); }
 
         function init() {
-            // Check session immediately
             sb.auth.onAuthStateChange(async (event, session) => {
                 if (session) {
                     state.user = session.user;
@@ -327,7 +524,6 @@
                 }
             });
         }
-
         window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
