@@ -88,7 +88,7 @@
             },
             profile: async () => {
                 const displayName = state.profile?.name || state.user?.user_metadata?.full_name || 'Volunteer';
-                const displayDiv = state.profile?.division || state.user?.user_metadata?.division || 'SJA Cymru';
+                const displayDiv = state.profile?.division || state.user?.user_metadata?.division || 'St John Ambulance Cymru';
                 return `
                 <div class="space-y-8 text-center pt-4 px-4">
                     <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${state.user?.id || 'default'}" class="w-24 h-24 mx-auto rounded-full border-4 border-green-500 shadow-lg">
@@ -127,18 +127,20 @@
             const btnText = document.getElementById('wallet-btn-text');
             const apiKey = "ww_live_42526f30b535128e1ec2ae5d863ff5fd";
 
-            // FORCED DATA RESOLUTION: If DB is empty, use Session Metadata
+            // FORCED DATA RESOLUTION
             const name = state.profile?.name || state.user?.user_metadata?.full_name || "Volunteer";
             const division = state.profile?.division || state.user?.user_metadata?.division || "St John Ambulance Cymru";
             const hours = (state.totalHours || 0).toFixed(1);
+            const barcode = state.user?.id || "SJA-" + Date.now(); // BARCODE VALUE ADDED HERE
 
             btn.disabled = true;
-            btnText.innerText = "Processing...";
+            btnText.innerText = "Syncing...";
 
             try {
                 const passData = {
                     title: "SJA DutyLog",
                     colorPreset: "green",
+                    barcodeValue: barcode, // Required by certain API configurations
                     fields: {
                         primaryFields: [{ key: "name", label: "VOLUNTEER", value: name }],
                         secondaryFields: [
@@ -155,8 +157,8 @@
                 });
 
                 if (!response.ok) {
-                    const errorMsg = await response.text();
-                    throw new Error(errorMsg);
+                    const errorDetails = await response.json();
+                    throw new Error(errorDetails.error || "API error");
                 }
 
                 const blob = await response.blob();
@@ -170,8 +172,8 @@
                 btnText.innerText = "Success!";
             } catch (err) {
                 console.error("Wallet Error:", err);
-                alert("Wallet API Error: " + err.message);
-                btnText.innerText = "Failed";
+                alert("Creation Failed: " + err.message);
+                btnText.innerText = "Try Again";
             } finally {
                 setTimeout(() => {
                     btn.disabled = false;
