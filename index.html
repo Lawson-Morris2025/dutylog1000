@@ -80,7 +80,10 @@
             <div class="flex flex-col items-center gap-4">
                 <div class="loader"></div>
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center">St John Ambulance Cymru</p>
-                <button onclick="router.navigate('welcome')" class="mt-4 text-[10px] text-slate-300 underline opacity-50">Skip loading...</button>
+                <div id="loader-fallback" class="hidden flex flex-col items-center">
+                    <p class="text-[10px] text-red-500 mt-2">Connection is taking longer than expected...</p>
+                    <button onclick="router.navigate('welcome')" class="mt-4 text-[10px] text-slate-400 underline">Try manual entry</button>
+                </div>
             </div>
         </div>
 
@@ -111,7 +114,6 @@
         const ADMIN_UID = '8c921f70-8577-41ef-83c4-719afb499408';
         const ADMIN_AVATAR = 'https://qgyjfyazkkepmkztnezv.supabase.co/storage/v1/object/public/avatars/me%20animated.png';
         
-        // Default Avatars
         const DEFAULT_AVATARS = [
             ADMIN_AVATAR, 
             'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
@@ -146,7 +148,6 @@
                 const nav = document.getElementById('bottom-nav');
                 const isAuthView = ['welcome', 'login', 'signup'].includes(view);
                 
-                // Ensure loader is gone if navigating manually
                 hideLoader();
 
                 if (nav) {
@@ -171,8 +172,8 @@
                         }, 100);
                     }
                 } catch (e) {
-                    console.error("View Error:", e);
-                    container.innerHTML = `<p class="text-center text-red-500 py-10">Error loading view.</p>`;
+                    console.error("Navigation Error:", e);
+                    container.innerHTML = `<p class="text-center text-red-500 py-10">Error loading view. Check console.</p>`;
                 }
             }
         };
@@ -198,8 +199,9 @@
                     <button onclick="router.navigate('welcome')" class="mb-6 text-slate-400"><i class="fas fa-arrow-left"></i> Back</button>
                     <h2 class="text-3xl font-bold mb-2">Welcome Back</h2>
                     <form onsubmit="handleLogin(event)" class="space-y-4 mt-8">
-                        <input type="email" id="login-email" placeholder="Email" required class="w-full p-4 rounded-2xl bg-white border outline-none">
-                        <input type="password" id="login-password" placeholder="Password" required class="w-full p-4 rounded-2xl bg-white border outline-none">
+                        <input type="email" id="login-email" placeholder="Email" required class="w-full p-4 rounded-2xl bg-white border outline-none border-slate-200">
+                        <input type="password" id="login-password" placeholder="Password" required class="w-full p-4 rounded-2xl bg-white border outline-none border-slate-200">
+                        <div id="login-error" class="hidden text-red-500 text-xs text-center py-2"></div>
                         <button id="login-btn" type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-2xl font-bold">Sign In</button>
                     </form>
                 </div>
@@ -209,11 +211,11 @@
                     <button onclick="router.navigate('welcome')" class="mb-4 text-slate-400"><i class="fas fa-arrow-left"></i> Back</button>
                     <h2 class="text-3xl font-bold mb-2">Join the Team</h2>
                     <form onsubmit="handleSignup(event)" class="space-y-4">
-                        <input type="text" id="signup-name" placeholder="Full Name" required class="w-full p-4 rounded-2xl bg-white border outline-none">
-                        <input type="text" id="signup-division" placeholder="Division (e.g. Cardiff)" required class="w-full p-4 rounded-2xl bg-white border outline-none">
-                        <input type="text" id="signup-tag" placeholder="Tag (e.g. First Aider)" required class="w-full p-4 rounded-2xl bg-white border outline-none">
-                        <input type="email" id="signup-email" placeholder="Email" required class="w-full p-4 rounded-2xl bg-white border outline-none">
-                        <input type="password" id="signup-password" placeholder="Password" required class="w-full p-4 rounded-2xl bg-white border outline-none">
+                        <input type="text" id="signup-name" placeholder="Full Name" required class="w-full p-4 rounded-2xl bg-white border outline-none border-slate-200">
+                        <input type="text" id="signup-division" placeholder="Division (e.g. Cardiff)" required class="w-full p-4 rounded-2xl bg-white border outline-none border-slate-200">
+                        <input type="text" id="signup-tag" placeholder="Tag (e.g. First Aider)" required class="w-full p-4 rounded-2xl bg-white border outline-none border-slate-200">
+                        <input type="email" id="signup-email" placeholder="Email" required class="w-full p-4 rounded-2xl bg-white border outline-none border-slate-200">
+                        <input type="password" id="signup-password" placeholder="Password" required class="w-full p-4 rounded-2xl bg-white border outline-none border-slate-200">
                         <button id="signup-btn" type="submit" class="w-full bg-[#00853F] text-white py-4 rounded-2xl font-bold">Register</button>
                     </form>
                 </div>
@@ -319,9 +321,6 @@
 
                     <div class="glass-card p-6">
                         <h3 class="text-xs font-bold uppercase text-slate-400 mb-4 tracking-wider">Upload Custom Photo</h3>
-                        <div class="p-4 bg-amber-50 border border-amber-200 rounded-xl mb-4 text-amber-800 text-[10px]">
-                            <b>Important:</b> Ensure your bucket named 'avatars' is set to <b>Public</b>.
-                        </div>
                         <label class="w-full flex flex-col items-center justify-center border-2 border-dashed border-slate-200 py-8 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors">
                             <i class="fas fa-cloud-upload-alt text-2xl text-slate-300 mb-2"></i>
                             <span class="text-sm font-bold text-slate-500" id="upload-status">Tap to select photo</span>
@@ -334,12 +333,12 @@
                 <div class="max-w-md mx-auto animate-fade-in">
                     <h2 class="text-2xl font-bold mb-6">New Log</h2>
                     <form onsubmit="handleSaveDuty(event)" class="space-y-4">
-                        <input type="text" id="duty-title" placeholder="Duty Title (e.g. Football)" required class="w-full p-4 rounded-2xl bg-white border outline-none">
-                        <input type="text" id="duty-location" placeholder="Location" required class="w-full p-4 rounded-2xl bg-white border outline-none">
-                        <input type="date" id="duty-date" required class="w-full p-4 rounded-2xl bg-white border outline-none">
+                        <input type="text" id="duty-title" placeholder="Duty Title (e.g. Football)" required class="w-full p-4 rounded-2xl bg-white border border-slate-200 outline-none">
+                        <input type="text" id="duty-location" placeholder="Location" required class="w-full p-4 rounded-2xl bg-white border border-slate-200 outline-none">
+                        <input type="date" id="duty-date" required class="w-full p-4 rounded-2xl bg-white border border-slate-200 outline-none">
                         <div class="grid grid-cols-2 gap-4">
-                            <input type="time" id="duty-start" required class="w-full p-4 rounded-2xl bg-white border outline-none">
-                            <input type="time" id="duty-end" required class="w-full p-4 rounded-2xl bg-white border outline-none">
+                            <input type="time" id="duty-start" required class="w-full p-4 rounded-2xl bg-white border border-slate-200 outline-none">
+                            <input type="time" id="duty-end" required class="w-full p-4 rounded-2xl bg-white border border-slate-200 outline-none">
                         </div>
                         <button type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-2xl font-bold shadow-lg">Save Log</button>
                     </form>
@@ -370,9 +369,6 @@
             progress: async () => `
                 <div class="space-y-6 animate-fade-in">
                     <h2 class="text-2xl font-bold">Activity History</h2>
-                    <div class="glass-card p-4">
-                        <canvas id="hoursChart"></canvas>
-                    </div>
                     <div class="space-y-3" id="history-list">
                         ${state.duties.map(d => `
                             <div class="glass-card p-4 flex items-center justify-between">
@@ -391,8 +387,10 @@
         // --- Core Logic ---
 
         async function updateAvatar(url) {
-            const { error } = await window.supabaseClient.from('profiles').update({ avatar_url: url }).eq('id', state.user.id);
-            if (!error) { state.profile.avatar_url = url; router.navigate('profile'); }
+            try {
+                const { error } = await window.supabaseClient.from('profiles').update({ avatar_url: url }).eq('id', state.user.id);
+                if (!error) { state.profile.avatar_url = url; router.navigate('profile'); }
+            } catch (err) { console.error("Avatar Update Error:", err); }
         }
 
         async function handlePhotoUpload(input) {
@@ -401,10 +399,13 @@
             const status = document.getElementById('upload-status');
             status.innerText = "Uploading...";
             const fileName = `${state.user.id}-${Date.now()}.${file.name.split('.').pop()}`;
-            const { error: uploadError } = await window.supabaseClient.storage.from('avatars').upload(fileName, file);
-            if (uploadError) { status.innerText = "Upload failed!"; return; }
-            const { data: { publicUrl } } = window.supabaseClient.storage.from('avatars').getPublicUrl(fileName);
-            await updateAvatar(publicUrl);
+            
+            try {
+                const { error: uploadError } = await window.supabaseClient.storage.from('avatars').upload(fileName, file);
+                if (uploadError) { status.innerText = "Upload failed! check bucket permissions."; return; }
+                const { data: { publicUrl } } = window.supabaseClient.storage.from('avatars').getPublicUrl(fileName);
+                await updateAvatar(publicUrl);
+            } catch (err) { status.innerText = "Upload Error."; console.error(err); }
         }
 
         async function editProfile(field) {
@@ -412,8 +413,10 @@
             const newVal = prompt(`Enter new ${field}:`, currentVal);
             if (newVal !== null && newVal !== "") {
                 const valToSave = (field === 'goal') ? parseInt(newVal) : newVal;
-                const { error } = await window.supabaseClient.from('profiles').update({ [field]: valToSave }).eq('id', state.user.id);
-                if (!error) { state.profile[field] = valToSave; router.navigate('profile'); }
+                try {
+                    const { error } = await window.supabaseClient.from('profiles').update({ [field]: valToSave }).eq('id', state.user.id);
+                    if (!error) { state.profile[field] = valToSave; router.navigate('profile'); }
+                } catch (err) { console.error("Profile Edit Error:", err); }
             }
         }
 
@@ -422,9 +425,30 @@
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             const btn = document.getElementById('login-btn');
+            const errorDiv = document.getElementById('login-error');
+            
             btn.innerText = 'Signing In...';
-            const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
-            if (error) { alert(error.message); btn.innerText = 'Sign In'; }
+            btn.disabled = true;
+            errorDiv.classList.add('hidden');
+
+            try {
+                const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) {
+                    console.error("Login Error Details:", error);
+                    errorDiv.innerText = error.message;
+                    errorDiv.classList.remove('hidden');
+                    btn.innerText = 'Sign In';
+                    btn.disabled = false;
+                } else {
+                    // Success is handled by onAuthStateChange
+                }
+            } catch (err) {
+                console.error("Unexpected Login Error:", err);
+                errorDiv.innerText = "Connection error. Check Site URLs in Supabase.";
+                errorDiv.classList.remove('hidden');
+                btn.innerText = 'Sign In';
+                btn.disabled = false;
+            }
         }
 
         async function handleSignup(event) {
@@ -435,12 +459,23 @@
             const div = document.getElementById('signup-division').value;
             const tag = document.getElementById('signup-tag').value;
             const btn = document.getElementById('signup-btn');
+            
             btn.innerText = 'Creating...';
-            const { error } = await window.supabaseClient.auth.signUp({
-                email, password, options: { data: { full_name: name, division: div, tag: tag } }
-            });
-            if (error) { alert(error.message); btn.innerText = 'Register'; }
-            else { alert("Check email for confirmation!"); router.navigate('login'); }
+            btn.disabled = true;
+
+            try {
+                const { error } = await window.supabaseClient.auth.signUp({
+                    email, password, options: { data: { full_name: name, division: div, tag: tag } }
+                });
+                if (error) { 
+                    alert(error.message); 
+                    btn.innerText = 'Register';
+                    btn.disabled = false;
+                } else { 
+                    alert("Check your email for confirmation link!"); 
+                    router.navigate('login'); 
+                }
+            } catch (err) { console.error(err); btn.disabled = false; }
         }
 
         async function handleSaveDuty(e) {
@@ -454,14 +489,21 @@
             const eTime = new Date(`1970-01-01T${end}:00`);
             let diff = (eTime - sTime) / 3600000;
             if (diff < 0) diff += 24;
-            const { error } = await window.supabaseClient.from('duties').insert([{
-                user_id: state.user.id, title, date, start_time: start, end_time: end,
-                total_hours: parseFloat(diff.toFixed(1)), location
-            }]);
-            if (!error) router.navigate('dashboard');
+            
+            try {
+                const { error } = await window.supabaseClient.from('duties').insert([{
+                    user_id: state.user.id, title, date, start_time: start, end_time: end,
+                    total_hours: parseFloat(diff.toFixed(1)), location
+                }]);
+                if (!error) router.navigate('dashboard');
+                else alert("Error saving duty. Check console.");
+            } catch (err) { console.error(err); }
         }
 
-        async function handleLogout() { await window.supabaseClient.auth.signOut(); location.reload(); }
+        async function handleLogout() { 
+            await window.supabaseClient.auth.signOut(); 
+            location.reload(); 
+        }
 
         function hideLoader() {
             const loader = document.getElementById('global-loader');
@@ -475,18 +517,14 @@
             const supabaseUrl = 'https://qgyjfyazkkepmkztnezv.supabase.co';
             const supabaseKey = 'sb_publishable_xea7e2zxnarbh2bT6vG5ew__2DhOj34';
             
-            // Immediate fallback if Supabase takes too long
             const safetyTimeout = setTimeout(() => {
                 if (!state.initialized) {
-                    console.warn("Initialization timed out. Falling back to welcome screen.");
-                    hideLoader();
-                    router.navigate('welcome');
+                    document.getElementById('loader-fallback').classList.remove('hidden');
                 }
-            }, 3000);
+            }, 4000);
 
-            // Wait for Supabase library to load
             if (typeof window.supabase === 'undefined') { 
-                setTimeout(init, 50); 
+                setTimeout(init, 100); 
                 return; 
             }
             
@@ -499,9 +537,12 @@
                 if (session) {
                     state.user = session.user;
                     state.isAdmin = (state.user.id === ADMIN_UID);
-                    const { data } = await window.supabaseClient.from('profiles').select('*').eq('id', state.user.id).single();
-                    state.profile = data || {};
-                    if (state.isAdmin && !state.profile.avatar_url) state.profile.avatar_url = ADMIN_AVATAR;
+                    
+                    try {
+                        const { data } = await window.supabaseClient.from('profiles').select('*').eq('id', state.user.id).single();
+                        state.profile = data || {};
+                        if (state.isAdmin && !state.profile.avatar_url) state.profile.avatar_url = ADMIN_AVATAR;
+                    } catch (e) { console.warn("Profile fetch issue:", e); }
                     
                     hideLoader();
                     router.navigate('dashboard');
@@ -512,7 +553,6 @@
             });
         }
 
-        // Start initialization when DOM is ready
         window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
