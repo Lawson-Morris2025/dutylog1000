@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duty Log | St John Ambulance Cymru</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --navy: #1B263B;
+            --green: #00853F;
+            --light-bg: #F8F9FA;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--light-bg);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .dark {
+            --light-bg: #0D1B2A;
+            background-color: var(--light-bg);
+            color: #E0E1DD;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+        .dark .glass-card {
+            background: rgba(27, 38, 59, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.7rem;
+            color: #94A3B8;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+        }
+        .nav-item.active { color: var(--green); }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--green);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        main { max-width: 600px; margin: 0 auto; padding-bottom: 6rem; }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .progress-fill { width: 0%; transition: width 1.5s cubic-bezier(0.1, 0.5, 0.1, 1); }
+        
+        .badge-locked { filter: grayscale(1) opacity(0.5); }
+        .badge-unlocked { filter: none; opacity: 1; animation: pop 0.5s ease-out; }
+        @keyframes pop { 0% { transform: scale(0.8); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        
+        /* Modal Style */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7); 
+            display: flex; align-items: center; justify-content: center; z-index: 100;
+            padding: 20px; backdrop-filter: blur(4px);
+        }
+        .gold-card {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            color: #1B263B;
+        }
+    </style>
+</head>
+<body class="transition-colors duration-200">
+    <div id="app" class="min-h-screen">
+        <div id="modal-root"></div>
+        <div id="global-loader" class="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-slate-900">
+            <div class="flex flex-col items-center gap-4">
+                <div class="loader"></div>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center">St John Ambulance Cymru</p>
+            </div>
+        </div>
+
+        <main id="view-container" class="px-4 pt-6"></main>
+
+        <nav id="bottom-nav" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] hidden bg-white dark:bg-slate-900 border-t dark:border-slate-800 px-6 py-3 justify-between items-center z-40">
+            <button onclick="router.navigate('dashboard')" class="nav-item active" data-view="dashboard">
+                <i class="fas fa-home text-lg"></i><span>Home</span>
+            </button>
+            <button onclick="router.navigate('progress')" class="nav-item" data-view="progress">
+                <i class="fas fa-chart-line text-lg"></i><span>History</span>
+            </button>
+            <button onclick="router.navigate('add-duty')" id="nav-add" class="nav-item bg-[#00853F] !text-white p-3 -mt-8 rounded-full shadow-lg h-12 w-12 justify-center active:scale-90 transition-transform">
+                <i class="fas fa-plus text-xl"></i>
+            </button>
+            <button onclick="router.navigate('community')" class="nav-item" data-view="community">
+                <i class="fas fa-users text-lg"></i><span>Feed</span>
+            </button>
+            <button onclick="router.navigate('profile')" class="nav-item" data-view="profile">
+                <i class="fas fa-user text-lg"></i><span>Profile</span>
+            </button>
+        </nav>
+    </div>
+
+    <script>
+        window.supabaseClient = null;
+        
+        const state = {
+            user: null,
+            profile: null,
+            duties: []
+        };
+
+        const router = {
+            current: null,
+            navigate: async (view, params = null) => {
+                router.current = view;
+                const container = document.getElementById('view-container');
+                const nav = document.getElementById('bottom-nav');
+                const isAuthView = ['welcome', 'login', 'signup'].includes(view);
+                
+                if (nav) {
+                    nav.classList.toggle('hidden', isAuthView);
+                    nav.classList.toggle('flex', !isAuthView);
+                }
+
+                document.querySelectorAll('.nav-item').forEach(el => {
+                    el.classList.toggle('active', el.dataset.view === view);
+                });
+
+                window.scrollTo(0, 0);
+                container.innerHTML = `<div class="flex justify-center py-20"><div class="loader"></div></div>`;
+                
+                try {
+                    const content = await views[view](params);
+                    container.innerHTML = content;
+                    if (view === 'progress') initProgressChart();
+                    if (view === 'dashboard') {
+                        setTimeout(() => {
+                            const bar = document.querySelector('.progress-fill');
+                            if (bar) bar.style.width = bar.dataset.target + '%';
+                        }, 100);
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        };
+
+        const badgeList = [
+            { id: 'first', name: 'Rookie', icon: 'fa-seedling', req: 1, color: 'text-green-500' },
+            { id: 'ten', name: 'Bronze', icon: 'fa-medal', req: 10, color: 'text-amber-600' },
+            { id: 'quarter', name: 'Silver', icon: 'fa-award', req: 25, color: 'text-slate-400' },
+            { id: 'half', name: 'Gold', icon: 'fa-trophy', req: 50, color: 'text-yellow-500' }
+        ];
+
+        const views = {
+            welcome: async () => `
+                <div class="flex flex-col items-center justify-center min-h-[85vh] text-center space-y-8 animate-fade-in">
+                    <div class="w-24 h-24 bg-[#00853F] rounded-3xl flex items-center justify-center shadow-2xl">
+                        <i class="fas fa-plus-square text-white text-5xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-4xl font-extrabold text-[#1B263B] dark:text-white">Duty Log</h1>
+                        <p class="text-slate-500 mt-2 px-6">Official hour tracking for St John Ambulance Cymru.</p>
+                    </div>
+                    <div class="w-full space-y-4 px-4 max-w-sm">
+                        <button onclick="router.navigate('login')" class="w-full bg-[#1B263B] text-white py-4 rounded-2xl font-bold shadow-lg">Login</button>
+                        <button onclick="router.navigate('signup')" class="w-full bg-white dark:bg-slate-800 border-2 border-[#1B263B] py-4 rounded-2xl font-bold dark:text-white">Sign Up</button>
+                    </div>
+                </div>
+            `,
+            login: async () => `
+                <div class="max-w-md mx-auto pt-10 px-2 animate-fade-in">
+                    <button onclick="router.navigate('welcome')" class="mb-6 text-slate-400"><i class="fas fa-arrow-left"></i> Back</button>
+                    <h2 class="text-3xl font-bold mb-2 dark:text-white">Welcome Back</h2>
+                    <div id="login-error" class="hidden bg-red-50 text-red-600 p-3 rounded-xl text-sm font-bold mb-4 animate-pulse italic"></div>
+                    <form onsubmit="handleLogin(event)" class="space-y-4 mt-8">
+                        <input type="email" id="login-email" placeholder="Email" required class="w-full p-4 rounded-2xl bg-white dark:bg-slate-800 outline-none border border-slate-100 dark:border-slate-700">
+                        <input type="password" id="login-password" placeholder="Password" required class="w-full p-4 rounded-2xl bg-white dark:bg-slate-800 outline-none border border-slate-100 dark:border-slate-700">
+                        <button id="login-btn" type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-2xl font-bold">Sign In</button>
+                    </form>
+                </div>
+            `,
+            signup: async () => `
+                <div class="max-w-md mx-auto pt-6 px-2 animate-fade-in">
+                    <button onclick="router.navigate('welcome')" class="mb-4 text-slate-400"><i class="fas fa-arrow-left"></i> Back</button>
+                    <h2 class="text-3xl font-bold mb-2 dark:text-white">Join the Team</h2>
+                    <div id="signup-error" class="hidden bg-red-50 text-red-600 p-3 rounded-xl text-sm font-bold mb-4 animate-pulse italic"></div>
+                    <form onsubmit="handleSignup(event)" class="space-y-4">
+                        <input type="text" id="signup-name" placeholder="Full Name" required class="w-full p-4 rounded-2xl bg-white dark:bg-slate-800 outline-none border border-slate-100 dark:border-slate-700">
+                        <input type="text" id="signup-division" placeholder="Division (e.g. Cardiff)" required class="w-full p-4 rounded-2xl bg-white dark:bg-slate-800 outline-none border border-slate-100 dark:border-slate-700">
+                        <input type="text" id="signup-tag" placeholder="Tag (e.g. First Aider)" required class="w-full p-4 rounded-2xl bg-white dark:bg-slate-800 outline-none border border-slate-100 dark:border-slate-700">
+                        <input type="email" id="signup-email" placeholder="Email Address" required class="w-full p-4 rounded-2xl bg-white dark:bg-slate-800 outline-none border border-slate-100 dark:border-slate-700">
+                        <input type="password" id="signup-password" placeholder="Password" required class="w-full p-4 rounded-2xl bg-white dark:bg-slate-800 outline-none border border-slate-100 dark:border-slate-700">
+                        <button id="signup-btn" type="submit" class="w-full bg-[#00853F] text-white py-4 rounded-2xl font-bold">Register</button>
+                    </form>
+                </div>
+            `,
+            dashboard: async () => {
+                const { data: duties } = await window.supabaseClient.from('duties').select('*').eq('user_id', state.user.id).order('date', { ascending: false });
+                state.duties = duties || [];
+                const totalHours = state.duties.reduce((acc, curr) => acc + (parseFloat(curr.total_hours) || 0), 0);
+                const progress = Math.min((totalHours / (state.profile?.goal || 50)) * 100, 100);
+
+                return `
+                    <div class="space-y-6 animate-fade-in">
+                        <header class="flex justify-between items-center">
+                            <div>
+                                <h1 class="text-2xl font-bold dark:text-white">${state.profile?.name || 'Member'}</h1>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">${state.profile?.division}</span>
+                                    <span class="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">${state.profile?.tag}</span>
+                                </div>
+                            </div>
+                            <img src="${state.profile?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + state.user.id}" class="w-12 h-12 rounded-full border-2 border-green-500" onclick="router.navigate('profile')">
+                        </header>
+                        
+                        <div class="glass-card p-6">
+                            <div class="flex justify-between items-end mb-2">
+                                <h3 class="font-bold text-sm">Target (${state.profile?.goal || 50}h)</h3>
+                                <span class="text-[10px] font-bold text-slate-400">${totalHours.toFixed(1)} / ${state.profile?.goal || 50} hrs</span>
+                            </div>
+                            <div class="w-full bg-slate-100 dark:bg-slate-700 h-3 rounded-full overflow-hidden">
+                                <div class="bg-green-500 h-full progress-fill" data-target="${progress}"></div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <h3 class="font-bold">Recent Log</h3>
+                            ${state.duties.length ? state.duties.slice(0, 3).map(d => {
+                                let runningTotal = 0;
+                                const sorted = [...state.duties].sort((a,b) => new Date(a.date) - new Date(b.date));
+                                const idx = sorted.findIndex(item => item.id === d.id);
+                                for(let i=0; i<=idx; i++) runningTotal += parseFloat(sorted[i].total_hours);
+                                const isGoalDuty = runningTotal >= (state.profile?.goal || 50) && (runningTotal - d.total_hours) < (state.profile?.goal || 50);
+
+                                return `
+                                <div class="glass-card p-4 flex items-center gap-4 ${isGoalDuty ? 'gold-card' : ''}" onclick="router.navigate('add-duty', '${d.id}')">
+                                    <div class="flex-1">
+                                        <h4 class="font-bold text-sm">${d.title} ${isGoalDuty ? '<span class="bg-white/30 text-[8px] px-1.5 py-0.5 rounded ml-1">100 HOURS!</span>' : ''}</h4>
+                                        <p class="text-[10px] ${isGoalDuty ? 'text-navy/60' : 'text-slate-400'}">${d.date} • ${d.is_public ? 'Public' : 'Private'}</p>
+                                    </div>
+                                    <p class="font-black ${isGoalDuty ? 'text-navy' : 'text-green-600'}">+${d.total_hours}h</p>
+                                </div>
+                                `;
+                            }).join('') : '<p class="text-center py-10 text-slate-400 text-sm">No duties logged yet.</p>'}
+                        </div>
+                    </div>
+                `;
+            },
+            'add-duty': async (dutyId = null) => {
+                let duty = { title: '', location: '', date: '', start_time: '', end_time: '', is_public: true };
+                if (dutyId) {
+                    const { data } = await window.supabaseClient.from('duties').select('*').eq('id', dutyId).single();
+                    if (data) duty = data;
+                }
+                return `
+                <div class="max-w-md mx-auto animate-fade-in">
+                    <h2 class="text-2xl font-bold mb-6 dark:text-white">${dutyId ? 'Edit Log' : 'New Log'}</h2>
+                    <form onsubmit="handleSaveDuty(event, '${dutyId || ''}')" class="space-y-4">
+                        <input type="text" id="duty-title" value="${duty.title}" placeholder="Duty Title" required class="w-full p-4 rounded-2xl bg-white dark:bg-slate-800 outline-none border border-slate-100 dark:border-slate-700">
+                        <input type="text" id="duty-location" value="${duty.location}" placeholder="Location" required class="w-full p-4 rounded-2xl bg-white dark:bg-slate-800 outline-none border border-slate-100 dark:border-slate-700">
+                        <input type="date" id="duty-date" value="${duty.date}" required class="w-full p-4 rounded-2xl bg-white dark:bg-slate-800 outline-none border border-slate-100 dark:border-slate-700">
+                        <div class="grid grid-cols-2 gap-4">
+                            <input type="time" id="duty-start" value="${duty.start_time}" required class="w-full p-4 rounded-2xl bg-white dark:bg-slate-800 outline-none border border-slate-100 dark:border-slate-700">
+                            <input type="time" id="duty-end" value="${duty.end_time}" required class="w-full p-4 rounded-2xl bg-white dark:bg-slate-800 outline-none border border-slate-100 dark:border-slate-700">
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-4 glass-card">
+                            <div class="text-sm font-bold">Public on Feed?</div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="duty-public" class="sr-only peer" ${duty.is_public ? 'checked' : ''}>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                            </label>
+                        </div>
+
+                        <button type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-2xl font-bold shadow-lg">Save Log</button>
+                        ${dutyId ? `<button type="button" onclick="handleDeleteDuty('${dutyId}')" class="w-full text-red-500 font-bold py-2">Delete Log</button>` : ''}
+                    </form>
+                </div>
+            `},
+            community: async () => {
+                const { data: feeds } = await window.supabaseClient.from('duties')
+                    .select('*, profiles(*)')
+                    .eq('is_public', true)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                
+                return `
+                    <div class="space-y-6 animate-fade-in">
+                        <h2 class="text-2xl font-bold dark:text-white">Live Feed</h2>
+                        <div class="space-y-3">
+                            ${feeds?.length ? feeds.map(f => `
+                                <div class="glass-card p-4 flex gap-3 items-center">
+                                    <img src="${f.profiles?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + f.user_id}" class="w-10 h-10 rounded-full border border-green-500">
+                                    <div class="flex-1">
+                                        <p class="text-xs">
+                                            <b class="text-navy dark:text-white">${f.profiles?.name || 'Member'}</b> 
+                                            logged <span class="text-green-600 font-bold">${f.total_hours}h</span>
+                                        </p>
+                                        <p class="text-[10px] text-slate-400">${f.title} • ${f.location}</p>
+                                    </div>
+                                    <div class="text-[10px] text-slate-300">${new Date(f.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                                </div>
+                            `).join('') : '<p class="text-center text-slate-400 py-10">No public logs yet.</p>'}
+                        </div>
+                    </div>
+                `;
+            },
+            profile: async () => {
+                const totalHours = state.duties.reduce((acc, curr) => acc + (parseFloat(curr.total_hours) || 0), 0);
+                const currentBadges = state.profile?.badges || [];
+                
+                return `
+                    <div class="space-y-8 animate-fade-in pt-4">
+                        <div class="text-center">
+                            <img src="${state.profile?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + state.user.id}" class="w-24 h-24 rounded-full mx-auto border-4 border-green-500 shadow-xl mb-4">
+                            <h2 class="text-2xl font-black">${state.profile?.name}</h2>
+                            <div class="flex justify-center gap-2 mt-2">
+                                <span onclick="editProfile('division')" class="cursor-pointer bg-green-50 text-green-700 px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-green-100">${state.profile?.division} <i class="fas fa-pen ml-1 opacity-40"></i></span>
+                                <span onclick="editProfile('tag')" class="cursor-pointer bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-blue-100">${state.profile?.tag} <i class="fas fa-pen ml-1 opacity-40"></i></span>
+                            </div>
+                        </div>
+
+                        <div class="glass-card p-6">
+                            <h3 class="text-xs font-black uppercase text-slate-400 mb-4">Milestone Badges</h3>
+                            <div class="grid grid-cols-4 gap-4">
+                                ${badgeList.map(b => {
+                                    const unlocked = currentBadges.includes(b.id) || totalHours >= b.req;
+                                    return `
+                                    <div class="text-center ${unlocked ? 'badge-unlocked' : 'badge-locked'}">
+                                        <div class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-1 ${b.color}">
+                                            <i class="fas ${b.icon} text-lg"></i>
+                                        </div>
+                                        <p class="text-[8px] font-black uppercase">${b.name}</p>
+                                    </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+
+                        <div class="glass-card p-6" onclick="editProfile('goal')">
+                            <div class="flex justify-between items-center">
+                                <h3 class="text-xs font-black uppercase text-slate-400">Current Goal</h3>
+                                <i class="fas fa-edit text-xs text-green-600"></i>
+                            </div>
+                            <p class="text-2xl font-black mt-2">${state.profile?.goal || 50} Hours</p>
+                        </div>
+
+                        <button onclick="handleLogout()" class="w-full p-4 bg-red-50 text-red-500 rounded-2xl font-bold flex items-center justify-center gap-2">
+                            <i class="fas fa-sign-out-alt"></i> Sign Out
+                        </button>
+                    </div>
+                `;
+            },
+            progress: async () => {
+                return `
+                    <div class="space-y-6 animate-fade-in">
+                        <h2 class="text-2xl font-bold dark:text-white">History</h2>
+                        <div class="glass-card p-4">
+                            <canvas id="progressChart" height="200"></canvas>
+                        </div>
+                        <div class="space-y-3">
+                            <h3 class="font-bold text-sm text-slate-400 uppercase">Detailed Logs</h3>
+                            ${state.duties.map(d => `
+                                <div class="glass-card p-4 flex items-center justify-between" onclick="router.navigate('add-duty', '${d.id}')">
+                                    <div>
+                                        <h4 class="font-bold text-sm">${d.title}</h4>
+                                        <p class="text-[10px] text-slate-400">${d.date} • ${d.location}</p>
+                                    </div>
+                                    <p class="font-black text-green-600">+${d.total_hours}h</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        };
+
+        // --- CUSTOM MODALS ---
+        function showBadgePopup(badge) {
+            const root = document.getElementById('modal-root');
+            root.innerHTML = `
+                <div class="modal-overlay">
+                    <div class="glass-card p-8 text-center animate-fade-in max-w-xs w-full">
+                        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600">
+                            <i class="fas ${badge.icon} text-3xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-black mb-2 uppercase">WELL DONE!</h2>
+                        <p class="text-sm text-slate-500 mb-6">You've unlocked the <b>${badge.name}</b> badge!</p>
+                        <button onclick="closeModal()" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold">Keep Going</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showGoalCompletePopup() {
+            const root = document.getElementById('modal-root');
+            root.innerHTML = `
+                <div class="modal-overlay">
+                    <div class="gold-card p-8 text-center animate-fade-in max-w-xs w-full rounded-[2rem] shadow-2xl">
+                        <div class="text-4xl mb-4">🏆</div>
+                        <h2 class="text-2xl font-black mb-2 uppercase">GOAL REACHED!</h2>
+                        <p class="text-sm mb-6 opacity-80">You've completed your goal of ${state.profile?.goal} hours. Ready for a new challenge?</p>
+                        <button onclick="editProfile('goal', true)" class="w-full bg-navy text-white py-3 rounded-xl font-bold mb-2">Set New Goal</button>
+                        <button onclick="closeModal()" class="w-full bg-transparent text-navy py-2 text-xs font-bold">Not Now</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function closeModal() {
+            document.getElementById('modal-root').innerHTML = '';
+        }
+
+        // --- HANDLERS ---
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorEl = document.getElementById('login-error');
+            const btn = document.getElementById('login-btn');
+            
+            errorEl.classList.add('hidden');
+            btn.innerText = 'Signing In...';
+            btn.disabled = true;
+
+            const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+            
+            if (error) {
+                errorEl.innerText = `!login-failed! ${error.message === 'Invalid login credentials' ? 'Wrong email or password' : error.message}`;
+                errorEl.classList.remove('hidden');
+                btn.innerText = 'Sign In';
+                btn.disabled = false;
+            } else {
+                // Auth change listener will handle the transition
+            }
+        }
+
+        async function handleSignup(e) {
+            e.preventDefault();
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const name = document.getElementById('signup-name').value;
+            const division = document.getElementById('signup-division').value;
+            const tag = document.getElementById('signup-tag').value;
+            const errorEl = document.getElementById('signup-error');
+            const btn = document.getElementById('signup-btn');
+            
+            errorEl.classList.add('hidden');
+            btn.innerText = 'Registering...';
+            btn.disabled = true;
+
+            const { error } = await window.supabaseClient.auth.signUp({
+                email, password, options: { data: { full_name: name, division, tag } }
+            });
+
+            if (error) {
+                errorEl.innerText = `!signup-failed! ${error.message}`;
+                errorEl.classList.remove('hidden');
+                btn.innerText = 'Register';
+                btn.disabled = false;
+            } else {
+                alert("Success! Please check your email for a verification link.");
+                router.navigate('login');
+            }
+        }
+
+        async function handleSaveDuty(e, id) {
+            e.preventDefault();
+            const payload = {
+                user_id: state.user.id,
+                title: document.getElementById('duty-title').value,
+                location: document.getElementById('duty-location').value,
+                date: document.getElementById('duty-date').value,
+                start_time: document.getElementById('duty-start').value,
+                end_time: document.getElementById('duty-end').value,
+                is_public: document.getElementById('duty-public').checked
+            };
+            
+            const s = new Date(`1970-01-01T${payload.start_time}:00`);
+            const en = new Date(`1970-01-01T${payload.end_time}:00`);
+            let diff = (en - s) / 3600000;
+            if (diff < 0) diff += 24;
+            payload.total_hours = parseFloat(diff.toFixed(1));
+
+            const oldTotal = state.duties.reduce((acc, curr) => acc + (parseFloat(curr.total_hours) || 0), 0);
+            
+            if (id) await window.supabaseClient.from('duties').update(payload).eq('id', id);
+            else await window.supabaseClient.from('duties').insert([payload]);
+
+            const { data: newDuties } = await window.supabaseClient.from('duties').select('*').eq('user_id', state.user.id);
+            state.duties = newDuties;
+            const newTotal = state.duties.reduce((acc, curr) => acc + (parseFloat(curr.total_hours) || 0), 0);
+            
+            const currentBadges = state.profile?.badges || [];
+            let updatedBadges = [...currentBadges];
+            let foundNew = false;
+            
+            badgeList.forEach(b => {
+                if (newTotal >= b.req && !currentBadges.includes(b.id)) {
+                    updatedBadges.push(b.id);
+                    showBadgePopup(b);
+                    foundNew = true;
+                }
+            });
+
+            if (foundNew) {
+                await window.supabaseClient.from('profiles').update({ badges: updatedBadges }).eq('id', state.user.id);
+                state.profile.badges = updatedBadges;
+            }
+
+            const goal = state.profile?.goal || 50;
+            if (newTotal >= goal && oldTotal < goal) {
+                showGoalCompletePopup();
+            } else {
+                router.navigate('dashboard');
+            }
+        }
+
+        async function handleDeleteDuty(id) {
+            if (!confirm('Are you sure you want to delete this log?')) return;
+            await window.supabaseClient.from('duties').delete().eq('id', id);
+            router.navigate('dashboard');
+        }
+
+        async function editProfile(field, fromGoalPopup = false) {
+            let newVal;
+            if (field === 'goal') {
+                newVal = prompt("Enter your new hour goal:", state.profile?.goal || 50);
+                if (newVal) newVal = parseInt(newVal);
+            } else {
+                newVal = prompt(`Update your ${field}:`, state.profile[field]);
+            }
+            
+            if (newVal) {
+                const update = {};
+                update[field] = newVal;
+                await window.supabaseClient.from('profiles').update(update).eq('id', state.user.id);
+                state.profile[field] = newVal;
+                if (fromGoalPopup) closeModal();
+                router.navigate('profile');
+            }
+        }
+
+        async function handleLogout() {
+            await window.supabaseClient.auth.signOut();
+            state.user = null;
+            router.navigate('welcome');
+        }
+
+        function initProgressChart() {
+            const canvas = document.getElementById('progressChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const sorted = [...state.duties].sort((a,b) => new Date(a.date) - new Date(b.date));
+            if (sorted.length === 0) return;
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: sorted.map(d => d.date.split('-').slice(1).join('/')),
+                    datasets: [{ 
+                        data: sorted.map(d => d.total_hours), 
+                        borderColor: '#00853F', 
+                        backgroundColor: 'rgba(0, 133, 63, 0.1)',
+                        fill: true,
+                        tension: 0.4 
+                    }]
+                },
+                options: { 
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        const init = () => {
+            const supabaseUrl = 'https://qgyjfyazkkepmkztnezv.supabase.co';
+            const supabaseKey = 'sb_publishable_xea7e2zxnarbh2bT6vG5ew__2DhOj34';
+            
+            if (typeof window.supabase === 'undefined') {
+                setTimeout(init, 100);
+                return;
+            }
+            
+            window.supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+            
+            window.supabaseClient.auth.onAuthStateChange(async (event, session) => {
+                document.getElementById('global-loader').style.display = 'none';
+                if (session) {
+                    state.user = session.user;
+                    const { data, error } = await window.supabaseClient.from('profiles').select('*').eq('id', state.user.id).single();
+                    if (data) {
+                        state.profile = data;
+                        router.navigate('dashboard');
+                    } else {
+                        // Profile might not be created yet if just signed up
+                        setTimeout(async () => {
+                            const { data: retryData } = await window.supabaseClient.from('profiles').select('*').eq('id', state.user.id).single();
+                            state.profile = retryData;
+                            router.navigate('dashboard');
+                        }, 1000);
+                    }
+                } else {
+                    router.navigate('welcome');
+                }
+            });
+        };
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
