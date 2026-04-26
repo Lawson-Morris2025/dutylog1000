@@ -129,32 +129,44 @@
             community: async () => `<div class="p-4 text-center text-slate-400 py-20">Feed coming soon.</div>`
         };
 
-        // Fully Automated Background Sync
+        // Fully Automated Background Sync & Pass Configuration
         window.syncWalletPass = async (silent = false) => {
             if (!state.user) return;
             const btnText = document.getElementById('wallet-btn-text');
-            if (!silent && btnText) btnText.innerText = "Syncing...";
+            if (!silent && btnText) btnText.innerText = "Updating Cloud...";
 
             try {
                 const { data: duties } = await sb.from('duties').select('total_hours').eq('user_id', state.user.id);
                 const total = (duties || []).reduce((acc, curr) => acc + (parseFloat(curr.total_hours) || 0), 0);
                 state.totalHours = total;
 
+                const name = state.profile?.name || state.user?.user_metadata?.full_name || "Volunteer";
+                const division = state.profile?.division || state.user?.user_metadata?.division || "Wales";
+
                 const passData = {
-                    title: "SJA DutyLog",
-                    passType: "loyaltyCard",
+                    title: "DutyLog ID",
+                    passType: "loyaltyCard", // Best for showing a balance/total
                     colorPreset: "green",
-                    serialNumber: state.user.id, // User UID is the primary key for the pass
-                    barcodeValue: "SJA-" + state.user.id.substring(0,8).toUpperCase(),
-                    barcodeFormat: "Code128",
-                    // This points to your future Supabase Edge Function to handle background pushes
-                    webserviceURL: `${supabaseUrl}/functions/v1/pass-service`,
+                    serialNumber: state.user.id, 
+                    barcodeValue: state.user.id.substring(0,12).toUpperCase(),
+                    barcodeFormat: "QR",
+                    // Automated Push Update Config
+                    webserviceURL: `${supabaseUrl}/functions/v1/pass-update`, 
                     authenticationToken: state.user.id.replace(/-/g, '').substring(0, 16),
                     fields: {
-                        primaryFields: [{ key: "hours", label: "TOTAL HOURS", value: total.toFixed(1) }],
+                        primaryFields: [
+                            { key: "total_hours", label: "TOTAL HOURS", value: total.toFixed(1) }
+                        ],
                         secondaryFields: [
-                            { key: "name", label: "VOLUNTEER", value: state.profile?.name || state.user?.user_metadata?.full_name || "Cadet" },
-                            { key: "division", label: "DIVISION", value: state.profile?.division || "Wales" }
+                            { key: "member_name", label: "MEMBER", value: name },
+                            { key: "member_div", label: "DIVISION", value: division }
+                        ],
+                        auxiliaryFields: [
+                            { key: "last_sync", label: "LAST UPDATED", value: new Date().toLocaleDateString() }
+                        ],
+                        backFields: [
+                            { key: "info", label: "ABOUT", value: "This pass automatically updates your service hours from the DutyLog app." },
+                            { key: "support", label: "SUPPORT", value: "Contact your division officer for verification issues." }
                         ]
                     }
                 };
@@ -172,9 +184,9 @@
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `SJA_ID.pkpass`;
+                    a.download = `SJA_DutyPass.pkpass`;
                     a.click();
-                    if (btnText) btnText.innerText = "Synced to Cloud";
+                    if (btnText) btnText.innerText = "Pass Generated!";
                 }
             } catch (err) {
                 console.error(err);
@@ -274,304 +286,6 @@
                     state.profile = data || {};
                     if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') router.navigate('dashboard');
                 } else {
-                    router.navigate('welcome');
-                }
-            });
-        }
-        window.addEventListener('DOMContentLoaded', init);
-    </script>
-</body>
-</html>            <button onclick="router.navigate('community')" class="nav-item" data-view="community"><i class="fas fa-users text-lg"></i><span>Feed</span></button>
-            <button onclick="router.navigate('profile')" class="nav-item" data-view="profile"><i class="fas fa-user text-lg"></i><span>Profile</span></button>
-        </nav>
-    </div>
-
-    <script>
-        const supabaseUrl = 'https://qgyjfyazkkepmkztnezv.supabase.co';
-        const supabaseKey = 'sb_publishable_xea7e2zxnarbh2bT6vG5ew__2DhOj34';
-        const sb = window.supabase.createClient(supabaseUrl, supabaseKey);
-
-        const state = { user: null, profile: null, totalHours: 0 };
-
-        const router = {
-            navigate: async (view) => {
-                const container = document.getElementById('view-container');
-                const nav = document.getElementById('bottom-nav');
-                const isAuth = ['welcome', 'login', 'signup'].includes(view);
-                
-                nav.classList.toggle('hidden', isAuth);
-                nav.classList.toggle('flex', !isAuth);
-                
-                document.querySelectorAll('.nav-item').forEach(el => {
-                    el.classList.toggle('active', el.getAttribute('data-view') === view);
-                });
-                
-                container.innerHTML = await views[view]();
-            }
-        };
-
-        const views = {
-            welcome: async () => `<div class="flex flex-col items-center justify-center min-h-[80vh] text-center space-y-8">
-                <div class="w-24 h-24 bg-white border-4 border-[#00853F] rounded-[2rem] flex items-center justify-center shadow-2xl"><i class="fas fa-plus text-[#00853F] text-5xl"></i></div>
-                <h1 class="text-4xl font-black text-[#1B263B]">DutyLog</h1>
-                <div class="w-full space-y-3 px-4 max-w-xs">
-                    <button onclick="router.navigate('login')" class="w-full bg-[#1B263B] text-white py-4 rounded-2xl font-bold">Login</button>
-                    <button onclick="router.navigate('signup')" class="w-full bg-white border-2 border-[#1B263B] py-4 rounded-2xl font-bold">Sign Up</button>
-                </div>
-            </div>`,
-            login: async () => `<div class="pt-4 max-w-sm mx-auto">
-                <h2 class="text-2xl font-bold mb-8">Login</h2>
-                <form onsubmit="handleLogin(event)" class="space-y-4">
-                    <input type="email" id="login-email" placeholder="Email" required class="input-field">
-                    <input type="password" id="login-password" placeholder="Password" required class="input-field">
-                    <button type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-xl font-bold">Sign In</button>
-                </form>
-            </div>`,
-            signup: async () => `<div class="pt-4 max-w-sm mx-auto">
-                <h2 class="text-2xl font-bold mb-8">Register</h2>
-                <form onsubmit="handleSignup(event)" class="space-y-4">
-                    <input type="text" id="signup-name" placeholder="Full Name" required class="input-field">
-                    <input type="text" id="signup-division" placeholder="Division (e.g. Cardiff Central)" required class="input-field">
-                    <input type="email" id="signup-email" placeholder="Email" required class="input-field">
-                    <input type="password" id="signup-password" placeholder="Password" required class="input-field">
-                    <button type="submit" class="w-full bg-[#00853F] text-white py-4 rounded-xl font-bold">Create Account</button>
-                </form>
-            </div>`,
-            dashboard: async () => {
-                setTimeout(loadDashboardData, 10);
-                return `<div class="animate-pulse space-y-4"><div class="h-40 bg-slate-200 rounded-2xl"></div><div class="h-64 bg-slate-100 rounded-2xl"></div></div>`;
-            },
-            profile: async () => {
-                const displayName = state.profile?.name || state.user?.user_metadata?.full_name || 'Volunteer';
-                const displayDiv = state.profile?.division || state.user?.user_metadata?.division || 'St John Ambulance Cymru';
-                return `
-                <div class="space-y-8 text-center pt-4 px-4">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${state.user?.id || 'default'}" class="w-24 h-24 mx-auto rounded-full border-4 border-green-500 shadow-lg">
-                    <h2 class="text-2xl font-bold">${displayName}</h2>
-                    
-                    <div class="px-2">
-                        <button id="wallet-btn" onclick="generateWalletPass()" class="w-full bg-black text-white p-4 rounded-2xl flex items-center justify-between font-bold shadow-xl active:scale-95 transition-all">
-                            <div class="flex items-center gap-3">
-                                <i class="fab fa-apple text-2xl"></i>
-                                <span id="wallet-btn-text">Add/Update Wallet Pass</span>
-                            </div>
-                            <i id="wallet-btn-icon" class="fas fa-sync-alt text-xs"></i>
-                        </button>
-                        <p class="text-[10px] text-slate-400 mt-2">Current Total: ${(state.totalHours || 0).toFixed(1)} Hours</p>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="glass-card p-4 text-left">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase">Division</p>
-                            <p class="font-bold text-slate-700 truncate">${displayDiv}</p>
-                        </div>
-                        <div class="glass-card p-4 text-left">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase">Total Hours</p>
-                            <p class="font-bold text-green-600">${(state.totalHours || 0).toFixed(1)}</p>
-                        </div>
-                    </div>
-                    <button onclick="handleLogout()" class="w-full p-4 bg-red-50 text-red-500 rounded-2xl font-bold mt-10">Sign Out</button>
-                </div>`;
-            },
-            'add-duty': async () => `
-                <div class="px-2">
-                    <h2 class="text-2xl font-bold mb-6">Log New Duty</h2>
-                    <form onsubmit="handleSaveDuty(event)" class="space-y-4">
-                        <div>
-                            <label class="text-xs font-bold text-slate-400 uppercase ml-1">Event Name</label>
-                            <input type="text" id="duty-title" placeholder="e.g. Principality Stadium" required class="input-field">
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-xs font-bold text-slate-400 uppercase ml-1">Start Time</label>
-                                <input type="time" id="duty-start" required class="input-field">
-                            </div>
-                            <div>
-                                <label class="text-xs font-bold text-slate-400 uppercase ml-1">End Time</label>
-                                <input type="time" id="duty-end" required class="input-field">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="text-xs font-bold text-slate-400 uppercase ml-1">Total Hours</label>
-                            <input type="number" step="0.1" id="duty-hours" placeholder="e.g. 8.5" required class="input-field">
-                        </div>
-                        <button type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-xl font-bold shadow-lg">Save Duty Log</button>
-                    </form>
-                </div>`,
-            messages: async () => `<div class="p-4 text-center text-slate-400 py-20">Secure messaging is being prepared for your division.</div>`,
-            community: async () => `<div class="p-4 text-center text-slate-400 py-20">Community feed is loading...</div>`
-        };
-
-        window.generateWalletPass = async () => {
-            const btn = document.getElementById('wallet-btn');
-            const btnText = document.getElementById('wallet-btn-text');
-            const apiKey = "ww_live_42526f30b535128e1ec2ae5d863ff5fd";
-
-            // Sync latest hours from DB
-            const { data: duties } = await sb.from('duties').select('total_hours').eq('user_id', state.user.id);
-            state.totalHours = (duties || []).reduce((acc, curr) => acc + (parseFloat(curr.total_hours) || 0), 0);
-
-            const name = String(state.profile?.name || state.user?.user_metadata?.full_name || "Volunteer");
-            const division = String(state.profile?.division || state.user?.user_metadata?.division || "St John Ambulance Cymru");
-            const hours = String(state.totalHours.toFixed(1));
-            const barcode = "123456";
-
-            btn.disabled = true;
-            btnText.innerText = "Syncing...";
-
-            try {
-                const passData = {
-                    title: "SJA DutyLog",
-                    colorPreset: "green",
-                    barcodeValue: barcode,
-                    barcodeFormat: "Code128", // FIXED: Removed PKBarcodeFormat prefix as requested by API error
-                    fields: {
-                        primaryFields: [{ key: "name", label: "VOLUNTEER", value: name }],
-                        secondaryFields: [
-                            { key: "division", label: "DIVISION", value: division },
-                            { key: "hours", label: "LIFETIME HOURS", value: hours }
-                        ]
-                    }
-                };
-
-                const response = await fetch('https://api.walletwallet.dev/api/pkpass', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                    body: JSON.stringify(passData)
-                });
-
-                if (!response.ok) {
-                    const errorDetails = await response.json();
-                    throw new Error(errorDetails.error || "Wallet API error");
-                }
-
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `SJA_ID_${hours}.pkpass`;
-                document.body.appendChild(a);
-                a.click();
-                
-                btnText.innerText = "Updated!";
-            } catch (err) {
-                console.error("Wallet Error:", err);
-                alert("Creation Failed: " + err.message);
-                btnText.innerText = "Error - Try Again";
-            } finally {
-                setTimeout(() => {
-                    btn.disabled = false;
-                    btnText.innerText = "Add/Update Wallet Pass";
-                }, 3000);
-            }
-        };
-
-        async function loadDashboardData() {
-            if (!state.user) return;
-            const { data: duties } = await sb.from('duties').select('*').eq('user_id', state.user.id).order('date', { ascending: false });
-            state.totalHours = (duties || []).reduce((acc, curr) => acc + (parseFloat(curr.total_hours) || 0), 0);
-            
-            const container = document.getElementById('view-container');
-            if (container) {
-                container.innerHTML = `
-                    <div class="space-y-6">
-                        <header class="flex justify-between items-center px-2">
-                            <div><h1 class="text-xl font-bold">DutyLog</h1><p class="text-xs text-slate-400 font-medium">St John Ambulance Cymru</p></div>
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${state.user.id}" class="w-10 h-10 rounded-full border-2 border-green-500">
-                        </header>
-                        <div class="glass-card p-6 bg-gradient-to-br from-[#1B263B] to-[#0D1B2A] text-white">
-                            <p class="text-[10px] opacity-70 uppercase font-bold tracking-widest">Total Volunteered</p>
-                            <h2 class="text-4xl font-black">${state.totalHours.toFixed(1)} <span class="text-sm font-normal opacity-60">Hours</span></h2>
-                        </div>
-                        <div>
-                            <div class="flex justify-between items-center mb-4 px-2">
-                                <h3 class="font-bold text-slate-700">Recent Duties</h3>
-                                <button onclick="router.navigate('add-duty')" class="text-xs font-bold text-green-600">+ New Log</button>
-                            </div>
-                            <div class="space-y-3">
-                                ${duties?.length ? duties.slice(0, 10).map(d => `
-                                    <div class="glass-card p-4 flex justify-between items-center border-l-4 border-green-500">
-                                        <div>
-                                            <p class="font-bold text-slate-800">${d.title}</p>
-                                            <p class="text-[10px] text-slate-400 uppercase font-medium tracking-tight">${d.date} • ${d.start_time} - ${d.end_time}</p>
-                                        </div>
-                                        <p class="font-black text-green-600">+${parseFloat(d.total_hours).toFixed(1)}</p>
-                                    </div>
-                                `).join('') : '<p class="text-center text-slate-400 py-10 text-sm">No duties logged yet.</p>'}
-                            </div>
-                        </div>
-                    </div>`;
-            }
-        }
-
-        async function handleLogin(e) {
-            e.preventDefault();
-            const { error } = await sb.auth.signInWithPassword({ 
-                email: document.getElementById('login-email').value, 
-                password: document.getElementById('login-password').value 
-            });
-            if (error) alert(error.message);
-        }
-
-        async function handleSignup(e) {
-            e.preventDefault();
-            const name = document.getElementById('signup-name').value;
-            const division = document.getElementById('signup-division').value;
-            const { error } = await sb.auth.signUp({ 
-                email: document.getElementById('signup-email').value, 
-                password: document.getElementById('signup-password').value,
-                options: { data: { full_name: name, division: division } }
-            });
-            if (error) alert(error.message);
-            else alert("Account created! Check email if required, otherwise log in.");
-        }
-
-        async function handleSaveDuty(e) {
-            e.preventDefault();
-            const title = document.getElementById('duty-title').value;
-            const hours = parseFloat(document.getElementById('duty-hours').value);
-            const start = document.getElementById('duty-start').value;
-            const end = document.getElementById('duty-end').value;
-
-            const { error } = await sb.from('duties').insert([{
-                user_id: state.user.id,
-                title: title,
-                total_hours: hours,
-                date: new Date().toISOString().split('T')[0],
-                start_time: start,
-                end_time: end
-            }]);
-            
-            if (error) {
-                alert(error.message);
-            } else {
-                // Return to dashboard and refresh state
-                router.navigate('dashboard');
-            }
-        }
-
-        async function handleLogout() { await sb.auth.signOut(); location.reload(); }
-
-        async function init() {
-            const { data: { session } } = await sb.auth.getSession();
-            if (session) {
-                state.user = session.user;
-                const { data } = await sb.from('profiles').select('*').eq('id', state.user.id).single();
-                state.profile = data || {};
-                router.navigate('dashboard');
-            } else {
-                router.navigate('welcome');
-            }
-
-            sb.auth.onAuthStateChange(async (event, session) => {
-                if (session) {
-                    state.user = session.user;
-                    const { data } = await sb.from('profiles').select('*').eq('id', state.user.id).single();
-                    state.profile = data || {};
-                    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') router.navigate('dashboard');
-                } else {
-                    state.user = null;
-                    state.profile = null;
                     router.navigate('welcome');
                 }
             });
