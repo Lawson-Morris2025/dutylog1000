@@ -127,11 +127,11 @@
             const btnText = document.getElementById('wallet-btn-text');
             const apiKey = "ww_live_42526f30b535128e1ec2ae5d863ff5fd";
 
-            // FORCED DATA RESOLUTION
-            const name = state.profile?.name || state.user?.user_metadata?.full_name || "Volunteer";
-            const division = state.profile?.division || state.user?.user_metadata?.division || "St John Ambulance Cymru";
-            const hours = (state.totalHours || 0).toFixed(1);
-            const barcode = state.user?.id || "SJA-" + Date.now(); // BARCODE VALUE ADDED HERE
+            // PREPARE DATA WITH FALLBACKS
+            const name = String(state.profile?.name || state.user?.user_metadata?.full_name || "Volunteer");
+            const division = String(state.profile?.division || state.user?.user_metadata?.division || "St John Ambulance Cymru");
+            const hours = String((state.totalHours || 0).toFixed(1));
+            const barcode = String(state.user?.id || "SJA-" + Date.now());
 
             btn.disabled = true;
             btnText.innerText = "Syncing...";
@@ -140,7 +140,8 @@
                 const passData = {
                     title: "SJA DutyLog",
                     colorPreset: "green",
-                    barcodeValue: barcode, // Required by certain API configurations
+                    barcodeValue: barcode,
+                    barcodeFormat: "PKBarcodeFormatCode128", // SPECIFIED FORMAT
                     fields: {
                         primaryFields: [{ key: "name", label: "VOLUNTEER", value: name }],
                         secondaryFields: [
