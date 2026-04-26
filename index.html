@@ -111,7 +111,7 @@
                         </div>
                         <div class="glass-card p-4 text-left">
                             <p class="text-[10px] font-bold text-slate-400 uppercase">Total Hours</p>
-                            <p class="font-bold text-green-600">${state.totalHours.toFixed(1)}</p>
+                            <p class="font-bold text-green-600">${(state.totalHours || 0).toFixed(1)}</p>
                         </div>
                     </div>
                     <button onclick="handleLogout()" class="w-full p-4 bg-red-50 text-red-500 rounded-2xl font-bold mt-10">Sign Out</button>
@@ -127,13 +127,13 @@
             const btnText = document.getElementById('wallet-btn-text');
             const apiKey = "ww_live_42526f30b535128e1ec2ae5d863ff5fd";
 
-            // Determine data with absolute fallbacks
-            const name = state.profile?.name || state.user?.user_metadata?.full_name || "SJA Volunteer";
+            // FORCED DATA RESOLUTION: If DB is empty, use Session Metadata
+            const name = state.profile?.name || state.user?.user_metadata?.full_name || "Volunteer";
             const division = state.profile?.division || state.user?.user_metadata?.division || "St John Ambulance Cymru";
             const hours = (state.totalHours || 0).toFixed(1);
 
             btn.disabled = true;
-            btnText.innerText = "Generating...";
+            btnText.innerText = "Processing...";
 
             try {
                 const passData = {
@@ -154,7 +154,10 @@
                     body: JSON.stringify(passData)
                 });
 
-                if (!response.ok) throw new Error("API rejected request");
+                if (!response.ok) {
+                    const errorMsg = await response.text();
+                    throw new Error(errorMsg);
+                }
 
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
@@ -166,9 +169,9 @@
                 
                 btnText.innerText = "Success!";
             } catch (err) {
-                console.error(err);
-                alert("Creation failed. Please try logging out and back in once.");
-                btnText.innerText = "Error";
+                console.error("Wallet Error:", err);
+                alert("Wallet API Error: " + err.message);
+                btnText.innerText = "Failed";
             } finally {
                 setTimeout(() => {
                     btn.disabled = false;
