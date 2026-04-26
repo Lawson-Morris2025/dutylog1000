@@ -25,7 +25,7 @@
         .nav-item.active { color: var(--green); transform: translateY(-2px); }
         
         main { max-width: 600px; margin: 0 auto; padding-bottom: 7rem; min-height: 100vh; }
-        .input-field { width: 100%; padding: 1rem; border-radius: 1rem; border: 1px solid #e2e8f0; outline: none; transition: border-color 0.2s; background: white; }
+        .input-field { width: 100%; padding: 1rem; border-radius: 1rem; border: 1px solid #e2e8f0; outline: none; transition: border-color 0.2s; background: white; font-size: 0.95rem; }
         .input-field:focus { border-color: var(--green); }
         
         .fade-enter { opacity: 0; transform: translateY(5px); }
@@ -40,6 +40,13 @@
         .custom-checkbox { width: 18px; height: 18px; border: 2px solid #e2e8f0; border-radius: 4px; appearance: none; cursor: pointer; position: relative; }
         .custom-checkbox:checked { background: var(--green); border-color: var(--green); }
         .custom-checkbox:checked::after { content: '✓'; color: white; position: absolute; top: -2px; left: 2px; font-size: 12px; font-weight: bold; }
+
+        /* Ambulance Animation */
+        @keyframes amb-drive {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(5px); }
+        }
+        .amb-icon { animation: amb-drive 2s ease-in-out infinite; }
     </style>
 </head>
 <body>
@@ -53,8 +60,11 @@
             <button onclick="router.navigate('messages')" class="nav-item" data-view="messages">
                 <i class="fas fa-comment-dots text-lg"></i><span>Chat</span>
             </button>
-            <button onclick="router.navigate('add-duty')" class="nav-item bg-[#00853F] !text-white p-3 -mt-10 rounded-full shadow-lg h-14 w-14 justify-center active:scale-95 transition-all">
-                <i class="fas fa-plus text-xl"></i>
+            <button onclick="router.navigate('add-duty')" class="nav-item bg-[#00853F] !text-white p-3 -mt-10 rounded-full shadow-lg h-14 w-14 justify-center active:scale-95 transition-all overflow-hidden relative group">
+                <div class="flex flex-col items-center">
+                    <i class="fas fa-ambulance text-sm amb-icon"></i>
+                    <i class="fas fa-plus text-xs -mt-1"></i>
+                </div>
             </button>
             <button onclick="router.navigate('community')" class="nav-item" data-view="community">
                 <i class="fas fa-users text-lg"></i><span>Feed</span>
@@ -104,16 +114,20 @@
         const views = {
             welcome: async () => `
                 <div class="flex flex-col items-center justify-center min-h-[80vh] text-center space-y-8">
-                    <div class="w-20 h-20 bg-[#00853F] rounded-2xl flex items-center justify-center shadow-xl animate-bounce">
-                        <i class="fas fa-plus-square text-white text-4xl"></i>
+                    <div class="relative">
+                        <div class="w-24 h-24 bg-[#00853F] rounded-2xl flex flex-col items-center justify-center shadow-xl relative z-10">
+                            <i class="fas fa-ambulance text-white text-3xl mb-1 amb-icon"></i>
+                            <i class="fas fa-plus text-white text-lg"></i>
+                        </div>
+                        <div class="absolute -inset-2 bg-[#00853F] opacity-20 blur-xl rounded-full"></div>
                     </div>
                     <div>
                         <h1 class="text-3xl font-bold">Duty Log</h1>
-                        <p class="text-slate-400 text-sm mt-1">St John Ambulance Cymru</p>
+                        <p class="text-slate-400 text-sm mt-1 uppercase tracking-widest font-bold">St John Ambulance Cymru</p>
                     </div>
                     <div class="w-full space-y-3 px-4 max-w-xs">
-                        <button onclick="router.navigate('login')" class="w-full bg-[#1B263B] text-white py-4 rounded-2xl font-bold">Login</button>
-                        <button onclick="router.navigate('signup')" class="w-full bg-white border-2 border-[#1B263B] py-4 rounded-2xl font-bold">Sign Up</button>
+                        <button onclick="router.navigate('login')" class="w-full bg-[#1B263B] text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-all">Login</button>
+                        <button onclick="router.navigate('signup')" class="w-full bg-white border-2 border-[#1B263B] py-4 rounded-2xl font-bold active:scale-95 transition-all">Sign Up</button>
                     </div>
                 </div>`,
 
@@ -140,7 +154,7 @@
                         <div id="login-error" class="hidden p-3 bg-red-50 text-red-500 text-xs rounded-lg"></div>
                         <div id="login-success" class="hidden p-3 bg-green-50 text-green-700 text-xs rounded-lg"></div>
                         
-                        <button id="login-btn" type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-xl font-bold shadow-lg mt-2">Sign In</button>
+                        <button id="login-btn" type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-xl font-bold shadow-lg mt-2 active:scale-95 transition-all">Sign In</button>
                     </form>
                 </div>`;
             },
@@ -154,7 +168,7 @@
                         <input type="text" id="signup-division" placeholder="Division (e.g. Cardiff)" required class="input-field">
                         <input type="email" id="signup-email" placeholder="Email" required class="input-field">
                         <input type="password" id="signup-password" placeholder="Password" required class="input-field">
-                        <button id="signup-btn" type="submit" class="w-full bg-[#00853F] text-white py-4 rounded-xl font-bold">Create Account</button>
+                        <button id="signup-btn" type="submit" class="w-full bg-[#00853F] text-white py-4 rounded-xl font-bold active:scale-95 transition-all">Create Account</button>
                     </form>
                 </div>`,
 
@@ -204,19 +218,46 @@
                 </div>`;
             },
 
-            'add-duty': async () => `
+            'add-duty': async () => {
+                return `
                 <div>
-                    <h2 class="text-2xl font-bold mb-6 px-2">Log New Duty</h2>
+                    <h2 class="text-2xl font-bold mb-6 px-2 flex items-center gap-3">
+                        <i class="fas fa-ambulance text-green-600"></i> Log Duty
+                    </h2>
                     <form onsubmit="handleSaveDuty(event)" class="space-y-4 px-2">
-                        <input type="text" id="duty-title" placeholder="Duty Title" required class="input-field">
-                        <input type="text" id="duty-location" placeholder="Location" required class="input-field">
-                        <div class="grid grid-cols-2 gap-4">
-                            <input type="date" id="duty-date" required class="input-field">
-                            <input type="number" step="0.5" id="duty-hours" placeholder="Hours" required class="input-field">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-2 mb-1 block">Duty Details</label>
+                            <input type="text" id="duty-title" placeholder="Title (e.g. Football Standby)" required class="input-field mb-3">
+                            <input type="text" id="duty-location" placeholder="Location" required class="input-field">
                         </div>
-                        <button type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-xl font-bold shadow-lg mt-4">Save Duty</button>
+
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-2 mb-1 block">Date & Times</label>
+                            <input type="date" id="duty-date" required class="input-field mb-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1 text-[8px] font-bold text-slate-400">START</span>
+                                    <input type="time" id="duty-start" required class="input-field pt-5" onchange="calculateHours()">
+                                </div>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1 text-[8px] font-bold text-slate-400">END</span>
+                                    <input type="time" id="duty-end" required class="input-field pt-5" onchange="calculateHours()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-2 mb-1 block">Total Hours</label>
+                            <input type="number" step="0.1" id="duty-hours" placeholder="Total Hours" required class="input-field bg-slate-50 border-dashed">
+                            <p class="text-[10px] text-slate-400 mt-1 ml-2 italic">Automatically calculated, but you can edit if needed.</p>
+                        </div>
+
+                        <button type="submit" class="w-full bg-[#1B263B] text-white py-4 rounded-xl font-bold shadow-lg mt-4 active:scale-95 transition-all">
+                            Save Duty Log
+                        </button>
                     </form>
-                </div>`,
+                </div>`;
+            },
 
             community: async () => {
                 setTimeout(loadFeedData, 10);
@@ -225,7 +266,12 @@
 
             profile: async () => `
                 <div class="space-y-8 text-center pt-4 px-4">
-                    <img src="${state.profile?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+state.user.id}" class="w-24 h-24 mx-auto rounded-full border-4 border-green-500 object-cover shadow-lg">
+                    <div class="relative inline-block">
+                        <img src="${state.profile?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+state.user.id}" class="w-24 h-24 mx-auto rounded-full border-4 border-green-500 object-cover shadow-lg">
+                        <div class="absolute -bottom-1 -right-1 bg-green-600 text-white w-8 h-8 rounded-full border-4 border-white flex items-center justify-center">
+                            <i class="fas fa-ambulance text-[10px]"></i>
+                        </div>
+                    </div>
                     <h2 class="text-2xl font-bold">${state.profile?.name || 'Member'} ${state.profile?.is_admin ? '<i class="fas fa-shield-alt text-green-600 text-sm" title="Admin"></i>' : ''}</h2>
                     <div class="grid grid-cols-2 gap-4">
                         <div class="glass-card p-4"><p class="text-[10px] font-bold text-slate-400 uppercase">Division</p><p class="font-bold text-slate-700">${state.profile?.division || 'Not Set'}</p></div>
@@ -233,6 +279,26 @@
                     </div>
                     <button onclick="handleLogout()" class="w-full p-4 bg-red-50 text-red-500 rounded-2xl font-bold mt-10">Sign Out</button>
                 </div>`
+        };
+
+        // --- Helper: Calculate Hours ---
+        window.calculateHours = function() {
+            const start = document.getElementById('duty-start').value;
+            const end = document.getElementById('duty-end').value;
+            const hoursField = document.getElementById('duty-hours');
+
+            if (start && end) {
+                const startTime = new Date(`2000-01-01T${start}`);
+                let endTime = new Date(`2000-01-01T${end}`);
+                
+                // Handle wrap-around (e.g. 10pm to 2am)
+                if (endTime < startTime) {
+                    endTime = new Date(`2000-01-02T${end}`);
+                }
+
+                const diff = (endTime - startTime) / 1000 / 60 / 60;
+                hoursField.value = diff.toFixed(1);
+            }
         };
 
         // --- Data Fetchers ---
@@ -243,40 +309,38 @@
             document.getElementById('view-container').innerHTML = `
                 <div class="space-y-6">
                     <header class="flex justify-between items-center px-2">
-                        <div><h1 class="text-xl font-bold">Hi, ${state.profile?.name?.split(' ')[0] || 'Member'}</h1><p class="text-[10px] text-slate-400 font-bold uppercase">${state.profile?.division || 'Volunteer'}</p></div>
+                        <div><h1 class="text-xl font-bold">Hi, ${state.profile?.name?.split(' ')[0] || 'Member'}</h1><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${state.profile?.division || 'Volunteer'}</p></div>
                         <img src="${state.profile?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+state.user.id}" class="w-10 h-10 rounded-full border-2 border-green-500 object-cover">
                     </header>
-                    <div class="glass-card p-6 bg-gradient-to-br from-[#1B263B] to-[#0D1B2A] text-white">
+                    <div class="glass-card p-6 bg-gradient-to-br from-[#1B263B] to-[#0D1B2A] text-white relative overflow-hidden">
+                        <i class="fas fa-ambulance absolute -right-4 -bottom-4 text-7xl opacity-10 -rotate-12"></i>
                         <p class="text-[10px] opacity-70 uppercase font-bold tracking-widest">Logged Total</p>
                         <h2 class="text-4xl font-black">${totalHours.toFixed(1)} <span class="text-sm font-normal opacity-60">Hours</span></h2>
                     </div>
                     <div class="space-y-3 px-2">
-                        <h3 class="font-bold flex justify-between"><span>Activity</span> <button onclick="router.navigate('community')" class="text-green-600 text-[10px]">FEED</button></h3>
-                        ${(duties || []).slice(0,3).map(d => `<div class="glass-card p-4 flex justify-between items-center"><div><p class="font-bold text-sm">${d.title}</p><p class="text-[10px] text-slate-400">${d.date}</p></div><p class="font-black text-[#00853F]">+${d.total_hours}</p></div>`).join('') || '<p class="py-10 text-center text-slate-400 text-sm">No duties logged yet.</p>'}
+                        <h3 class="font-bold flex justify-between"><span>Activity</span> <button onclick="router.navigate('community')" class="text-green-600 text-[10px] font-bold">FEED</button></h3>
+                        ${(duties || []).slice(0,3).map(d => `<div class="glass-card p-4 flex justify-between items-center"><div><p class="font-bold text-sm">${d.title}</p><p class="text-[10px] text-slate-400">${d.date}</p></div><p class="font-black text-[#00853F]">+${d.total_hours}</p></div>`).join('') || '<p class="py-10 text-center text-slate-400 text-sm italic">No duties logged yet.</p>'}
                     </div>
                 </div>`;
         }
 
         async function loadMessagesList() {
             const { data: users } = await sb.from('profiles').select('*').neq('id', state.user.id).limit(20);
-            const division = state.profile?.division || 'Division';
-            
-            // Check for custom group name/pic if stored, otherwise default to City Cadets
             const customGroupName = localStorage.getItem('chat_group_name') || 'City Cadets';
             const customGroupPic = localStorage.getItem('chat_group_pic') || null;
 
             document.getElementById('messages-list').innerHTML = `
                 <div onclick="openChat('group', 'city_cadets', '${customGroupName}')" class="glass-card p-4 flex items-center gap-4 cursor-pointer border-l-4 border-green-600">
                     <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold overflow-hidden">
-                        ${customGroupPic ? `<img src="${customGroupPic}" class="w-full h-full object-cover">` : '<i class="fas fa-users"></i>'}
+                        ${customGroupPic ? `<img src="${customGroupPic}" class="w-full h-full object-cover">` : '<i class="fas fa-ambulance"></i>'}
                     </div>
                     <div class="flex-1">
                         <p class="font-bold text-sm">${customGroupName}</p>
-                        <p class="text-[10px] text-slate-400 truncate">Join the main cadets chat</p>
+                        <p class="text-[10px] text-slate-400 truncate">Join the main division chat</p>
                     </div>
                     <i class="fas fa-chevron-right text-slate-300 text-xs"></i>
                 </div>
-                <p class="text-[10px] font-bold text-slate-400 uppercase mt-6 mb-2">Direct Messages</p>
+                <p class="text-[10px] font-bold text-slate-400 uppercase mt-6 mb-2 ml-2">Direct Messages</p>
                 ${users?.map(u => `
                     <div onclick="openChat('private', '${u.id}', '${u.name}')" class="glass-card p-4 flex items-center gap-4 cursor-pointer">
                         <img src="${u.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+u.id}" class="w-12 h-12 rounded-full object-cover">
@@ -299,12 +363,11 @@
             const headerName = document.getElementById('chat-header-name');
             const headerAvatar = document.getElementById('chat-header-avatar');
             const container = document.getElementById('chat-messages');
-            
             headerName.innerText = state.activeChat.name;
             
             if (state.activeChat.type === 'group') {
                 const customPic = localStorage.getItem('chat_group_pic');
-                headerAvatar.innerHTML = customPic ? `<img src="${customPic}" class="w-full h-full object-cover">` : '<i class="fas fa-users"></i>';
+                headerAvatar.innerHTML = customPic ? `<img src="${customPic}" class="w-full h-full object-cover">` : '<i class="fas fa-ambulance"></i>';
             } else {
                 headerAvatar.innerHTML = `<img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${state.activeChat.id}" class="w-full h-full rounded-full">`;
             }
@@ -317,7 +380,6 @@
             }
 
             const { data: messages } = await query.order('created_at', { ascending: true });
-            
             container.innerHTML = '';
             messages?.forEach(renderMessage);
             container.scrollTop = container.scrollHeight;
@@ -354,7 +416,6 @@
             const div = document.createElement('div');
             div.id = `msg-${msg.id}`;
             div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} mb-4`;
-            
             const showName = state.activeChat.type === 'group' && !isMe;
 
             div.innerHTML = `
@@ -368,20 +429,15 @@
         }
 
         // --- Admin Functions ---
-
         async function adminDeleteMsg(msgId) {
             if (!confirm('Permanently delete this message?')) return;
-            const { error } = await sb.from('messages').delete().eq('id', msgId);
-            if (error) alert('Error: ' + error.message);
+            await sb.from('messages').delete().eq('id', msgId);
         }
 
         function adminEditChat() {
-            if (state.activeChat.type !== 'group') {
-                alert('Profile editing is coming soon. Use the cog for group settings.');
-                return;
-            }
+            if (state.activeChat.type !== 'group') return;
             const newName = prompt('Enter new group name:', state.activeChat.name);
-            const newPic = prompt('Enter group image URL (or leave blank for default):', localStorage.getItem('chat_group_pic') || '');
+            const newPic = prompt('Enter group image URL:', localStorage.getItem('chat_group_pic') || '');
             
             if (newName) {
                 localStorage.setItem('chat_group_name', newName);
@@ -391,7 +447,7 @@
             if (newPic !== null) {
                 localStorage.setItem('chat_group_pic', newPic);
                 const headerAvatar = document.getElementById('chat-header-avatar');
-                headerAvatar.innerHTML = newPic ? `<img src="${newPic}" class="w-full h-full object-cover">` : '<i class="fas fa-users"></i>';
+                headerAvatar.innerHTML = newPic ? `<img src="${newPic}" class="w-full h-full object-cover">` : '<i class="fas fa-ambulance"></i>';
             }
         }
 
@@ -407,7 +463,6 @@
                 group_id: state.activeChat.type === 'group' ? state.activeChat.id : null,
                 receiver_id: state.activeChat.type === 'private' ? state.activeChat.id : null
             };
-
             await sb.from('messages').insert([payload]);
         }
 
@@ -419,73 +474,25 @@
                     <div class="space-y-4 px-2">
                         ${feeds?.map(f => `
                             <div class="glass-card p-4 flex gap-3">
-                                <img src="${f.profiles?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+f.user_id}" class="w-10 h-10 rounded-full object-cover">
-                                <div>
+                                <img src="${f.profiles?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+f.user_id}" class="w-10 h-10 rounded-full object-cover border border-slate-100">
+                                <div class="flex-1">
                                     <p class="text-xs"><b>${f.profiles?.name || 'Member'}</b> logged <span class="text-green-600 font-bold">${f.total_hours}h</span></p>
                                     <p class="text-[10px] text-slate-400">${f.title} • ${f.profiles?.division || 'SJA'}</p>
                                 </div>
+                                <div class="text-green-100"><i class="fas fa-ambulance"></i></div>
                             </div>
-                        `).join('') || '<p class="text-slate-400 text-center py-10">Quiet feed.</p>'}
+                        `).join('') || '<p class="text-slate-400 text-center py-10 italic">Quiet feed.</p>'}
                     </div>
                 </div>`;
         }
 
         // --- Auth Logic ---
-
         async function handleLogin(e) {
             e.preventDefault();
-            const btn = document.getElementById('login-btn');
             const emailEl = document.getElementById('login-email');
             const passEl = document.getElementById('login-password');
-            const rememberEl = document.getElementById('remember-me');
-            const errorEl = document.getElementById('login-error');
-            
-            errorEl.classList.add('hidden');
-            btn.disabled = true; 
-            btn.innerText = "Checking...";
-
-            const { error } = await sb.auth.signInWithPassword({ 
-                email: emailEl.value, 
-                password: passEl.value 
-            });
-
-            if (error) { 
-                errorEl.innerText = error.message; 
-                errorEl.classList.remove('hidden'); 
-                btn.disabled = false; 
-                btn.innerText = "Sign In"; 
-            } else {
-                if (rememberEl.checked) {
-                    localStorage.setItem('duty_log_remember_email', emailEl.value);
-                } else {
-                    localStorage.removeItem('duty_log_remember_email');
-                }
-            }
-        }
-
-        async function handleForgotPassword() {
-            const email = document.getElementById('login-email').value;
-            const errorEl = document.getElementById('login-error');
-            const successEl = document.getElementById('login-success');
-            
-            errorEl.classList.add('hidden');
-            successEl.classList.add('hidden');
-
-            if (!email) {
-                errorEl.innerText = "Please enter your email address first.";
-                errorEl.classList.remove('hidden');
-                return;
-            }
-
-            const { error } = await sb.auth.resetPasswordForEmail(email);
-
-            if (error) {
-                errorEl.innerText = error.message;
-                errorEl.classList.remove('hidden');
-            } else {
-                successEl.innerText = "Password reset link sent to your email.";
-                successEl.classList.remove('hidden');
-            }
+            const { error } = await sb.auth.signInWithPassword({ email: emailEl.value, password: passEl.value });
+            if (error) alert(error.message);
         }
 
         async function handleSignup(e) {
@@ -495,16 +502,19 @@
                 password: document.getElementById('signup-password').value, 
                 options: { data: { full_name: document.getElementById('signup-name').value, division: document.getElementById('signup-division').value } }
             });
-            if (error) alert(error.message); else { alert("Check email for verification!"); router.navigate('login'); }
+            if (error) alert(error.message); else { alert("Verification email sent!"); router.navigate('login'); }
         }
 
         async function handleSaveDuty(e) {
             e.preventDefault();
             const payload = {
-                user_id: state.user.id, title: document.getElementById('duty-title').value,
-                location: document.getElementById('duty-location').value, date: document.getElementById('duty-date').value,
-                total_hours: parseFloat(document.getElementById('duty-hours').value),
-                start_time: '09:00', end_time: '17:00'
+                user_id: state.user.id, 
+                title: document.getElementById('duty-title').value,
+                location: document.getElementById('duty-location').value, 
+                date: document.getElementById('duty-date').value,
+                start_time: document.getElementById('duty-start').value,
+                end_time: document.getElementById('duty-end').value,
+                total_hours: parseFloat(document.getElementById('duty-hours').value)
             };
             await sb.from('duties').insert([payload]);
             router.navigate('dashboard');
