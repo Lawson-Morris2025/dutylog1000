@@ -26,28 +26,25 @@
         #view-container { overflow-y: auto; height: 100vh; -webkit-overflow-scrolling: touch; }
         .btn-primary { background: var(--navy); color: white; padding: 1rem; border-radius: 1rem; font-weight: bold; width: 100%; transition: all 0.2s; border: none; cursor: pointer; }
         .btn-primary:active { transform: scale(0.98); opacity: 0.9; }
-        
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
-        .modal-content { background: white; padding: 2rem; border-radius: 1.5rem; width: 100%; max-width: 400px; }
+        .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
         
         .tab-btn { flex: 1; padding: 8px; font-size: 12px; font-weight: bold; border-radius: 10px; transition: all 0.2s; }
         .tab-btn.active { background: var(--green); color: white; }
         .tab-btn.inactive { background: #f1f5f9; color: #94a3b8; }
 
-        #privacy-lock { position: fixed; inset: 0; background: var(--navy); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; }
-
+        /* Loader Overlay */
+        #init-loader { position: fixed; inset: 0; background: white; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.3s; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--green); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .tag { padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-right: 4px; background: #e2e8f0; color: #475569; }
         .back-btn { display: flex; align-items: center; gap: 8px; color: var(--navy); font-weight: 600; margin-bottom: 2rem; cursor: pointer; }
     </style>
 </head>
 <body>
-    <!-- Privacy Lock Screen -->
-    <div id="privacy-lock">
-        <div class="mb-8"><i class="fas fa-lock text-6xl text-green-500"></i></div>
-        <h2 class="text-2xl font-bold mb-2">DutyLog Locked</h2>
-        <p class="text-slate-400 mb-8 px-8">Authentication required to access your logs.</p>
-        <button onclick="authenticateBiometrics()" class="bg-green-600 px-8 py-3 rounded-2xl font-bold flex items-center gap-2">
-            <i class="fas fa-fingerprint"></i> Unlock App
-        </button>
+    <div id="init-loader">
+        <div class="spinner mb-4"></div>
+        <p class="text-navy font-bold animate-pulse">Initializing DutyLog...</p>
     </div>
 
     <div id="app">
@@ -73,17 +70,38 @@
             totalHours: 0,
             currentDuties: [],
             hourMode: 'manual',
-            isUnlocked: false
+            isAdmin: true,
+            currentView: null,
+            isAuthChecking: true
+        };
+
+        const getUserPFP = () => {
+            return state.profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${state.user?.id}`;
         };
 
         const router = {
             navigate: async (view) => {
+                if (state.currentView === view) return; 
+                state.currentView = view;
+                
                 const container = document.getElementById('view-container');
                 const nav = document.getElementById('bottom-nav');
-                const isAuth = ['welcome', 'login', 'signup'].includes(view);
-                nav.classList.toggle('hidden', isAuth);
-                nav.classList.toggle('flex', !isAuth);
-                document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.getAttribute('data-view') === view));
+                const isAuthView = ['welcome', 'login', 'signup'].includes(view);
+                
+                if (!state.user && !isAuthView) {
+                    state.currentView = 'welcome';
+                    container.innerHTML = await views.welcome();
+                    nav.classList.add('hidden');
+                    return;
+                }
+
+                nav.classList.toggle('hidden', isAuthView);
+                nav.classList.toggle('flex', !isAuthView);
+                
+                document.querySelectorAll('.nav-item').forEach(el => {
+                    el.classList.toggle('active', el.getAttribute('data-view') === view);
+                });
+                
                 container.innerHTML = await views[view]();
             }
         };
@@ -96,16 +114,14 @@
                     <button onclick="router.navigate('login')" class="btn-primary">Login</button>
                     <button onclick="router.navigate('signup')" class="w-full bg-white border-2 border-[#1B263B] py-4 rounded-2xl font-bold">Sign Up</button>
                 </div>
-                <button onclick="handleReportProblem()" class="text-xs text-slate-400 mt-4 underline">Report a problem</button>
             </div>`,
             login: async () => `<div class="pt-4 max-w-sm mx-auto">
                 <div onclick="router.navigate('welcome')" class="back-btn"><i class="fas fa-arrow-left"></i> Back</div>
                 <h2 class="text-2xl font-bold mb-8">Login</h2>
                 <form onsubmit="handleLogin(event)" class="space-y-4">
-                    <input type="email" id="login-email" placeholder="Email" required class="input-field">
-                    <div class="password-container"><input type="password" id="login-password" placeholder="Password" required class="input-field"><i class="fas fa-eye password-toggle" onclick="togglePassword('login-password')"></i></div>
-                    <div class="text-right"><button type="button" onclick="handleForgotPassword()" class="text-xs text-green-600 font-bold">Forgot Password?</button></div>
-                    <button type="submit" class="btn-primary">Sign In</button>
+                    <input type="email" id="login-email" placeholder="Email" required class="input-field" autocomplete="email">
+                    <div class="password-container"><input type="password" id="login-password" placeholder="Password" required class="input-field" autocomplete="current-password"><i class="fas fa-eye password-toggle" onclick="togglePassword('login-password')"></i></div>
+                    <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
                 </form>
             </div>`,
             signup: async () => `<div class="pt-4 max-w-sm mx-auto">
@@ -113,42 +129,27 @@
                 <h2 class="text-2xl font-bold mb-6">Register</h2>
                 <form onsubmit="handleSignup(event)" class="space-y-4">
                     <input type="text" id="signup-name" placeholder="Full Name" required class="input-field">
-                    <input type="text" id="signup-division" placeholder="Division" required class="input-field">
-                    <input type="email" id="signup-email" placeholder="Email" required class="input-field">
-                    <input type="password" id="signup-password" placeholder="Password" required class="input-field">
-                    <button type="submit" class="btn-primary">Create Account</button>
+                    <input type="text" id="signup-division" placeholder="Division (Primary Tag)" required class="input-field">
+                    <input type="email" id="signup-email" placeholder="Email" required class="input-field" autocomplete="email">
+                    <input type="password" id="signup-password" placeholder="Password" required class="input-field" autocomplete="new-password">
+                    <button type="submit" id="signup-btn" class="btn-primary">Create Account</button>
                 </form>
             </div>`,
             dashboard: async () => {
-                setTimeout(loadDashboardData, 10);
+                setTimeout(loadDashboardData, 50);
                 return `<div class="animate-pulse space-y-4"><div class="h-40 bg-slate-200 rounded-2xl"></div></div>`;
             },
-            profile: async () => {
-                const hasBio = localStorage.getItem(`bio_reg_${state.user?.id}`);
-                return `<div class="space-y-8 pt-4 px-4 pb-10">
-                    <div class="text-center">
-                        <img src="${state.profile?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+state.user?.id}" class="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-green-500 shadow-lg object-cover">
-                        <h2 class="text-2xl font-bold">${state.profile?.name || 'Volunteer'}</h2>
-                        <p class="text-slate-400 text-sm">${state.profile?.division || 'SJA'}</p>
-                    </div>
-                    
-                    <div class="glass-card p-6 space-y-4">
-                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Security</h3>
-                        <div class="flex items-center justify-between">
-                            <div><p class="text-sm font-medium">Face ID / Biometrics</p></div>
-                            <button onclick="${hasBio ? 'removeBiometrics()' : 'setupBiometrics()'}" class="text-xs font-bold ${hasBio ? 'text-red-500' : 'text-green-600'}">
-                                ${hasBio ? 'Disable' : 'Set Up'}
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="glass-card p-6 space-y-4">
-                        <button onclick="handleReportProblem()" class="w-full text-left text-sm font-medium text-slate-600">Report a Problem</button>
-                        <hr class="border-slate-100">
-                        <button onclick="handleLogout()" class="w-full text-left flex items-center justify-between text-sm font-medium text-red-500"><span>Sign Out</span><i class="fas fa-sign-out-alt"></i></button>
-                    </div>
-                </div>`;
-            },
+            profile: async () => `<div class="space-y-8 pt-4 px-4 pb-10 text-center">
+                <div class="relative w-24 h-24 mx-auto">
+                    <img src="${getUserPFP()}" class="w-24 h-24 rounded-full border-4 border-green-500 shadow-lg object-cover">
+                    <button onclick="editAvatar()" class="absolute bottom-0 right-0 bg-navy text-white rounded-full p-2 text-xs shadow-md border border-white"><i class="fas fa-camera"></i></button>
+                </div>
+                <h2 class="text-2xl font-bold">${state.profile?.name || 'Volunteer'}</h2>
+                <div class="flex flex-wrap justify-center gap-1">
+                    ${(state.profile?.tags || state.profile?.division || 'Member').split(',').map(t => `<span class="tag">${t.trim()}</span>`).join('')}
+                </div>
+                <button onclick="handleLogout()" class="btn-primary !bg-red-500 mt-10">Sign Out</button>
+            </div>`,
             'add-duty': async () => {
                 state.hourMode = 'manual';
                 return `<div class="px-2">
@@ -156,88 +157,112 @@
                     <form onsubmit="handleSaveDuty(event)" class="space-y-4">
                         <input type="text" id="duty-title" placeholder="Event Title" required class="input-field">
                         <input type="text" id="duty-location" placeholder="Location" class="input-field">
-                        <input type="date" id="duty-date" value="${new Date().toISOString().split('T')[0]}" required class="input-field">
+                        <input type="date" id="duty-date" value="${new Date().toISOString().split('T')[0]}" class="input-field">
                         <div class="glass-card p-4 space-y-4">
                             <div class="flex bg-slate-100 p-1 rounded-xl">
-                                <button type="button" onclick="setHourMode('manual')" id="mode-manual" class="tab-btn active">Total Hours</button>
-                                <button type="button" onclick="setHourMode('auto')" id="mode-auto" class="tab-btn inactive">Auto calc</button>
+                                <button type="button" onclick="window.setHourMode('manual')" id="mode-manual" class="tab-btn active">Hours</button>
+                                <button type="button" onclick="window.setHourMode('auto')" id="mode-auto" class="tab-btn inactive">Auto Calc</button>
                             </div>
-                            <div id="manual-hours-input"><input type="number" step="0.1" id="duty-hours" placeholder="Hours" class="input-field"></div>
-                            <div id="auto-hours-input" class="hidden flex gap-2"><input type="time" id="start-time" class="input-field" oninput="calculateHours()"><input type="time" id="end-time" class="input-field" oninput="calculateHours()"></div>
+                            <div id="manual-hours-input"><input type="number" step="0.1" id="duty-hours" placeholder="Total Hours" class="input-field"></div>
+                            <div id="auto-hours-input" class="hidden flex gap-2">
+                                <input type="time" id="start-time" class="input-field" oninput="window.calculateHours()">
+                                <input type="time" id="end-time" class="input-field" oninput="window.calculateHours()">
+                            </div>
                             <div id="calc-result" class="hidden text-center text-xs font-bold text-green-600">Calculated: <span id="calc-display">0</span> hrs</div>
                         </div>
-                        <textarea id="duty-notes" placeholder="Add shift notes here..." class="input-field min-h-[120px]"></textarea>
+                        <textarea id="duty-notes" placeholder="Notes (Optional)" class="input-field min-h-[100px]"></textarea>
                         <button type="submit" class="btn-primary !bg-[#00853F]">Save Activity</button>
                     </form>
                 </div>`;
             },
-            users: async () => `<div class="p-4 text-center text-slate-400">Users feature loading...</div>`,
-            community: async () => `<div class="p-4 text-center text-slate-400">Community feed loading...</div>`
-        };
-
-        // --- Event Handlers ---
-        window.handleForgotPassword = async () => {
-            const email = prompt("Enter your email address to reset your password:");
-            if (email) {
-                const { error } = await sb.auth.resetPasswordForEmail(email);
-                alert(error ? error.message : "Password reset email sent!");
+            users: async () => {
+                setTimeout(loadUsers, 50);
+                return `<div class="p-4"><h2 class="text-2xl font-bold mb-4">User Directory</h2><div id="users-list" class="space-y-3">Loading users...</div></div>`;
+            },
+            community: async () => {
+                setTimeout(loadFeed, 50);
+                return `<div class="p-4">
+                    <h2 class="text-2xl font-bold mb-4">Community Feed</h2>
+                    <div class="glass-card p-4 mb-6">
+                        <form onsubmit="handlePostFeed(event)" class="space-y-2">
+                            <textarea id="feed-post-text" placeholder="What's happening?" required class="input-field text-sm min-h-[80px] bg-slate-50"></textarea>
+                            <button type="submit" id="feed-post-btn" class="bg-green-600 text-white text-xs font-bold py-2 px-4 rounded-xl float-right">Post Update</button>
+                            <div class="clear-both"></div>
+                        </form>
+                    </div>
+                    <div id="feed-list" class="space-y-4">Loading feed...</div>
+                </div>`;
             }
         };
 
-        window.handleReportProblem = () => {
-            const issue = prompt("Describe the problem you're experiencing:");
-            if (issue) {
-                alert("Thank you! Our support team has been notified.");
-            }
-        };
-
-        window.authenticateBiometrics = async () => {
-            try {
-                const challenge = new Uint8Array(32);
-                window.crypto.getRandomValues(challenge);
-                const options = { publicKey: { challenge, userVerification: "required", timeout: 60000 } };
-                const assertion = await navigator.credentials.get(options);
-                if (assertion) {
-                    state.isUnlocked = true;
-                    document.getElementById('privacy-lock').style.display = 'none';
-                }
-            } catch (err) { console.error(err); }
-        };
-
+        // --- Auth Functions ---
         async function handleLogin(e) {
             e.preventDefault();
+            const btn = document.getElementById('login-btn');
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
-            const { error } = await sb.auth.signInWithPassword({ email, password });
-            if (error) alert(error.message);
+            
+            btn.innerText = 'Signing in...';
+            btn.disabled = true;
+
+            try {
+                const { data, error } = await sb.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+            } catch (err) {
+                console.error("Login Error:", err);
+                alert("Login Failed: " + err.message);
+                btn.innerText = 'Sign In';
+                btn.disabled = false;
+            }
         }
 
         async function handleSignup(e) {
             e.preventDefault();
-            const email = document.getElementById('signup-email').value;
-            const pass = document.getElementById('signup-password').value;
+            const btn = document.getElementById('signup-btn');
             const name = document.getElementById('signup-name').value;
-            const div = document.getElementById('signup-division').value;
-            const { data, error } = await sb.auth.signUp({ email, password: pass });
-            if (data.user) {
-                await sb.from('profiles').upsert({ id: data.user.id, name, division: div });
-                router.navigate('login');
+            const division = document.getElementById('signup-division').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            
+            btn.innerText = 'Creating...';
+            btn.disabled = true;
+
+            try {
+                const { data, error } = await sb.auth.signUp({ email, password });
+                if (error) throw error;
+                if (data.user) {
+                    await sb.from('profiles').upsert({ id: data.user.id, name, division, tags: division });
+                    alert("Account created! Please log in.");
+                    router.navigate('login');
+                }
+            } catch (err) {
+                console.error("Signup Error:", err);
+                alert(err.message);
+                btn.innerText = 'Create Account';
+                btn.disabled = false;
             }
-            if (error) alert(error.message);
         }
 
+        async function handleLogout() {
+            document.getElementById('init-loader').style.display = 'flex';
+            document.getElementById('init-loader').style.opacity = '1';
+            await sb.auth.signOut();
+        }
+
+        // --- Data Loaders ---
         async function loadDashboardData() {
             if (!state.user) return;
-            const { data: duties } = await sb.from('duties').select('*').eq('user_id', state.user.id).order('date', { ascending: false });
-            state.currentDuties = duties || [];
+            const { data } = await sb.from('duties').select('*').eq('user_id', state.user.id).neq('title', 'Post').order('date', { ascending: false });
+            state.currentDuties = data || [];
             state.totalHours = state.currentDuties.reduce((acc, curr) => acc + (parseFloat(curr.total_hours) || 0), 0);
-            
             const container = document.getElementById('view-container');
+            if(!container || state.currentView !== 'dashboard') return;
+            
             container.innerHTML = `
                 <div class="space-y-6">
                     <header class="flex justify-between items-center">
                         <div><h1 class="text-xl font-bold">DutyLog</h1><p class="text-xs text-slate-400">${state.profile?.division || 'SJA'}</p></div>
-                        <img src="${state.profile?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed='+state.user.id}" class="w-10 h-10 rounded-full border-2 border-green-500 object-cover">
+                        <img src="${getUserPFP()}" class="w-10 h-10 rounded-full border-2 border-green-500 object-cover shadow-sm">
                     </header>
                     <div class="glass-card p-6 bg-[#1B263B] text-white">
                         <p class="text-[10px] opacity-70 uppercase font-bold tracking-widest">Logged Hours</p>
@@ -245,39 +270,117 @@
                     </div>
                     <div class="space-y-3">
                         ${state.currentDuties.map(d => `
-                            <div class="glass-card p-4">
-                                <div class="flex justify-between items-start">
-                                    <div><p class="font-bold text-xs">${d.title}</p><p class="text-[10px] text-slate-400">${d.date} • ${d.location || ''}</p></div>
-                                    <p class="font-black text-green-600 text-sm">+${parseFloat(d.total_hours).toFixed(1)}</p>
-                                </div>
-                                ${d.notes ? `<p class="mt-2 text-[11px] text-slate-500 bg-slate-50 p-2 rounded-lg italic">"${d.notes}"</p>` : ''}
+                            <div class="glass-card p-4 flex justify-between items-center">
+                                <div><p class="font-bold text-sm text-navy">${d.title}</p><p class="text-[10px] text-slate-400">${d.date}</p></div>
+                                <p class="font-black text-green-600 text-sm">+${parseFloat(d.total_hours).toFixed(1)}</p>
                             </div>
-                        `).join('')}
+                        `).join('') || '<p class="text-center py-10 text-slate-400">No logs yet.</p>'}
                     </div>
                 </div>`;
         }
 
-        async function init() {
-            const { data: { session } } = await sb.auth.getSession();
-            if (session) {
-                state.user = session.user;
-                const { data } = await sb.from('profiles').select('*').eq('id', state.user.id).single();
-                state.profile = data;
-                if (localStorage.getItem(`bio_reg_${state.user.id}`)) {
-                    document.getElementById('privacy-lock').style.display = 'flex';
-                    authenticateBiometrics();
-                }
-                router.navigate('dashboard');
-            } else { router.navigate('welcome'); }
-            sb.auth.onAuthStateChange((event, newSession) => { if (!newSession) router.navigate('welcome'); else window.location.reload(); });
+        async function loadFeed() {
+            const { data } = await sb.from('duties').select('*, profiles(name, tags, division, avatar_url)').order('created_at', { ascending: false }).limit(25);
+            const list = document.getElementById('feed-list');
+            if(!list || state.currentView !== 'community') return;
+            list.innerHTML = (data || []).map(f => {
+                const isPost = f.is_update || f.title === "Post";
+                const pfp = f.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${f.user_id}`;
+                return `<div class="glass-card p-4 border-l-4 ${isPost ? 'border-navy bg-slate-50' : 'border-green-500'}">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center gap-2">
+                            <img src="${pfp}" class="w-6 h-6 rounded-full border object-cover">
+                            <div>
+                                <p class="text-[10px] font-black uppercase text-slate-400 leading-none">${f.profiles?.name || 'User'}</p>
+                                <div class="flex gap-1 mt-1">${(f.profiles?.tags || f.profiles?.division || 'Member').split(',').slice(0,2).map(t => `<span class="tag" style="font-size:7px; padding: 1px 4px">${t.trim()}</span>`).join('')}</div>
+                            </div>
+                        </div>
+                        <p class="text-[9px] text-slate-300 font-bold">${f.date}</p>
+                    </div>
+                    ${!isPost ? `<p class="font-bold text-navy text-sm">${f.title}</p>` : ''}
+                    <div class="text-xs ${isPost ? 'text-navy leading-relaxed' : 'text-slate-600 font-medium'}">${f.notes}</div>
+                    ${!isPost ? `<p class="text-xs text-green-600 font-bold mt-2">+${f.total_hours} Hours</p>` : ''}
+                </div>`;
+            }).join('') || '<p class="text-center text-slate-400">No activity yet.</p>';
         }
 
-        window.onload = init;
+        async function loadUsers() {
+            const { data } = await sb.from('profiles').select('*');
+            const list = document.getElementById('users-list');
+            if(!list || state.currentView !== 'users') return;
+            list.innerHTML = (data || []).map(u => `
+                <div class="glass-card p-4 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <img src="${u.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.id}`}" class="w-10 h-10 rounded-full border object-cover">
+                        <div>
+                            <p class="font-bold text-sm text-navy">${u.name}</p>
+                            <div class="flex flex-wrap gap-1 mt-1">${(u.tags || u.division || 'Member').split(',').map(t => `<span class="tag">${t.trim()}</span>`).join('')}</div>
+                        </div>
+                    </div>
+                    ${state.isAdmin ? `<button onclick="window.editUserProfile('${u.id}', '${u.name}', '${u.tags || u.division || ''}')" class="text-navy p-2"><i class="fas fa-edit"></i></button>` : ''}
+                </div>`).join('') || '<p class="text-center text-slate-400">No users found.</p>';
+        }
+
+        // --- UI Interactions ---
         window.togglePassword = (id) => {
             const el = document.getElementById(id);
             el.type = el.type === 'password' ? 'text' : 'password';
         };
-        window.handleLogout = async () => { await sb.auth.signOut(); router.navigate('welcome'); };
+
+        window.setHourMode = (mode) => {
+            state.hourMode = mode;
+            document.getElementById('manual-hours-input')?.classList.toggle('hidden', mode === 'auto');
+            document.getElementById('auto-hours-input')?.classList.toggle('hidden', mode === 'manual');
+            document.getElementById('calc-result')?.classList.toggle('hidden', mode === 'manual');
+            document.getElementById('mode-manual').className = mode === 'manual' ? 'tab-btn active' : 'tab-btn inactive';
+            document.getElementById('mode-auto').className = mode === 'auto' ? 'tab-btn active' : 'tab-btn inactive';
+        };
+
+        window.calculateHours = () => {
+            const start = document.getElementById('start-time').value;
+            const end = document.getElementById('end-time').value;
+            if(!start || !end) return;
+            const [sH, sM] = start.split(':').map(Number);
+            const [eH, eM] = end.split(':').map(Number);
+            let diff = (eH * 60 + eM) - (sH * 60 + sM);
+            if(diff < 0) diff += 1440;
+            const hrs = (diff / 60).toFixed(2);
+            const display = document.getElementById('calc-display');
+            if(display) display.innerText = hrs;
+            const input = document.getElementById('duty-hours');
+            if(input) input.value = hrs;
+        };
+
+        window.editAvatar = async () => {
+            const url = prompt("Direct link to your profile image:", state.profile?.avatar_url || "");
+            if (url !== null) {
+                const { error } = await sb.from('profiles').update({ avatar_url: url }).eq('id', state.user.id);
+                if (!error) {
+                    state.profile.avatar_url = url;
+                    router.navigate('profile');
+                } else alert(error.message);
+            }
+        };
+
+        async function init() {
+            const loader = document.getElementById('init-loader');
+            sb.auth.onAuthStateChange(async (event, session) => {
+                if (session) {
+                    state.user = session.user;
+                    const { data } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+                    state.profile = data;
+                    await router.navigate('dashboard');
+                } else {
+                    state.user = null;
+                    state.profile = null;
+                    await router.navigate('welcome');
+                }
+                loader.style.opacity = '0';
+                setTimeout(() => loader.style.display = 'none', 300);
+            });
+        }
+
+        window.onload = init;
     </script>
 </body>
 </html>
