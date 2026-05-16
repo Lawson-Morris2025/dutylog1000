@@ -39,27 +39,66 @@
         
         .tag { padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-right: 4px; background: #e2e8f0; color: #475569; }
         .back-btn { display: flex; align-items: center; gap: 8px; color: var(--navy); font-weight: 600; margin-bottom: 2rem; cursor: pointer; }
+        
+        /* Passcode Screen Overlay */
+        .pin-dot { width: 14px; height: 14px; border: 2px solid var(--navy); border-radius: 50%; transition: background-color 0.1s; }
+        .pin-dot.filled { background-color: var(--navy); }
+        .pin-btn { width: 70px; height: 70px; border-radius: 50%; background: #f1f5f9; font-size: 24px; font-weight: 600; color: var(--navy); display: flex; align-items: center; justify-content: center; transition: background 0.1s; }
+        .pin-btn:active { background: #cbd5e1; }
     </style>
 </head>
 <body>
+
+    <!-- Initialization Screen -->
     <div id="init-loader">
         <div class="spinner mb-4"></div>
         <p class="text-navy font-bold animate-pulse">Initializing DutyLog...</p>
     </div>
 
+    <!-- tactile local passcode lock UI -->
+    <div id="passcode-screen" class="fixed inset-0 bg-white z-50 hidden flex flex-col items-center justify-center px-6">
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-slate-100 rounded-2xl mx-auto flex items-center justify-center text-navy text-2xl mb-4 shadow-sm"><i class="fas fa-lock"></i></div>
+            <h2 id="passcode-title" class="text-xl font-bold text-navy">Enter Passcode</h2>
+            <p id="passcode-msg" class="text-xs text-slate-400 mt-1">Device Protected Screen</p>
+        </div>
+        <div class="flex gap-4 mb-10 justify-center">
+            <div class="pin-dot" id="dot-0"></div>
+            <div class="pin-dot" id="dot-1"></div>
+            <div class="pin-dot" id="dot-2"></div>
+            <div class="pin-dot" id="dot-3"></div>
+        </div>
+        <div class="grid grid-cols-3 gap-y-4 gap-x-8 max-w-[280px] mx-auto text-center">
+            <button onclick="pressPin(1)" class="pin-btn">1</button>
+            <button onclick="pressPin(2)" class="pin-btn">2</button>
+            <button onclick="pressPin(3)" class="pin-btn">3</button>
+            <button onclick="pressPin(4)" class="pin-btn">4</button>
+            <button onclick="pressPin(5)" class="pin-btn">5</button>
+            <button onclick="pressPin(6)" class="pin-btn">6</button>
+            <button onclick="pressPin(7)" class="pin-btn">7</button>
+            <button onclick="pressPin(8)" class="pin-btn">8</button>
+            <button onclick="pressPin(9)" class="pin-btn">9</button>
+            <button onclick="clearPin()" class="text-slate-400 text-sm font-bold">Clear</button>
+            <button onclick="pressPin(0)" class="pin-btn">0</button>
+            <button onclick="cancelPin()" id="pin-cancel-btn" class="text-slate-400 text-sm font-bold">Cancel</button>
+        </div>
+    </div>
+
+    <!-- App Shell -->
     <div id="app">
         <main id="view-container" class="px-4 pt-6 max-w-[600px] mx-auto pb-32"></main>
         
         <nav id="bottom-nav" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] hidden bg-white border-t px-6 py-3 justify-between items-center z-40 shadow-lg pb-safe">
             <button onclick="router.navigate('dashboard')" class="nav-item active" data-view="dashboard"><i class="fas fa-home text-lg"></i><span>Home</span></button>
-            <button onclick="router.navigate('users')" class="nav-item" data-view="users"><i class="fas fa-users text-lg"></i><span>Users</span></button>
+            <button onclick="router.navigate('notes')" class="nav-item" data-view="notes"><i class="fas fa-sticky-note text-lg"></i><span>Notes</span></button>
             <button onclick="router.navigate('add-duty')" class="nav-item bg-white border-2 border-[#00853F] !text-[#00853F] p-3 -mt-10 rounded-full shadow-xl h-14 w-14 justify-center"><i class="fas fa-plus text-xl"></i></button>
-            <button onclick="router.navigate('community')" class="nav-item" data-view="community"><i class="fas fa-rss text-lg"></i><span>Feed</span></button>
+            <button onclick="router.navigate('users')" class="nav-item" data-view="users"><i class="fas fa-users text-lg"></i><span>Users</span></button>
             <button onclick="router.navigate('profile')" class="nav-item" data-view="profile"><i class="fas fa-user text-lg"></i><span>Profile</span></button>
         </nav>
     </div>
 
     <script>
+        // Supabase Credentials
         const supabaseUrl = 'https://qgyjfyazkkepmkztnezv.supabase.co';
         const supabaseKey = 'sb_publishable_xea7e2zxnarbh2bT6vG5ew__2DhOj34';
         const sb = window.supabase.createClient(supabaseUrl, supabaseKey);
@@ -69,11 +108,15 @@
             profile: null, 
             totalHours: 0,
             currentDuties: [],
+            cloudNotes: [],
             hourMode: 'manual',
-            isAdmin: true,
             currentView: null,
-            isAuthChecking: true
+            initialized: false
         };
+
+        // UI State cache engines
+        const saveLocalCache = (key, data) => localStorage.setItem(`dutylog_${key}`, JSON.stringify(data));
+        const getLocalCache = (key) => JSON.parse(localStorage.getItem(`dutylog_${key}`));
 
         const getUserPFP = () => {
             return state.profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${state.user?.id}`;
@@ -109,11 +152,15 @@
         const views = {
             welcome: async () => `<div class="flex flex-col items-center justify-center min-h-[80vh] text-center space-y-8">
                 <div class="w-24 h-24 bg-white border-4 border-[#00853F] rounded-[2rem] flex items-center justify-center shadow-2xl"><i class="fas fa-plus text-[#00853F] text-5xl"></i></div>
-                <h1 class="text-4xl font-black text-[#1B263B]">DutyLog</h1>
+                <div>
+                    <h1 class="text-4xl font-black text-[#1B263B]">DutyLog</h1>
+                    <p class="text-xs text-slate-400 font-medium mt-1">Instant Shift & Hours Tracking Engine</p>
+                </div>
                 <div class="w-full space-y-3 px-4 max-w-xs">
                     <button onclick="router.navigate('login')" class="btn-primary">Login</button>
                     <button onclick="router.navigate('signup')" class="w-full bg-white border-2 border-[#1B263B] py-4 rounded-2xl font-bold">Sign Up</button>
                 </div>
+                <div class="text-[10px] text-slate-400 font-bold pt-6">Made by Lawson Morris<br><a href="https://lawsonmorris.co.uk" target="_blank" class="text-green-600 underline">lawsonmorris.co.uk</a></div>
             </div>`,
             login: async () => `<div class="pt-4 max-w-sm mx-auto">
                 <div onclick="router.navigate('welcome')" class="back-btn"><i class="fas fa-arrow-left"></i> Back</div>
@@ -136,83 +183,179 @@
                 </form>
             </div>`,
             dashboard: async () => {
-                setTimeout(loadDashboardData, 50);
-                return `<div class="animate-pulse space-y-4"><div class="h-40 bg-slate-200 rounded-2xl"></div></div>`;
+                // Instant load strategy via local device cache fallback
+                const cachedDuties = getLocalCache('duties') || [];
+                const cachedHours = parseFloat(localStorage.getItem('dutylog_totalhours') || 0);
+                setTimeout(loadDashboardData, 10);
+                return renderDashboardHTML(cachedHours, cachedDuties);
             },
-            profile: async () => `<div class="space-y-8 pt-4 px-4 pb-10 text-center">
-                <div class="relative w-24 h-24 mx-auto">
-                    <img src="${getUserPFP()}" class="w-24 h-24 rounded-full border-4 border-green-500 shadow-lg object-cover">
-                    <button onclick="editAvatar()" class="absolute bottom-0 right-0 bg-navy text-white rounded-full p-2 text-xs shadow-md border border-white"><i class="fas fa-camera"></i></button>
-                </div>
-                <h2 class="text-2xl font-bold">${state.profile?.name || 'Volunteer'}</h2>
-                <div class="flex flex-wrap justify-center gap-1">
-                    ${(state.profile?.tags || state.profile?.division || 'Member').split(',').map(t => `<span class="tag">${t.trim()}</span>`).join('')}
-                </div>
-                <button onclick="handleLogout()" class="btn-primary !bg-red-500 mt-10">Sign Out</button>
-            </div>`,
+            notes: async () => {
+                const cachedNotes = getLocalCache('notes') || [];
+                setTimeout(loadNotesData, 10);
+                return renderNotesHTML(cachedNotes);
+            },
             'add-duty': async () => {
                 state.hourMode = 'manual';
                 return `<div class="px-2">
                     <h2 class="text-2xl font-bold mb-6">Log Activity</h2>
                     <form onsubmit="handleSaveDuty(event)" class="space-y-4">
-                        <input type="text" id="duty-title" placeholder="Event Title" required class="input-field">
-                        <input type="text" id="duty-location" placeholder="Location" class="input-field">
+                        <input type="text" id="duty-title" placeholder="Event / Shift Title" required class="input-field">
                         <input type="date" id="duty-date" value="${new Date().toISOString().split('T')[0]}" class="input-field">
                         <div class="glass-card p-4 space-y-4">
                             <div class="flex bg-slate-100 p-1 rounded-xl">
-                                <button type="button" onclick="window.setHourMode('manual')" id="mode-manual" class="tab-btn active">Hours</button>
-                                <button type="button" onclick="window.setHourMode('auto')" id="mode-auto" class="tab-btn inactive">Auto Calc</button>
+                                <button type="button" onclick="window.setHourMode('manual')" id="mode-manual" class="tab-btn active">Direct Hours</button>
+                                <button type="button" onclick="window.setHourMode('auto')" id="mode-auto" class="tab-btn inactive">Calculate Shift Range</button>
                             </div>
-                            <div id="manual-hours-input"><input type="number" step="0.1" id="duty-hours" placeholder="Total Hours" class="input-field"></div>
+                            <div id="manual-hours-input"><input type="number" step="0.1" id="duty-hours" placeholder="Total Hours (e.g. 4.5)" class="input-field"></div>
                             <div id="auto-hours-input" class="hidden flex gap-2">
                                 <input type="time" id="start-time" class="input-field" oninput="window.calculateHours()">
                                 <input type="time" id="end-time" class="input-field" oninput="window.calculateHours()">
                             </div>
-                            <div id="calc-result" class="hidden text-center text-xs font-bold text-green-600">Calculated: <span id="calc-display">0</span> hrs</div>
+                            <div id="calc-result" class="hidden text-center text-xs font-bold text-green-600">Calculated Sync Duration: <span id="calc-display">0</span> hrs</div>
                         </div>
-                        <textarea id="duty-notes" placeholder="Notes (Optional)" class="input-field min-h-[100px]"></textarea>
-                        <button type="submit" class="btn-primary !bg-[#00853F]">Save Activity</button>
+                        <textarea id="duty-notes" placeholder="Shift Notes..." class="input-field min-h-[100px]"></textarea>
+                        <button type="submit" id="duty-save-btn" class="btn-primary !bg-[#00853F]">Save Log into Cloud</button>
                     </form>
                 </div>`;
             },
             users: async () => {
-                setTimeout(loadUsers, 50);
-                return `<div class="p-4"><h2 class="text-2xl font-bold mb-4">User Directory</h2><div id="users-list" class="space-y-3">Loading users...</div></div>`;
+                const cachedUsers = getLocalCache('users') || [];
+                setTimeout(loadUsersData, 10);
+                return `<div class="p-4"><h2 class="text-2xl font-bold mb-4">User Directory</h2><div id="users-list" class="space-y-3">${renderUsersHTML(cachedUsers)}</div></div>`;
             },
-            community: async () => {
-                setTimeout(loadFeed, 50);
-                return `<div class="p-4">
-                    <h2 class="text-2xl font-bold mb-4">Community Feed</h2>
-                    <div class="glass-card p-4 mb-6">
-                        <form onsubmit="handlePostFeed(event)" class="space-y-2">
-                            <textarea id="feed-post-text" placeholder="What's happening?" required class="input-field text-sm min-h-[80px] bg-slate-50"></textarea>
-                            <button type="submit" id="feed-post-btn" class="bg-green-600 text-white text-xs font-bold py-2 px-4 rounded-xl float-right">Post Update</button>
-                            <div class="clear-both"></div>
-                        </form>
+            profile: async () => {
+                const pinActive = !!localStorage.getItem('dutylog_pin');
+                return `<div class="space-y-6 pt-4 px-4 pb-10 text-center max-w-sm mx-auto">
+                    <div class="relative w-24 h-24 mx-auto">
+                        <img id="profile-img" src="${getUserPFP()}" class="w-24 h-24 rounded-full border-4 border-green-500 shadow-lg object-cover">
+                        <label class="absolute bottom-0 right-0 bg-navy text-white rounded-full p-2 text-xs shadow-md border border-white cursor-pointer">
+                            <i class="fas fa-camera"></i>
+                            <input type="file" id="avatar-input" accept="image/*" class="hidden" onchange="uploadCompressedAvatar(event)">
+                        </label>
                     </div>
-                    <div id="feed-list" class="space-y-4">Loading feed...</div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-navy">${state.profile?.name || 'Volunteer'}</h2>
+                        <span class="tag mt-1 inline-block">${state.profile?.division || 'General Volunteer'}</span>
+                    </div>
+                    <div class="glass-card p-4 text-left space-y-4">
+                        <h3 class="font-bold text-sm text-navy border-b pb-2"><i class="fas fa-shield-alt mr-2"></i>Security Settings</h3>
+                        <div class="flex items-center justify-between">
+                            <div><p class="text-xs font-bold text-navy">Device PIN Lock</p><p class="text-[10px] text-slate-400">Lock application interface when opened</p></div>
+                            <button onclick="togglePinConfiguration()" class="text-xs font-bold py-2 px-4 rounded-xl ${pinActive ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}">${pinActive ? 'Disable PIN' : 'Enable PIN'}</button>
+                        </div>
+                    </div>
+                    <button onclick="handleLogout()" class="btn-primary !bg-red-500 mt-6">Sign Out</button>
+                    <div class="text-[10px] text-slate-400 font-bold pt-6">Made by Lawson Morris<br><a href="https://lawsonmorris.co.uk" target="_blank" class="text-green-600 underline">lawsonmorris.co.uk</a></div>
                 </div>`;
             }
         };
 
-        // --- Auth Functions ---
+        // --- Render Helpers ---
+        function renderDashboardHTML(hours, duties) {
+            return `<div class="space-y-6">
+                <header class="flex justify-between items-center">
+                    <div><h1 class="text-xl font-bold text-navy">DutyLog</h1><p class="text-xs text-slate-400">${state.profile?.division || 'General Volunteer'}</p></div>
+                    <img src="${state.profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${state.user?.id}`}" class="w-10 h-10 rounded-full border-2 border-green-500 object-cover shadow-sm">
+                </header>
+                <div class="glass-card p-6 bg-[#1B263B] text-white relative overflow-hidden">
+                    <p class="text-[10px] opacity-70 uppercase font-bold tracking-widest">Total Logged Hours</p>
+                    <h2 class="text-4xl font-black">${hours.toFixed(1)}</h2>
+                    <div class="absolute right-4 bottom-2 text-white/5 font-bold text-xs">Lawson Morris Engine</div>
+                </div>
+                <div class="space-y-3" id="dashboard-list">
+                    ${duties.map(d => `
+                        <div class="glass-card p-4 flex justify-between items-center">
+                            <div class="pr-4"><p class="font-bold text-sm text-navy">${d.title}</p><p class="text-[10px] text-slate-400">${d.date} ${d.start_time ? `(${d.start_time} - ${d.end_time})` : ''}</p><p class="text-xs text-slate-500 italic mt-1">${d.notes || ''}</p></div>
+                            <p class="font-black text-green-600 text-sm whitespace-nowrap">+${parseFloat(d.total_hours).toFixed(1)}</p>
+                        </div>
+                    `).join('') || '<p class="text-center py-10 text-slate-400">No logs found synced.</p>'}
+                </div>
+            </div>`;
+        }
+
+        function renderNotesHTML(notes) {
+            return `<div class="space-y-4">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-2xl font-bold text-navy">Cloud Notes</h2>
+                    <button onclick="openNoteModal()" class="bg-green-600 text-white text-xs font-bold py-2 px-4 rounded-xl"><i class="fas fa-plus mr-1"></i> New Note</button>
+                </div>
+                <div id="notes-list-container" class="space-y-3">
+                    ${notes.map(n => `
+                        <div class="glass-card p-4 relative group" onclick="openNoteModal('${n.id}', \`${n.title.replace(/'/g, "\\'")}\`, \`${n.content.replace(/'/g, "\\'")}\`)">
+                            <h3 class="font-bold text-navy text-sm">${n.title}</h3>
+                            <p class="text-xs text-slate-500 line-clamp-2 mt-1">${n.content || 'Empty note content...'}</p>
+                            <p class="text-[9px] text-slate-300 mt-2 font-bold">${new Date(n.updated_at).toLocaleDateString()}</p>
+                        </div>
+                    `).join('') || '<p class="text-center py-10 text-slate-400">No notes in the cloud yet.</p>'}
+                </div>
+            </div>`;
+        }
+
+        function renderUsersHTML(users) {
+            return users.map(u => `
+                <div class="glass-card p-4 flex items-center gap-3">
+                    <img src="${u.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.id}`}" class="w-10 h-10 rounded-full border object-cover">
+                    <div>
+                        <p class="font-bold text-sm text-navy">${u.name}</p>
+                        <span class="tag mt-0.5 inline-block">${u.division || 'General Volunteer'}</span>
+                    </div>
+                </div>`).join('') || '<p class="text-center text-slate-400">No users verified.</p>';
+        }
+
+        // --- Data Fetch/Sync Engines ---
+        async function loadDashboardData() {
+            if (!state.user) return;
+            try {
+                const { data } = await sb.from('hours_logs').select('*').eq('user_id', state.user.id).order('date', { ascending: false });
+                state.currentDuties = data || [];
+                state.totalHours = state.currentDuties.reduce((acc, curr) => acc + (parseFloat(curr.total_hours) || 0), 0);
+                
+                saveLocalCache('duties', state.currentDuties);
+                localStorage.setItem('dutylog_totalhours', state.totalHours);
+
+                if(state.currentView === 'dashboard') {
+                    document.getElementById('view-container').innerHTML = renderDashboardHTML(state.totalHours, state.currentDuties);
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function loadNotesData() {
+            if (!state.user) return;
+            try {
+                const { data } = await sb.from('user_notes').select('*').eq('user_id', state.user.id).order('updated_at', { ascending: false });
+                state.cloudNotes = data || [];
+                saveLocalCache('notes', state.cloudNotes);
+                if (state.currentView === 'notes') {
+                    document.getElementById('view-container').innerHTML = renderNotesHTML(state.cloudNotes);
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function loadUsersData() {
+            try {
+                const { data } = await sb.from('profiles').select('*').order('name');
+                saveLocalCache('users', data || []);
+                const list = document.getElementById('users-list');
+                if (list && state.currentView === 'users') {
+                    list.innerHTML = renderUsersHTML(data || []);
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        // --- Auth Pipeline ---
         async function handleLogin(e) {
             e.preventDefault();
             const btn = document.getElementById('login-btn');
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
-            
-            btn.innerText = 'Signing in...';
-            btn.disabled = true;
+            btn.innerText = 'Signing in...'; btn.disabled = true;
 
             try {
                 const { data, error } = await sb.auth.signInWithPassword({ email, password });
                 if (error) throw error;
             } catch (err) {
-                console.error("Login Error:", err);
                 alert("Login Failed: " + err.message);
-                btn.innerText = 'Sign In';
-                btn.disabled = false;
+                btn.innerText = 'Sign In'; btn.disabled = false;
             }
         }
 
@@ -223,105 +366,215 @@
             const division = document.getElementById('signup-division').value;
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
-            
-            btn.innerText = 'Creating...';
-            btn.disabled = true;
+            btn.innerText = 'Registering Engine...'; btn.disabled = true;
 
             try {
                 const { data, error } = await sb.auth.signUp({ email, password });
                 if (error) throw error;
                 if (data.user) {
-                    await sb.from('profiles').upsert({ id: data.user.id, name, division, tags: division });
-                    alert("Account created! Please log in.");
+                    await sb.from('profiles').upsert({ id: data.user.id, name, division });
+                    alert("Registration complete! Welcome to DutyLog.");
                     router.navigate('login');
                 }
             } catch (err) {
-                console.error("Signup Error:", err);
                 alert(err.message);
-                btn.innerText = 'Create Account';
-                btn.disabled = false;
+                btn.innerText = 'Create Account'; btn.disabled = false;
             }
         }
 
         async function handleLogout() {
+            localStorage.clear();
             document.getElementById('init-loader').style.display = 'flex';
             document.getElementById('init-loader').style.opacity = '1';
             await sb.auth.signOut();
+            window.location.reload();
         }
 
-        // --- Data Loaders ---
-        async function loadDashboardData() {
-            if (!state.user) return;
-            const { data } = await sb.from('duties').select('*').eq('user_id', state.user.id).neq('title', 'Post').order('date', { ascending: false });
-            state.currentDuties = data || [];
-            state.totalHours = state.currentDuties.reduce((acc, curr) => acc + (parseFloat(curr.total_hours) || 0), 0);
-            const container = document.getElementById('view-container');
-            if(!container || state.currentView !== 'dashboard') return;
+        // --- Log Hours Activity Logic ---
+        async function handleSaveDuty(e) {
+            e.preventDefault();
+            const btn = document.getElementById('duty-save-btn');
+            btn.innerText = 'Uploading to Cloud...'; btn.disabled = true;
+
+            const title = document.getElementById('duty-title').value;
+            const date = document.getElementById('duty-date').value;
+            const notes = document.getElementById('duty-notes').value;
+            const total_hours = parseFloat(document.getElementById('duty-hours').value || 0);
             
-            container.innerHTML = `
-                <div class="space-y-6">
-                    <header class="flex justify-between items-center">
-                        <div><h1 class="text-xl font-bold">DutyLog</h1><p class="text-xs text-slate-400">${state.profile?.division || 'SJA'}</p></div>
-                        <img src="${getUserPFP()}" class="w-10 h-10 rounded-full border-2 border-green-500 object-cover shadow-sm">
-                    </header>
-                    <div class="glass-card p-6 bg-[#1B263B] text-white">
-                        <p class="text-[10px] opacity-70 uppercase font-bold tracking-widest">Logged Hours</p>
-                        <h2 class="text-4xl font-black">${state.totalHours.toFixed(1)}</h2>
+            const logObj = { user_id: state.user.id, title, date, notes, total_hours };
+            if (state.hourMode === 'auto') {
+                logObj.start_time = document.getElementById('start-time').value;
+                logObj.end_time = document.getElementById('end-time').value;
+            }
+
+            try {
+                const { error } = await sb.from('hours_logs').insert(logObj);
+                if (error) throw error;
+                router.navigate('dashboard');
+            } catch(err) {
+                alert(err.message);
+                btn.innerText = 'Save Log into Cloud'; btn.disabled = false;
+            }
+        }
+
+        // --- Notes Management Logic ---
+        function openNoteModal(id = '', title = '', content = '') {
+            const container = document.getElementById('app');
+            const modal = document.createElement('div');
+            modal.id = 'note-modal';
+            modal.className = 'fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-sm';
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <h3 class="font-black text-navy text-base">${id ? 'Edit Note' : 'Create Note'}</h3>
+                        ${id ? `<button onclick="deleteCloudNote('${id}')" class="text-red-500 text-xs font-bold px-2 py-1"><i class="fas fa-trash"></i></button>` : ''}
                     </div>
-                    <div class="space-y-3">
-                        ${state.currentDuties.map(d => `
-                            <div class="glass-card p-4 flex justify-between items-center">
-                                <div><p class="font-bold text-sm text-navy">${d.title}</p><p class="text-[10px] text-slate-400">${d.date}</p></div>
-                                <p class="font-black text-green-600 text-sm">+${parseFloat(d.total_hours).toFixed(1)}</p>
-                            </div>
-                        `).join('') || '<p class="text-center py-10 text-slate-400">No logs yet.</p>'}
+                    <input type="text" id="modal-note-title" placeholder="Title" value="${title}" class="input-field font-bold">
+                    <textarea id="modal-note-content" placeholder="Type notes here..." class="input-field min-h-[180px] text-sm">${content}</textarea>
+                    <div class="flex gap-2 pt-2">
+                        <button onclick="document.getElementById('note-modal').remove()" class="flex-1 py-3 bg-slate-100 text-slate-500 font-bold rounded-xl text-xs">Discard</button>
+                        <button onclick="saveCloudNote('${id}')" class="flex-1 py-3 bg-green-600 text-white font-bold rounded-xl text-xs">Save to Cloud</button>
                     </div>
                 </div>`;
+            container.appendChild(modal);
         }
 
-        async function loadFeed() {
-            const { data } = await sb.from('duties').select('*, profiles(name, tags, division, avatar_url)').order('created_at', { ascending: false }).limit(25);
-            const list = document.getElementById('feed-list');
-            if(!list || state.currentView !== 'community') return;
-            list.innerHTML = (data || []).map(f => {
-                const isPost = f.is_update || f.title === "Post";
-                const pfp = f.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${f.user_id}`;
-                return `<div class="glass-card p-4 border-l-4 ${isPost ? 'border-navy bg-slate-50' : 'border-green-500'}">
-                    <div class="flex justify-between items-start mb-2">
-                        <div class="flex items-center gap-2">
-                            <img src="${pfp}" class="w-6 h-6 rounded-full border object-cover">
-                            <div>
-                                <p class="text-[10px] font-black uppercase text-slate-400 leading-none">${f.profiles?.name || 'User'}</p>
-                                <div class="flex gap-1 mt-1">${(f.profiles?.tags || f.profiles?.division || 'Member').split(',').slice(0,2).map(t => `<span class="tag" style="font-size:7px; padding: 1px 4px">${t.trim()}</span>`).join('')}</div>
-                            </div>
-                        </div>
-                        <p class="text-[9px] text-slate-300 font-bold">${f.date}</p>
-                    </div>
-                    ${!isPost ? `<p class="font-bold text-navy text-sm">${f.title}</p>` : ''}
-                    <div class="text-xs ${isPost ? 'text-navy leading-relaxed' : 'text-slate-600 font-medium'}">${f.notes}</div>
-                    ${!isPost ? `<p class="text-xs text-green-600 font-bold mt-2">+${f.total_hours} Hours</p>` : ''}
-                </div>`;
-            }).join('') || '<p class="text-center text-slate-400">No activity yet.</p>';
+        async function saveCloudNote(id = '') {
+            const title = document.getElementById('modal-note-title').value || 'Untitled Note';
+            const content = document.getElementById('modal-note-content').value;
+            const payload = { user_id: state.user.id, title, content, updated_at: new Date().toISOString() };
+
+            try {
+                if(id) {
+                    await sb.from('user_notes').update(payload).eq('id', id);
+                } else {
+                    await sb.from('user_notes').insert(payload);
+                }
+                document.getElementById('note-modal').remove();
+                loadNotesData();
+            } catch(e) { alert(e.message); }
         }
 
-        async function loadUsers() {
-            const { data } = await sb.from('profiles').select('*');
-            const list = document.getElementById('users-list');
-            if(!list || state.currentView !== 'users') return;
-            list.innerHTML = (data || []).map(u => `
-                <div class="glass-card p-4 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <img src="${u.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.id}`}" class="w-10 h-10 rounded-full border object-cover">
-                        <div>
-                            <p class="font-bold text-sm text-navy">${u.name}</p>
-                            <div class="flex flex-wrap gap-1 mt-1">${(u.tags || u.division || 'Member').split(',').map(t => `<span class="tag">${t.trim()}</span>`).join('')}</div>
-                        </div>
-                    </div>
-                    ${state.isAdmin ? `<button onclick="window.editUserProfile('${u.id}', '${u.name}', '${u.tags || u.division || ''}')" class="text-navy p-2"><i class="fas fa-edit"></i></button>` : ''}
-                </div>`).join('') || '<p class="text-center text-slate-400">No users found.</p>';
+        async function deleteCloudNote(id) {
+            if(!confirm("Delete this note from the cloud?")) return;
+            try {
+                await sb.from('user_notes').delete().eq('id', id);
+                document.getElementById('note-modal').remove();
+                loadNotesData();
+            } catch(e) { alert(e.message); }
         }
 
-        // --- UI Interactions ---
+        // --- Device Pin Security Pipeline ---
+        let currentPinInput = "";
+        let pinTargetCallback = null;
+
+        function checkPinProtectionOnBoot() {
+            const setupPin = localStorage.getItem('dutylog_pin');
+            if (setupPin) {
+                document.getElementById('pin-cancel-btn').style.display = 'none';
+                document.getElementById('passcode-screen').classList.remove('hidden');
+                pinTargetCallback = (pin) => {
+                    if (pin === setupPin) {
+                        document.getElementById('passcode-screen').classList.add('hidden');
+                        clearPin();
+                    } else {
+                        document.getElementById('passcode-msg').innerText = "Incorrect Pin, Try Again";
+                        document.getElementById('passcode-msg').classList.add('text-red-500');
+                        clearPin();
+                    }
+                };
+            }
+        }
+
+        function togglePinConfiguration() {
+            const setupPin = localStorage.getItem('dutylog_pin');
+            if (setupPin) {
+                if(confirm("Disable device authentication?")) {
+                    localStorage.removeItem('dutylog_pin');
+                    router.navigate('dashboard');
+                }
+            } else {
+                document.getElementById('pin-cancel-btn').style.display = 'block';
+                document.getElementById('passcode-title').innerText = "Choose 4-Digit PIN";
+                document.getElementById('passcode-screen').classList.remove('hidden');
+                pinTargetCallback = (firstPin) => {
+                    localStorage.setItem('dutylog_pin', firstPin);
+                    document.getElementById('passcode-screen').classList.add('hidden');
+                    alert("Device PIN Activated successfully.");
+                    clearPin();
+                    router.navigate('profile');
+                };
+            }
+        }
+
+        function pressPin(num) {
+            if (currentPinInput.length >= 4) return;
+            currentPinInput += num;
+            document.getElementById(`dot-${currentPinInput.length - 1}`).classList.add('filled');
+            if (currentPinInput.length === 4) {
+                setTimeout(() => {
+                    pinTargetCallback(currentPinInput);
+                }, 150);
+            }
+        }
+        function clearPin() {
+            currentPinInput = "";
+            for(let i=0; i<4; i++) document.getElementById(`dot-${i}`).classList.remove('filled');
+        }
+        function cancelPin() {
+            document.getElementById('passcode-screen').classList.add('hidden');
+            clearPin();
+        }
+
+        // Prompt user right after successful login session detect
+        function checkPasscodeOnboarding() {
+            if (!localStorage.getItem('dutylog_pin') && !localStorage.getItem('dutylog_pin_declined')) {
+                setTimeout(() => {
+                    if (confirm("Would you like to secure this device with a quick 4-digit app passcode?")) {
+                        togglePinConfiguration();
+                    } else {
+                        localStorage.setItem('dutylog_pin_declined', 'true');
+                    }
+                }, 800);
+            }
+        }
+
+        // --- Photo Processing Engine ---
+        function uploadCompressedAvatar(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = async function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Force optimized squaring constraints
+                    const size = 160; 
+                    canvas.width = size; canvas.height = size;
+                    
+                    const scale = Math.max(size / img.width, size / img.height);
+                    const x = (size - img.width * scale) / 2;
+                    const y = (size - img.height * scale) / 2;
+                    ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+                    
+                    // Compress to lightweight high-density baseline JPEG string
+                    const base64Str = canvas.toDataURL('image/jpeg', 0.7);
+                    
+                    document.getElementById('profile-img').src = base64Str;
+                    state.profile.avatar_url = base64Str;
+                    
+                    await sb.from('profiles').update({ avatar_url: base64Str }).eq('id', state.user.id);
+                    saveLocalCache('users', []); // Invalidate directory cache
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // --- Form Calculation Assistants ---
         window.togglePassword = (id) => {
             const el = document.getElementById(id);
             el.type = el.type === 'password' ? 'text' : 'password';
@@ -343,7 +596,7 @@
             const [sH, sM] = start.split(':').map(Number);
             const [eH, eM] = end.split(':').map(Number);
             let diff = (eH * 60 + eM) - (sH * 60 + sM);
-            if(diff < 0) diff += 1440;
+            if(diff < 0) diff += 1440; // overnight handle protection
             const hrs = (diff / 60).toFixed(2);
             const display = document.getElementById('calc-display');
             if(display) display.innerText = hrs;
@@ -351,32 +604,42 @@
             if(input) input.value = hrs;
         };
 
-        window.editAvatar = async () => {
-            const url = prompt("Direct link to your profile image:", state.profile?.avatar_url || "");
-            if (url !== null) {
-                const { error } = await sb.from('profiles').update({ avatar_url: url }).eq('id', state.user.id);
-                if (!error) {
-                    state.profile.avatar_url = url;
-                    router.navigate('profile');
-                } else alert(error.message);
-            }
+        // --- System Bootstrapper ---
+        const finalizeAppStateLoad = () => {
+            if (state.initialized) return;
+            state.initialized = true;
+            const loader = document.getElementById('init-loader');
+            loader.style.opacity = '0';
+            setTimeout(() => { loader.style.display = 'none'; checkPinProtectionOnBoot(); }, 300);
         };
 
-        async function init() {
-            const loader = document.getElementById('init-loader');
-            sb.auth.onAuthStateChange(async (event, session) => {
-                if (session) {
-                    state.user = session.user;
+        async function processSessionSync(session) {
+            if (session) {
+                state.user = session.user;
+                try {
                     const { data } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
                     state.profile = data;
-                    await router.navigate('dashboard');
-                } else {
-                    state.user = null;
-                    state.profile = null;
-                    await router.navigate('welcome');
-                }
-                loader.style.opacity = '0';
-                setTimeout(() => loader.style.display = 'none', 300);
+                } catch (e) { console.error(e); }
+                await router.navigate('dashboard');
+                checkPasscodeOnboarding();
+            } else {
+                state.user = null;
+                state.profile = null;
+                await router.navigate('welcome');
+            }
+            finalizeAppStateLoad();
+        }
+
+        async function init() {
+            // 3-second failsafe network shield bypass
+            const failsafe = setTimeout(async () => {
+                const { data: { session } } = await sb.auth.getSession();
+                processSessionSync(session);
+            }, 3000);
+
+            sb.auth.onAuthStateChange(async (event, session) => {
+                clearTimeout(failsafe);
+                processSessionSync(session);
             });
         }
 
