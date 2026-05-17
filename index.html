@@ -14,7 +14,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        :root { --navy: #1B263B; --green: #00853F; --light-bg: #F8F9FA; --cyber-blue: #00E5FF; }
+        :root { --navy: #1B263B; --green: #00853F; --light-bg: #F8F9FA; }
         body { font-family: 'Inter', sans-serif; background-color: var(--light-bg); -webkit-tap-highlight-color: transparent; margin: 0; }
         .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-radius: 1.5rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); }
         .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 0.7rem; color: #94A3B8; cursor: pointer; flex: 1; transition: color 0.2s; }
@@ -36,6 +36,9 @@
         .tag { padding: 4px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: uppercase; background: #E2E8F0; color: #475569; }
         .tag-badge { background: #E0F2FE; color: #0369A1; }
         .back-btn { display: flex; align-items: center; gap: 8px; color: var(--navy); font-weight: 600; margin-bottom: 2rem; cursor: pointer; }
+        
+        .tab-btn { padding: 0.6rem 1rem; font-size: 0.75rem; font-weight: 700; border-radius: 0.75rem; color: #64748B; background: #F1F5F9; transition: all 0.2s; }
+        .tab-btn.active { background: var(--navy); color: white; }
     </style>
 </head>
 <body>
@@ -54,7 +57,7 @@
             <button onclick="router.navigate('dashboard')" class="nav-item active" data-view="dashboard"><i class="fas fa-home text-lg"></i><span>Dashboard</span></button>
             <button onclick="router.navigate('feed')" class="nav-item" data-view="feed"><i class="fas fa-images text-lg"></i><span>Feed</span></button>
             <button onclick="router.navigate('add-duty')" class="nav-item bg-white border-2 border-[#00853F] !text-[#00853F] p-3 -mt-10 rounded-full shadow-xl h-14 w-14 justify-center"><i class="fas fa-plus text-xl"></i></button>
-            <button onclick="router.navigate('leaderboard')" class="nav-item" data-view="leaderboard"><i class="fas fa-trophy text-lg"></i><span>Standings</span></button>
+            <button onclick="router.navigate('notes-view')" class="nav-item" data-view="notes-view"><i class="fas fa-clipboard-list text-lg"></i><span>Notes Log</span></button>
             <button onclick="router.navigate('profile')" class="nav-item" data-view="profile"><i class="fas fa-user text-lg"></i><span>Profile</span></button>
         </nav>
     </div>
@@ -71,9 +74,11 @@
             totalHoursNumeric: 0,
             currentDuties: [],
             feedPosts: [],
-            leaderboardUsers: [],
             currentView: null,
             editingDutyId: null,
+            timeInputMode: 'duration', // 'duration' or 'window'
+            calculatedHours: 0,
+            calculatedMinutes: 0,
             initialized: false
         };
 
@@ -134,8 +139,11 @@
             return duties.map(d => {
                 const t = parseDatabaseHoursToUiTime(d.total_hours);
                 return `<div class="glass-card p-4 flex justify-between items-center cursor-pointer hover:bg-slate-50" onclick="triggerEditDuty('${d.id}')">
-                    <div><p class="font-bold text-sm text-navy">${d.title}</p><p class="text-[10px] text-slate-400">${d.date}</p></div>
-                    <p class="font-black text-green-600 text-sm">+${t.hours}h ${t.minutes}m</p>
+                    <div>
+                        <p class="font-bold text-sm text-navy">${d.title}</p>
+                        <p class="text-[10px] text-slate-400">${d.date}</p>
+                    </div>
+                    <p class="font-black text-green-600 text-sm flex-shrink-0 ml-2">+${t.hours}h ${t.minutes}m</p>
                 </div>`;
             }).join('') || '<p class="text-center py-10 text-slate-400">No shifts saved yet.</p>';
         }
@@ -145,7 +153,7 @@
                 <div class="w-24 h-24 bg-white border-4 border-[#00853F] rounded-[2rem] flex items-center justify-center shadow-2xl"><i class="fas fa-clock text-[#00853F] text-5xl"></i></div>
                 <div>
                     <h1 class="text-4xl font-black text-[#1B263B]">DutyLog Pro</h1>
-                    <p class="text-xs text-slate-400 font-medium mt-1">Social Feed & Operational Hour Tracking</p>
+                    <p class="text-xs text-slate-400 font-medium mt-1">Operational Hour Tracking & Notes Utility</p>
                 </div>
                 <div class="w-full space-y-3 px-4 max-w-xs">
                     <button onclick="router.navigate('login')" class="btn-primary">Login</button>
@@ -208,17 +216,33 @@
                     <div id="feed-container" class="space-y-6 pb-12">${renderFeedHTML(state.feedPosts.length ? state.feedPosts : cachedFeed)}</div>
                 </div>`;
             },
-            leaderboard: async () => {
-                setTimeout(loadLeaderboard, 10);
+            'notes-view': async () => {
+                setTimeout(loadDashboardData, 10);
+                const notesList = state.currentDuties.filter(d => d.notes && d.notes.trim() !== '');
+                
+                let notesContent = notesList.map(d => `
+                    <div class="glass-card p-4 bg-white border border-slate-100 space-y-2 relative">
+                        <div class="flex justify-between items-start border-b pb-2 border-slate-50">
+                            <div>
+                                <h4 class="font-bold text-sm text-navy">${d.title}</h4>
+                                <p class="text-[10px] text-slate-400 font-medium">${d.date}</p>
+                            </div>
+                            <button onclick="triggerEditDuty('${d.id}')" class="text-[11px] text-green-600 font-bold bg-green-50 px-2.5 py-1 rounded-lg"><i class="fas fa-pen mr-1"></i>Edit</button>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed whitespace-pre-line italic">"${d.notes}"</p>
+                    </div>
+                `).join('');
+
+                if (!notesContent) {
+                    notesContent = '<p class="text-center py-12 text-slate-400 text-xs">No descriptive logs or active clinical reports found.</p>';
+                }
+
                 return `<div class="space-y-6">
                     <div>
-                        <h2 class="text-2xl font-bold text-navy">Division Rankings</h2>
-                        <p class="text-xs text-slate-400 mt-0.5">Overall logged hours across all active members</p>
+                        <h2 class="text-2xl font-bold text-navy">Operational Notes Log</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Timeline of saved logs, clinical updates, and event descriptions.</p>
                     </div>
-                    <div class="glass-card p-5 space-y-4">
-                        <h4 class="font-bold text-sm text-navy"><i class="fas fa-list-ol text-green-600 mr-2"></i>Unit Hours Leaderboard</h4>
-                        <div id="leaderboard-mount" class="space-y-3"><p class="text-center text-xs text-slate-400">Loading standings...</p></div>
-                    </div>
+                    <div class="space-y-4 pb-12">${notesContent}</div>
                 </div>`;
             },
             'add-duty': async () => {
@@ -228,19 +252,47 @@
                     if (found) targetLog = found;
                 }
                 const parsedTime = parseDatabaseHoursToUiTime(targetLog.total_hours);
-                setTimeout(() => buildScrollWheelSelectors(parsedTime.hours, parsedTime.minutes), 5);
+                
+                state.calculatedHours = parsedTime.hours;
+                state.calculatedMinutes = parsedTime.minutes;
+                state.timeInputMode = 'duration'; 
+
+                setTimeout(() => {
+                    switchTimeInputMode('duration', parsedTime.hours, parsedTime.minutes);
+                    updateNotesCounter();
+                }, 15);
 
                 return `<div class="px-2">
-                    <h2 class="text-2xl font-bold text-navy mb-6">${state.editingDutyId ? 'Edit Log' : 'Log Activity'}</h2>
+                    <h2 class="text-2xl font-bold text-navy mb-6">${state.editingDutyId ? 'Modify Shift Record' : 'Log Operational Duty'}</h2>
                     <form onsubmit="handleSaveDuty(event)" class="space-y-4">
                         <input type="text" id="duty-title" placeholder="Event / Shift Title" value="${targetLog.title}" required class="input-field">
                         <input type="date" id="duty-date" value="${targetLog.date}" class="input-field">
-                        <div class="glass-card p-4 space-y-2">
-                            <label class="text-xs font-bold text-slate-500 block text-center">Scroll to Select Shift Duration</label>
-                            <div id="scroller-mount"></div>
-                            <div class="text-center text-xs font-bold text-green-600 mt-2">Duration: <span id="calc-display">0h 0m</span></div>
+                        
+                        <div class="glass-card p-4 space-y-4">
+                            <div class="flex justify-center gap-2 border-b pb-3 border-slate-100">
+                                <button type="button" id="tab-duration" onclick="switchTimeInputMode('duration')" class="tab-btn active">Log Duration</button>
+                                <button type="button" id="tab-window" onclick="switchTimeInputMode('window')" class="tab-btn">Log Start / End</button>
+                            </div>
+                            
+                            <div id="time-input-container-mount"></div>
+                            
+                            <div class="text-center text-xs font-bold text-green-600 mt-2">Calculated Total Time: <span id="calc-display">0h 0m</span></div>
                         </div>
-                        <textarea id="duty-notes" placeholder="Optional notes..." class="input-field min-h-[80px]">${targetLog.notes || ''}</textarea>
+                        
+                        <div class="glass-card p-4 border border-slate-100 bg-white space-y-2">
+                            <div class="flex justify-between items-center">
+                                <label class="text-xs font-bold text-navy flex items-center gap-1.5">
+                                    <i class="fas fa-clipboard-list text-green-600"></i> Duty Summary & Operational Notes
+                                </label>
+                                <span id="notes-counter" class="text-[10px] text-slate-400 font-medium">0 / 400 characters</span>
+                            </div>
+                            <textarea id="duty-notes" 
+                                      placeholder="Provide details about clinical tasks, operations, or incidents handled..." 
+                                      maxlength="400"
+                                      oninput="updateNotesCounter()"
+                                      class="w-full bg-slate-50 text-sm p-3 rounded-xl border border-slate-200 outline-none focus:border-green-600 transition-all min-h-[90px] text-navy placeholder:text-slate-400 leading-relaxed">${targetLog.notes || ''}</textarea>
+                        </div>
+
                         <button type="submit" id="duty-save-btn" class="btn-primary !bg-[#00853F]">Save Shift</button>
                     </form>
                 </div>`;
@@ -261,14 +313,83 @@
                         <input type="text" id="profile-name" value="${state.profile?.name || ''}" class="input-field text-sm" required placeholder="Enter name">
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-slate-400 block mb-1">Badge / Rank (Type Anything)</label>
-                        <input type="text" id="profile-badge" value="${state.profile?.badge || ''}" class="input-field text-sm font-semibold" required placeholder="e.g. Cadet, Corporal, Staff">
+                        <label class="text-xs font-bold text-slate-400 block mb-1">Badge / Rank</label>
+                        <input type="text" id="profile-badge" value="${state.profile?.badge || ''}" class="input-field text-sm font-semibold" required placeholder="e.g. Cadet">
                     </div>
                     <button type="submit" id="profile-save-btn" class="w-full bg-[#00853F] text-white p-3 rounded-xl font-bold text-sm shadow-md">Save Changes</button>
                 </form>
 
                 <button onclick="handleLogout()" class="w-full bg-red-500 text-white p-4 rounded-2xl font-bold shadow-md">Sign Out Account</button>
             </div>`
+        };
+
+        window.updateNotesCounter = function() {
+            const txt = document.getElementById('duty-notes');
+            const counter = document.getElementById('notes-counter');
+            if(txt && counter) {
+                counter.innerText = `${txt.value.length} / 400 characters`;
+            }
+        };
+
+        window.switchTimeInputMode = function(mode, defaultH = 0, defaultM = 0) {
+            state.timeInputMode = mode;
+            document.getElementById('tab-duration').classList.toggle('active', mode === 'duration');
+            document.getElementById('tab-window').classList.toggle('active', mode === 'window');
+            
+            const mount = document.getElementById('time-input-container-mount');
+            if (!mount) return;
+
+            if (mode === 'duration') {
+                let hourOptions = "", minOptions = "";
+                for (let i = 0; i <= 24; i++) hourOptions += `<option value="${i}" ${i === defaultH ? 'selected' : ''}>${i}</option>`;
+                for (let i = 0; i < 60; i += 5) minOptions += `<option value="${i}" ${i === defaultM ? 'selected' : ''}>${i < 10 ? '0' + i : i}</option>`;
+                
+                mount.innerHTML = `
+                    <div class="scroller-container">
+                        <div class="scroll-wheel-column"><select id="scroll-hr" class="scroll-select" onchange="updateScrollCalculation()">${hourOptions}</select></div>
+                        <div class="text-xl font-black text-slate-400 px-2">:</div>
+                        <div class="scroll-wheel-column"><select id="scroll-min" class="scroll-select" onchange="updateScrollCalculation()">${minOptions}</select></div>
+                    </div>`;
+                updateScrollCalculation();
+            } else {
+                mount.innerHTML = `
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Start Time</label>
+                            <input type="time" id="time-start" class="input-field font-bold text-center" onchange="updateWindowCalculation()">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">End Time</label>
+                            <input type="time" id="time-end" class="input-field font-bold text-center" onchange="updateWindowCalculation()">
+                        </div>
+                    </div>`;
+                document.getElementById('calc-display').innerText = `${state.calculatedHours}h ${state.calculatedMinutes}m`;
+            }
+        };
+
+        window.updateScrollCalculation = function() {
+            const hrEl = document.getElementById('scroll-hr');
+            const minEl = document.getElementById('scroll-min');
+            if(!hrEl || !minEl) return;
+            state.calculatedHours = parseInt(hrEl.value) || 0;
+            state.calculatedMinutes = parseInt(minEl.value) || 0;
+            document.getElementById('calc-display').innerText = `${state.calculatedHours}h ${state.calculatedMinutes}m`;
+        };
+
+        window.updateWindowCalculation = function() {
+            const startVal = document.getElementById('time-start').value;
+            const endVal = document.getElementById('time-end').value;
+            if (!startVal || !endVal) return;
+
+            const [startH, startM] = startVal.split(':').map(Number);
+            let [endH, endM] = endVal.split(':').map(Number);
+
+            let diffMins = (endH * 60 + endM) - (startH * 60 + startM);
+            if (diffMins < 0) diffMins += 24 * 60; // Handles overnight shifts gracefully
+
+            state.calculatedHours = Math.floor(diffMins / 60);
+            state.calculatedMinutes = diffMins % 60;
+            document.getElementById('calc-display').innerText = `${state.calculatedHours}h ${state.calculatedMinutes}m`;
         };
 
         function renderFeedHTML(posts) {
@@ -309,30 +430,6 @@
             }).join('');
         }
 
-        function buildScrollWheelSelectors(selectedHours = 0, selectedMins = 0) {
-            const mount = document.getElementById('scroller-mount');
-            if (!mount) return;
-            let hourOptions = "", minOptions = "";
-            for (let i = 0; i <= 48; i++) hourOptions += `<option value="${i}" ${i === selectedHours ? 'selected' : ''}>${i}</option>`;
-            for (let i = 0; i < 60; i += 5) minOptions += `<option value="${i}" ${i === selectedMins ? 'selected' : ''}>${i < 10 ? '0' + i : i}</option>`;
-            mount.innerHTML = `
-                <div class="scroller-container">
-                    <div class="scroll-wheel-column"><select id="scroll-hr" class="scroll-select" onchange="updateScrollCalculation()">${hourOptions}</select></div>
-                    <div class="text-xl font-black text-slate-400 px-2">:</div>
-                    <div class="scroll-wheel-column"><select id="scroll-min" class="scroll-select" onchange="updateScrollCalculation()">${minOptions}</select></div>
-                </div>`;
-            updateScrollCalculation();
-        }
-
-        window.updateScrollCalculation = function() {
-            const hrEl = document.getElementById('scroll-hr');
-            const minEl = document.getElementById('scroll-min');
-            if(!hrEl || !minEl) return;
-            const h = parseInt(hrEl.value) || 0;
-            const m = parseInt(minEl.value) || 0;
-            document.getElementById('calc-display').innerText = `${h}h ${m}m`;
-        };
-
         async function loadDashboardData() {
             try {
                 const { data, error } = await sb.from('hours_logs').select('*').eq('user_id', state.user.id).order('date', { ascending: false });
@@ -370,46 +467,6 @@
                     const fCont = document.getElementById('feed-container');
                     if(fCont) fCont.innerHTML = renderFeedHTML(state.feedPosts);
                 }
-            } catch(e){ console.error(e); }
-        }
-
-        async function loadLeaderboard() {
-            try {
-                const { data: profiles } = await sb.from('profiles').select('*');
-                const { data: allLogs } = await sb.from('hours_logs').select('user_id, total_hours');
-                
-                const tableData = (profiles || []).map(p => {
-                    let totalMins = 0;
-                    (allLogs || []).filter(l => l.user_id === p.id).forEach(l => {
-                        const t = parseDatabaseHoursToUiTime(l.total_hours);
-                        totalMins += (t.hours * 60) + t.minutes;
-                    });
-                    return { ...p, calculatedMinutes: totalMins };
-                }).sort((a,b) => b.calculatedMinutes - a.calculatedMinutes);
-
-                const mount = document.getElementById('leaderboard-mount');
-                if(!mount) return;
-                
-                mount.innerHTML = tableData.map((u, i) => {
-                    const isMe = u.id === state.user.id;
-                    const hrs = Math.floor(u.calculatedMinutes / 60);
-                    const remainingMins = u.calculatedMinutes % 60;
-                    return `
-                    <div class="flex items-center justify-between p-3 rounded-xl ${isMe ? 'bg-green-50 border border-green-200' : 'bg-slate-50 border border-slate-100'}">
-                        <div class="flex items-center gap-3">
-                            <span class="font-black text-xs text-slate-400 w-4 text-center">${i + 1}</span>
-                            <img src="${getUserPFP(u.avatar_url, u.id)}" class="w-8 h-8 rounded-full object-cover">
-                            <div>
-                                <div class="flex items-center gap-1.5">
-                                    <span class="font-bold text-xs text-navy">${u.name || 'Member'} ${isMe ? '(You)' : ''}</span>
-                                    <span class="tag tag-badge !text-[7px] !py-0.5 !px-1.5">${u.badge || 'Cadet'}</span>
-                                </div>
-                                <p class="text-[9px] text-slate-400 font-medium">${u.division || 'Cardiff'}</p>
-                            </div>
-                        </div>
-                        <span class="font-black text-sm text-green-600">${hrs}h ${remainingMins}m</span>
-                    </div>`;
-                }).join('');
             } catch(e){ console.error(e); }
         }
 
@@ -565,10 +622,17 @@
 
         async function handleSaveDuty(e) {
             e.preventDefault();
-            const h = parseInt(document.getElementById('scroll-hr').value) || 0;
-            const m = parseInt(document.getElementById('scroll-min').value) || 0;
+            const h = state.calculatedHours;
+            const m = state.calculatedMinutes;
             const decimalVal = parseFloat(`${h}.${m < 10 ? '0' + m : m}`);
-            const logObj = { user_id: state.user.id, title: document.getElementById('duty-title').value, date: document.getElementById('duty-date').value, notes: document.getElementById('duty-notes').value, total_hours: decimalVal };
+            
+            const logObj = { 
+                user_id: state.user.id, 
+                title: document.getElementById('duty-title').value, 
+                date: document.getElementById('duty-date').value, 
+                notes: document.getElementById('duty-notes').value, 
+                total_hours: decimalVal 
+            };
             
             try {
                 if (state.editingDutyId) {
@@ -578,7 +642,7 @@
                     await sb.from('hours_logs').insert(logObj);
                 }
                 router.navigate('dashboard');
-            } catch(err) { alert(err.message); }
+            } catch(err) { alert("Save Error: " + err.message); }
         }
 
         window.uploadCompressedAvatar = function(event) {
