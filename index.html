@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DutyLog</title>
     
-    <!-- FIXED: Updated to modern spec based on deprecation warning -->
+    <!-- Modern PWA Capability Tags -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DutyLog">
@@ -355,11 +355,13 @@
             } catch(e) { console.error(e); }
         }
 
-        // --- Auth Pipeline ---
+        // --- Auth Pipeline (HARDENED CONTROLS) ---
         async function handleLogin(e) {
             e.preventDefault();
             const btn = document.getElementById('login-btn');
-            const email = document.getElementById('login-email').value;
+            if (btn.disabled) return;
+
+            const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('login-password').value;
             btn.innerText = 'Signing in...'; btn.disabled = true;
 
@@ -375,22 +377,50 @@
         async function handleSignup(e) {
             e.preventDefault();
             const btn = document.getElementById('signup-btn');
-            const name = document.getElementById('signup-name').value;
-            const division = document.getElementById('signup-division').value;
-            const email = document.getElementById('signup-email').value;
+            if (btn.disabled) return;
+
+            const name = document.getElementById('signup-name').value.trim();
+            const division = document.getElementById('signup-division').value.trim();
+            const email = document.getElementById('signup-email').value.trim();
             const password = document.getElementById('signup-password').value;
+
             btn.innerText = 'Registering Engine...'; btn.disabled = true;
 
             try {
-                const { data, error } = await sb.auth.signUp({ email, password });
+                // Secure user metadata packaging pipeline
+                const { data, error } = await sb.auth.signUp({ 
+                    email, 
+                    password,
+                    options: {
+                        data: {
+                            name: name,
+                            division: division
+                        }
+                    }
+                });
                 if (error) throw error;
-                if (data.user) {
-                    await sb.from('profiles').upsert({ id: data.user.id, name, division });
-                    alert("Registration complete! Welcome to DutyLog.");
-                    router.navigate('login');
+                
+                if (!data || !data.user) {
+                    throw new Error("No secure user engine response returned.");
                 }
+
+                // Generous structural thread execution sleep to let DB tables index the baseline user id
+                await new Promise(resolve => setTimeout(resolve, 800));
+
+                // Upsert structural details directly into profiles public schema matrix
+                const { error: profileError } = await sb.from('profiles').upsert({ 
+                    id: data.user.id, 
+                    name: name, 
+                    division: division 
+                });
+                
+                if (profileError) throw profileError;
+
+                alert("Registration complete! Welcome to DutyLog.");
+                router.navigate('login');
             } catch (err) {
-                alert(err.message);
+                console.error("Critical Auth Registration Trace:", err);
+                alert("Database Error: " + (err.details || err.message || "Public table configuration mismatch. See console logs."));
                 btn.innerText = 'Create Account'; btn.disabled = false;
             }
         }
