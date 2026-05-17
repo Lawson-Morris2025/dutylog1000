@@ -379,21 +379,21 @@
                 const { data: allLogs } = await sb.from('hours_logs').select('user_id, total_hours');
                 
                 const tableData = (profiles || []).map(p => {
-                    let mins = 0;
+                    let totalMins = 0;
                     (allLogs || []).filter(l => l.user_id === p.id).forEach(l => {
                         const t = parseDatabaseHoursToUiTime(l.total_hours);
-                        mins += (t.hours * 60) + t.minutes;
+                        totalMins += (t.hours * 60) + t.minutes;
                     });
-                    return { ...p, hours: mins / 60 };
-                }).sort((a,b) => b.hours - a.hours);
+                    return { ...p, calculatedMinutes: totalMins };
+                }).sort((a,b) => b.calculatedMinutes - a.calculatedMinutes);
 
                 const mount = document.getElementById('leaderboard-mount');
                 if(!mount) return;
                 
                 mount.innerHTML = tableData.map((u, i) => {
                     const isMe = u.id === state.user.id;
-                    const hrs = Math.floor(u.hours);
-                    const remainingMins = Math.round((u.hours - hrs) * 60);
+                    const hrs = Math.floor(u.calculatedMinutes / 60);
+                    const remainingMins = u.calculatedMinutes % 60;
                     return `
                     <div class="flex items-center justify-between p-3 rounded-xl ${isMe ? 'bg-green-50 border border-green-200' : 'bg-slate-50 border border-slate-100'}">
                         <div class="flex items-center gap-3">
