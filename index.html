@@ -2,27 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DutyLog Pro</title>
     
-    <!-- Modern PWA Capability Tags -->
+    <!-- Strict Progressive Web App (PWA) Mobile Handling Tags -->
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DutyLog">
+    
+    <!-- Dynamic Manifest Injection for Independent Home Screen Standalone Execution -->
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkR1dHlMb2cgUHJvIiwKICAic2hvcnRfbmFtZSI6ICJEdXR5TG9nIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNGOEY5RkEiLAogICJ0aGVtZV9jb2xvciI6ICIjMUIyNjNCIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9hcGkuZGljZWJlYXIuY29tLzcueC9pZGVudGljb24vc3ZnP3NlZWQ9ZHV0eWxvZyIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        :root { --navy: #1B263B; --green: #00853F; --light-bg: #F8F9FA; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--light-bg); -webkit-tap-highlight-color: transparent; margin: 0; }
+        :root { --navy: #1B263B; --green: #00853F; --light-bg: #F8F9FA; --red: #DC2626; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--light-bg); -webkit-tap-highlight-color: transparent; margin: 0; padding-top: env(safe-area-inset-top); }
         .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-radius: 1.5rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); }
         .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 0.7rem; color: #94A3B8; cursor: pointer; flex: 1; transition: color 0.2s; }
         .nav-item.active { color: var(--green); }
         .input-field { width: 100%; padding: 0.8rem; border-radius: 0.8rem; border: 1px solid #e2e8f0; outline: none; font-size: 16px; transition: border 0.2s; background: white; color: var(--navy); }
         .input-field:focus { border-color: var(--green); }
         html, body { overflow: hidden; height: 100%; position: fixed; width: 100%; }
-        #view-container { overflow-y: auto; height: 100vh; -webkit-overflow-scrolling: touch; }
+        #view-container { overflow-y: auto; height: 100vh; -webkit-overflow-scrolling: touch; padding-bottom: calc(120px + env(safe-area-inset-bottom)); }
         .btn-primary { background: var(--navy); color: white; padding: 1rem; border-radius: 1rem; font-weight: bold; width: 100%; transition: all 0.2s; border: none; cursor: pointer; }
         .btn-primary:active { transform: scale(0.98); opacity: 0.9; }
         
@@ -39,6 +43,12 @@
         
         .tab-btn { padding: 0.6rem 1rem; font-size: 0.75rem; font-weight: 700; border-radius: 0.75rem; color: #64748B; background: #F1F5F9; transition: all 0.2s; }
         .tab-btn.active { background: var(--navy); color: white; }
+        
+        /* DRABSC Accordion Styles */
+        .drabsc-trigger { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 1rem; text-align: left; font-weight: 800; border-radius: 1rem; transition: background 0.2s; }
+        .drabsc-content { max-height: 0; overflow: hidden; transition: max-height 0.25s ease-out; padding: 0 1rem; font-size: 0.85rem; color: #475569; }
+        .drabsc-item.open .drabsc-content { max-height: 200px; padding: 0.5rem 1rem 1rem 1rem; }
+        .drabsc-letter { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 0.5rem; font-weight: 900; color: white; font-size: 1.1rem; }
     </style>
 </head>
 <body>
@@ -51,7 +61,7 @@
 
     <!-- App Shell -->
     <div id="app">
-        <main id="view-container" class="px-4 pt-6 max-w-[600px] mx-auto pb-32"></main>
+        <main id="view-container" class="px-4 pt-6 max-w-[600px] mx-auto"></main>
         
         <nav id="bottom-nav" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] hidden bg-white border-t px-4 py-3 justify-between items-center z-40 shadow-lg pb-safe">
             <button onclick="router.navigate('dashboard')" class="nav-item active" data-view="dashboard"><i class="fas fa-home text-lg"></i><span>Dashboard</span></button>
@@ -76,9 +86,10 @@
             feedPosts: [],
             currentView: null,
             editingDutyId: null,
-            timeInputMode: 'duration', // 'duration' or 'window'
+            timeInputMode: 'duration',
             calculatedHours: 0,
             calculatedMinutes: 0,
+            notesActiveTab: 'logs', // 'logs' or 'drabsc'
             initialized: false
         };
 
@@ -217,32 +228,22 @@
                 </div>`;
             },
             'notes-view': async () => {
-                setTimeout(loadDashboardData, 10);
-                const notesList = state.currentDuties.filter(d => d.notes && d.notes.trim() !== '');
-                
-                let notesContent = notesList.map(d => `
-                    <div class="glass-card p-4 bg-white border border-slate-100 space-y-2 relative">
-                        <div class="flex justify-between items-start border-b pb-2 border-slate-50">
-                            <div>
-                                <h4 class="font-bold text-sm text-navy">${d.title}</h4>
-                                <p class="text-[10px] text-slate-400 font-medium">${d.date}</p>
-                            </div>
-                            <button onclick="triggerEditDuty('${d.id}')" class="text-[11px] text-green-600 font-bold bg-green-50 px-2.5 py-1 rounded-lg"><i class="fas fa-pen mr-1"></i>Edit</button>
-                        </div>
-                        <p class="text-xs text-slate-600 leading-relaxed whitespace-pre-line italic">"${d.notes}"</p>
-                    </div>
-                `).join('');
+                setTimeout(() => {
+                    switchNotesTab(state.notesActiveTab);
+                }, 10);
 
-                if (!notesContent) {
-                    notesContent = '<p class="text-center py-12 text-slate-400 text-xs">No descriptive logs or active clinical reports found.</p>';
-                }
-
-                return `<div class="space-y-6">
+                return `<div class="space-y-4">
                     <div>
-                        <h2 class="text-2xl font-bold text-navy">Operational Notes Log</h2>
-                        <p class="text-xs text-slate-400 mt-0.5">Timeline of saved logs, clinical updates, and event descriptions.</p>
+                        <h2 class="text-2xl font-bold text-navy">Operational Utilities</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Review saved shift notes or access clinical response guides.</p>
                     </div>
-                    <div class="space-y-4 pb-12">${notesContent}</div>
+                    
+                    <div class="flex gap-2 bg-slate-100 p-1 rounded-xl">
+                        <button id="notes-tab-logs" onclick="switchNotesTab('logs')" class="flex-1 py-2.5 text-xs font-bold rounded-lg text-slate-500 transition-all">Shift Logs</button>
+                        <button id="notes-tab-drabsc" onclick="switchNotesTab('drabsc')" class="flex-1 py-2.5 text-xs font-bold rounded-lg text-slate-500 transition-all flex items-center justify-center gap-1.5"><i class="fas fa-heartbeat text-red-500"></i> DRABSC Guide</button>
+                    </div>
+
+                    <div id="notes-tab-content" class="space-y-4 pb-12"></div>
                 </div>`;
             },
             'add-duty': async () => {
@@ -319,8 +320,148 @@
                     <button type="submit" id="profile-save-btn" class="w-full bg-[#00853F] text-white p-3 rounded-xl font-bold text-sm shadow-md">Save Changes</button>
                 </form>
 
+                <div class="glass-card p-5 bg-white space-y-3">
+                    <h3 class="font-bold text-navy text-sm border-b pb-2"><i class="fas fa-bell mr-2 text-blue-500"></i>System Notifications</h3>
+                    <p class="text-[11px] text-slate-400">Receive system-wide native alerts instantly when a new team post is configured to the Feed stream.</p>
+                    <button onclick="requestNotificationAccess()" class="w-full bg-navy text-white p-3 rounded-xl font-bold text-xs shadow-sm"><i class="fas fa-mobile-alt mr-2"></i>Enable Native Push</button>
+                </div>
+
                 <button onclick="handleLogout()" class="w-full bg-red-500 text-white p-4 rounded-2xl font-bold shadow-md">Sign Out Account</button>
             </div>`
+        };
+
+        window.switchNotesTab = function(tab) {
+            state.notesActiveTab = tab;
+            const container = document.getElementById('notes-tab-content');
+            if (!container) return;
+
+            document.getElementById('notes-tab-logs').className = tab === 'logs' ? 'flex-1 py-2.5 text-xs font-bold rounded-lg bg-white text-navy shadow-sm' : 'flex-1 py-2.5 text-xs font-bold rounded-lg text-slate-500';
+            document.getElementById('notes-tab-drabsc').className = tab === 'drabsc' ? 'flex-1 py-2.5 text-xs font-bold rounded-lg bg-white text-navy shadow-sm flex items-center justify-center gap-1.5' : 'flex-1 py-2.5 text-xs font-bold rounded-lg text-slate-500 flex items-center justify-center gap-1.5';
+
+            if (tab === 'logs') {
+                const notesList = state.currentDuties.filter(d => d.notes && d.notes.trim() !== '');
+                let content = notesList.map(d => `
+                    <div class="glass-card p-4 bg-white border border-slate-100 space-y-2 relative">
+                        <div class="flex justify-between items-start border-b pb-2 border-slate-50">
+                            <div>
+                                <h4 class="font-bold text-sm text-navy">${d.title}</h4>
+                                <p class="text-[10px] text-slate-400 font-medium">${d.date}</p>
+                            </div>
+                            <button onclick="triggerEditDuty('${d.id}')" class="text-[11px] text-green-600 font-bold bg-green-50 px-2.5 py-1 rounded-lg"><i class="fas fa-pen mr-1"></i>Edit</button>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed whitespace-pre-line italic">"${d.notes}"</p>
+                    </div>
+                `).join('');
+                container.innerHTML = content || '<p class="text-center py-12 text-slate-400 text-xs">No saved operational updates found.</p>';
+            } else {
+                container.innerHTML = `
+                    <div class="glass-card p-2 bg-white border border-slate-100 space-y-2">
+                        <div class="p-3 bg-red-50 text-red-700 text-xs rounded-xl font-bold flex items-center gap-2">
+                            <i class="fas fa-exclamation-triangle"></i> Primary Survey Assessment Protocol
+                        </div>
+                        
+                        <!-- Danger -->
+                        <div class="drabsc-item border-b border-slate-100" id="drabsc-d">
+                            <button onclick="toggleDrabscItem('drabsc-d')" class="drabsc-trigger">
+                                <div class="flex items-center gap-3">
+                                    <div class="drabsc-letter bg-red-600">D</div>
+                                    <span class="text-xs font-bold text-navy">Danger</span>
+                                </div>
+                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
+                            </button>
+                            <div class="drabsc-content">
+                                Check the surrounding area to ensure it is completely safe for yourself, bystanders, and the casualty before approaching. Remove dynamic environmental hazards.
+                            </div>
+                        </div>
+
+                        <!-- Response -->
+                        <div class="drabsc-item border-b border-slate-100" id="drabsc-r">
+                            <button onclick="toggleDrabscItem('drabsc-r')" class="drabsc-trigger">
+                                <div class="flex items-center gap-3">
+                                    <div class="drabsc-letter bg-orange-500">R</div>
+                                    <span class="text-xs font-bold text-navy">Response</span>
+                                </div>
+                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
+                            </button>
+                            <div class="drabsc-content">
+                                Assess alertness using the AVPU system or standard stimuli. Shake the shoulders gently and speak clearly: <em>"Hello, can you hear me? Open your eyes."</em>
+                            </div>
+                        </div>
+
+                        <!-- Airway -->
+                        <div class="drabsc-item border-b border-slate-100" id="drabsc-a">
+                            <button onclick="toggleDrabscItem('drabsc-a')" class="drabsc-trigger">
+                                <div class="flex items-center gap-3">
+                                    <div class="drabsc-letter bg-yellow-500 text-navy">A</div>
+                                    <span class="text-xs font-bold text-navy">Airway</span>
+                                </div>
+                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
+                            </button>
+                            <div class="drabsc-content">
+                                Check if the airway is open and clear. Perform the head-tilt, chin-lift maneuver (or jaw-thrust if spinal hazard is suspected) to open the airway pathway.
+                            </div>
+                        </div>
+
+                        <!-- Breathing -->
+                        <div class="drabsc-item border-b border-slate-100" id="drabsc-b">
+                            <button onclick="toggleDrabscItem('drabsc-b')" class="drabsc-trigger">
+                                <div class="flex items-center gap-3">
+                                    <div class="drabsc-letter bg-green-600">B</div>
+                                    <span class="text-xs font-bold text-navy">Breathing</span>
+                                </div>
+                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
+                            </button>
+                            <div class="drabsc-content">
+                                Look, listen, and feel for normal breathing for no more than 10 seconds. Check for regular chest rises. Agonal gasps are <strong>not</strong> normal breathing.
+                            </div>
+                        </div>
+
+                        <!-- Shout -->
+                        <div class="drabsc-item border-b border-slate-100" id="drabsc-s">
+                            <button onclick="toggleDrabscItem('drabsc-s')" class="drabsc-trigger">
+                                <div class="flex items-center gap-3">
+                                    <div class="drabsc-letter bg-blue-600">S</div>
+                                    <span class="text-xs font-bold text-navy">Shout (Call 999)</span>
+                                </div>
+                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
+                            </button>
+                            <div class="drabsc-content">
+                                If unresponsive and not breathing normally, shout loudly for immediate assistance. Direct someone nearby to call <strong>999 / 112</strong> and locate an AED immediately.
+                            </div>
+                        </div>
+
+                        <!-- CPR -->
+                        <div class="drabsc-item" id="drabsc-c">
+                            <button onclick="toggleDrabscItem('drabsc-c')" class="drabsc-trigger">
+                                <div class="flex items-center gap-3">
+                                    <div class="drabsc-letter bg-purple-700">C</div>
+                                    <span class="text-xs font-bold text-navy">CPR (Cardiopulmonary Resuscitation)</span>
+                                </div>
+                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
+                            </button>
+                            <div class="drabsc-content">
+                                Begin chest compressions immediately. Deliver 30 high-quality chest compressions at a depth of 5-6cm and a rate of 100-120 bpm, followed by 2 effective rescue breaths.
+                            </div>
+                        </div>
+                    </div>`;
+            }
+        };
+
+        window.toggleDrabscItem = function(elementId) {
+            const item = document.getElementById(elementId);
+            if (!item) return;
+            const isOpen = item.classList.contains('open');
+            
+            // Close all items first for neat accordion animation
+            document.querySelectorAll('.drabsc-item').forEach(el => {
+                el.classList.remove('open');
+                el.querySelector('.fa-chevron-down')?.classList.remove('rotate-180');
+            });
+
+            if (!isOpen) {
+                item.classList.add('open');
+                item.querySelector('.fa-chevron-down')?.classList.add('rotate-180');
+            }
         };
 
         window.updateNotesCounter = function() {
@@ -385,7 +526,7 @@
             let [endH, endM] = endVal.split(':').map(Number);
 
             let diffMins = (endH * 60 + endM) - (startH * 60 + startM);
-            if (diffMins < 0) diffMins += 24 * 60; // Handles overnight shifts gracefully
+            if (diffMins < 0) diffMins += 24 * 60; 
 
             state.calculatedHours = Math.floor(diffMins / 60);
             state.calculatedMinutes = diffMins % 60;
@@ -540,10 +681,39 @@
                     comments: [],
                     created_at: new Date().toISOString()
                 });
+                
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'NEW_POST',
+                        title: state.profile?.name || 'Division Update',
+                        body: desc || 'Shared an operational update with the division feed.'
+                    });
+                }
+
                 document.getElementById('publish-modal').remove();
                 loadFeedPosts();
             } catch(e) { alert("Publish Error: " + e.message); btn.innerText = "Publish Post"; btn.disabled = false; }
         }
+
+        window.requestNotificationAccess = async function() {
+            if (!('Notification' in window)) {
+                alert("This mobile operating system or browser context does not support push services natively.");
+                return;
+            }
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                alert("Push notification subscription established successfully!");
+                if ('serviceWorker' in navigator) {
+                    const reg = await navigator.serviceWorker.ready;
+                    reg.showNotification("DutyLog Pro Enabled", {
+                        body: "You'll now receive background alerts directly when division updates match your unit criteria.",
+                        icon: "https://api.dicebear.com/7.x/identicon/svg?seed=dutylog"
+                    });
+                }
+            } else {
+                alert("Notification access denied. Check your device settings app to re-enable permissions.");
+            }
+        };
 
         window.toggleLikePost = async function(postId, currentlyLiked) {
             try {
@@ -681,6 +851,23 @@
         }
 
         async function init() {
+            if ('serviceWorker' in navigator) {
+                const swCode = `
+                    self.addEventListener('push', function(e) {
+                        const data = e.data ? e.data.json() : { title: 'DutyLog Update', body: 'New division broadcast published.' };
+                        e.waitUntil(self.registration.showNotification(data.title, { body: data.body, icon: 'https://api.dicebear.com/7.x/identicon/svg?seed=dutylog' }));
+                    });
+                    self.addEventListener('message', function(e) {
+                        if(e.data && e.data.type === 'NEW_POST') {
+                            self.registration.showNotification(e.data.title, { body: e.data.body });
+                        }
+                    });
+                `;
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+                navigator.serviceWorker.register(swUrl).catch(err => console.log("SW active"));
+            }
+
             try {
                 const { data: { session } } = await sb.auth.getSession();
                 await processSessionSync(session);
