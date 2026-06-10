@@ -34,7 +34,7 @@
         
         #init-loader { position: fixed; inset: 0; background: white; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--green); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 0 vectors { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .tag { padding: 4px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: uppercase; background: #E2E8F0; color: #475569; }
         .tag-badge { background: #E0F2FE; color: #0369A1; }
         .back-btn { display: flex; align-items: center; gap: 8px; color: var(--navy); font-weight: 600; margin-bottom: 2rem; cursor: pointer; }
@@ -99,6 +99,8 @@
                 
                 const container = document.getElementById('view-container');
                 const nav = document.getElementById('bottom-nav');
+                if (!container || !nav) return;
+                
                 const isAuthView = ['welcome', 'login', 'signup'].includes(view);
                 
                 if (!state.user && !isAuthView) {
@@ -116,7 +118,9 @@
                     el.classList.toggle('active', el.getAttribute('data-view') === view);
                 });
                 
-                container.innerHTML = await views[view]();
+                if (views[view]) {
+                    container.innerHTML = await views[view]();
+                }
                 hideLoader();
             }
         };
@@ -356,7 +360,6 @@
             let extractedMinutes = 0;
             let extractedNotes = text;
 
-            // Smart classification matches: e.g. "4 hours", "2.5 hrs", "30 mins"
             const hourMatch = text.match(/(\d+(\.\d+)?)\s*(hr|hour|shift)/i);
             const minMatch = text.match(/(\d+)\s*(min)/i);
 
@@ -373,7 +376,6 @@
                 extractedMinutes = parseInt(minMatch[1]);
             }
 
-            // Populate the form fields dynamically
             const titleEl = document.getElementById('duty-title');
             const notesEl = document.getElementById('duty-notes');
 
@@ -385,10 +387,10 @@
                 updateNotesCounter();
             }
 
-            // Update state engine parameters and update viewport rendering safely
             switchTimeInputMode('duration', extractedHours, extractedMinutes);
             
-            document.getElementById('import-modal').remove();
+            const modal = document.getElementById('import-modal');
+            if (modal) modal.remove();
         };
 
         window.switchNotesTab = function(tab) {
@@ -396,8 +398,11 @@
             const container = document.getElementById('notes-tab-content');
             if (!container) return;
 
-            document.getElementById('notes-tab-logs').className = tab === 'logs' ? 'flex-1 py-2.5 text-xs font-bold rounded-lg bg-white text-navy shadow-sm' : 'flex-1 py-2.5 text-xs font-bold rounded-lg text-slate-500';
-            document.getElementById('notes-tab-drabsc').className = tab === 'drabsc' ? 'flex-1 py-2.5 text-xs font-bold rounded-lg bg-white text-navy shadow-sm flex items-center justify-center gap-1.5' : 'flex-1 py-2.5 text-xs font-bold rounded-lg text-slate-500 flex items-center justify-center gap-1.5';
+            const tabLogs = document.getElementById('notes-tab-logs');
+            const tabDrabsc = document.getElementById('notes-tab-drabsc');
+
+            if (tabLogs) tabLogs.className = tab === 'logs' ? 'flex-1 py-2.5 text-xs font-bold rounded-lg bg-white text-navy shadow-sm' : 'flex-1 py-2.5 text-xs font-bold rounded-lg text-slate-500';
+            if (tabDrabsc) tabDrabsc.className = tab === 'drabsc' ? 'flex-1 py-2.5 text-xs font-bold rounded-lg bg-white text-navy shadow-sm flex items-center justify-center gap-1.5' : 'flex-1 py-2.5 text-xs font-bold rounded-lg text-slate-500 flex items-center justify-center gap-1.5';
 
             if (tab === 'logs') {
                 const notesList = state.currentDuties.filter(d => d.notes && d.notes.trim() !== '');
@@ -560,7 +565,8 @@
                             <input type="time" id="time-end" class="input-field font-bold text-center" onchange="updateWindowCalculation()">
                         </div>
                     </div>`;
-                document.getElementById('calc-display').innerText = `${state.calculatedHours}h ${state.calculatedMinutes}m`;
+                const display = document.getElementById('calc-display');
+                if(display) display.innerText = `${state.calculatedHours}h ${state.calculatedMinutes}m`;
             }
         };
 
@@ -674,7 +680,7 @@
             const name = document.getElementById('profile-name').value;
             const badge = document.getElementById('profile-badge').value;
 
-            btn.innerText = "Saving Changes..."; btn.disabled = true;
+            if (btn) { btn.innerText = "Saving Changes..."; btn.disabled = true; }
             try {
                 await sb.from('profiles').update({ name, badge }).eq('id', state.user.id);
                 state.profile.name = name;
@@ -683,7 +689,7 @@
             } catch(err) {
                 alert("Profile sync completed locally.");
             } finally {
-                btn.innerText = "Save Changes"; btn.disabled = false;
+                if (btn) { btn.innerText = "Save Changes"; btn.disabled = false; }
             }
         }
 
@@ -711,9 +717,9 @@
             const btn = document.getElementById('post-submit-btn');
             const desc = document.getElementById('post-desc').value;
             const fileInput = document.getElementById('feed-file-input');
-            const file = fileInput.files[0];
+            const file = fileInput.files ? fileInput.files[0] : null;
             
-            btn.innerText = "Uploading..."; btn.disabled = true;
+            if (btn) { btn.innerText = "Uploading..."; btn.disabled = true; }
             let mediaUrl = null;
             let mediaType = 'image';
 
@@ -736,29 +742,18 @@
                     comments: [],
                     created_at: new Date().toISOString()
                 });
-                
-                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.controller.postMessage({
-                        type: 'NEW_POST',
-                        title: state.profile?.name || 'Division Update',
-                        body: desc || 'Shared an operational update with the division feed.'
-                    });
-                }
 
-                document.getElementById('publish-modal').remove();
+                const modal = document.getElementById('publish-modal');
+                if (modal) modal.remove();
                 loadFeedPosts();
-            } catch(e) { document.getElementById('publish-modal').remove(); }
+            } catch(e) { 
+                const modal = document.getElementById('publish-modal');
+                if (modal) modal.remove(); 
+            }
         }
 
         window.requestNotificationAccess = async function() {
-            if (!('Notification' in window)) {
-                alert("Push features are currently handled inside native container limits.");
-                return;
-            }
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                alert("Push notification subscription established successfully!");
-            }
+            alert("Push features are currently handled inside native container limits.");
         };
 
         window.toggleLikePost = async function(postId, currentlyLiked) {
@@ -778,6 +773,7 @@
 
         window.openCommentsDrawer = async function(postId) {
             const post = state.feedPosts.find(p => p.id === postId);
+            if (!post) return;
             const modal = document.createElement('div');
             modal.id = 'comments-modal';
             modal.className = 'fixed inset-0 bg-black/40 z-50 flex items-end justify-center backdrop-blur-sm';
@@ -808,7 +804,8 @@
                 const currentComments = Array.isArray(post.comments) ? post.comments : [];
                 currentComments.push({ user_name: state.profile?.name || 'Member', text: txt, created_at: new Date().toISOString() });
                 await sb.from('feed_posts').update({ comments: currentComments }).eq('id', postId);
-                document.getElementById('comments-modal').remove();
+                const modal = document.getElementById('comments-modal');
+                if (modal) modal.remove();
                 loadFeedPosts();
             } catch(e){}
         }
@@ -857,14 +854,12 @@
                 } else {
                     await sb.from('hours_logs').insert(logObj);
                 }
-            } catch(err) {
-                // Network bypass optimization
-            }
+            } catch(err) {}
             router.navigate('dashboard');
         }
 
         window.uploadCompressedAvatar = function(event) {
-            const file = event.target.files[0];
+            const file = event.target.files ? event.target.files[0] : null;
             if (!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -875,7 +870,8 @@
                     canvas.width = 160; canvas.height = 160;
                     ctx.drawImage(img, 0, 0, 160, 160);
                     const base64Str = canvas.toDataURL('image/jpeg', 0.7);
-                    document.getElementById('profile-img').src = base64Str;
+                    const imgEl = document.getElementById('profile-img');
+                    if (imgEl) imgEl.src = base64Str;
                     await sb.from('profiles').update({ avatar_url: base64Str }).eq('id', state.user.id);
                 };
                 img.src = e.target.result;
@@ -903,7 +899,6 @@
         }
 
         async function init() {
-            // Aggressive fallback to prevent loading hangs
             setTimeout(hideLoader, 1000);
 
             try {
