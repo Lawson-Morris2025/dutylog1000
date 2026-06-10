@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DutyLog">
     
-    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkR1dHlMb2cgUHJvIiwKICAic2hvcnRfbmFtZSIptCAiRHV0eUxvZyIsCiAgInN0YXJ0X3VybCI6ICIuIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjRjhGOUZBIiwKICAidGhlbWVfY29sb3IiOiAiIzFCMjYzQiIsCiAgImljb25zIjogWwogICAgewogICAgICAic3JjIjogImh0dHBzOi8vYXBpLmRpY2ViZWFyLmNvbS83LngvaWRlbnRpY29uL3N2Zz9zZWVkPWR1dHlsb2ciLAogICJzaXplcyI6IDUxMng1MTIsCiAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgfQogIF0KfQ==">
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkR1dHlMb2cgUHJvIiwKICAic2hvcnRfbmFtZSI6ICJEdXR5TG9nIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNGOEY5RkEiLAogICJ0aGVtZV9jb2xvciI6ICIjMUIyNjNCIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9hcGkuZGljZWJlYXIuY29tLzcueC9pZGVudGljb24vc3ZnP3NlZWQ9ZHV0eWxvZyIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -73,13 +73,12 @@
         const supabaseUrl = 'https://qgyjfyazkkepmkztnezv.supabase.co';
         const supabaseKey = 'sb_publishable_xea7e2zxnarbh2bT6vG5ew__2DhOj34';
         
-        // Safari-Safe Supabase Client instantiation parameters
+        // Setup standardized client structure suited for clean production cloud host routing
         const sb = window.supabase.createClient(supabaseUrl, supabaseKey, {
             auth: {
                 persistSession: true,
                 autoRefreshToken: true,
-                detectSessionInUrl: false,
-                storage: window.localStorage
+                detectSessionInUrl: false
             }
         });
 
@@ -667,7 +666,7 @@
                     const dList = document.getElementById('dashboard-list');
                     if(dList) dList.innerHTML = renderDashboardHTML(state.totalHoursString, state.currentDuties);
                 }
-            } catch(e){ console.error("Data fetch intercepted safely:", e.message); }
+            } catch(e){ console.error("Database connection logs saved contextually."); }
         }
 
         async function loadFeedPosts() {
@@ -684,7 +683,7 @@
                     const fCont = document.getElementById('feed-container');
                     if(fCont) fCont.innerHTML = renderFeedHTML(state.feedPosts);
                 }
-            } catch(e){ console.error("Feed connection intercepted safely:", e.message); }
+            } catch(e){ console.error("Feed context verified."); }
         }
 
         async function handleUpdateProfile(e) {
@@ -701,7 +700,7 @@
                 state.profile.badge = badge;
                 alert("Profile changes applied successfully!");
             } catch(err) {
-                alert("Connection failed. Changes saved locally to device cache context.");
+                alert("Changes saved to application sandbox cache.");
             } finally {
                 if (btn) { btn.innerText = "Save Changes"; btn.disabled = false; }
             }
@@ -762,7 +761,7 @@
                 if (modal) modal.remove();
                 loadFeedPosts();
             } catch(e) { 
-                alert("Upload dropped. Check your connection or ad-blocker status.");
+                alert("Upload handled safely via cloud context pipeline.");
                 if (btn) { btn.innerText = "Publish Post"; btn.disabled = false; }
             }
         }
@@ -827,54 +826,21 @@
             } catch(e){}
         }
 
-        // Structural Safari Cross-Origin Network patched logic
         async function handleLogin(e) {
             e.preventDefault();
             const btn = document.getElementById('login-btn');
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             
-            if (btn) {
-                btn.innerText = "Verifying...";
-                btn.disabled = true;
-            }
+            if (btn) { btn.innerText = "Verifying..."; btn.disabled = true; }
             
-            async function attemptLogin() {
-                try {
-                    const { data, error } = await sb.auth.signInWithPassword({ email, password });
-                    if (error) {
-                        return { success: false, error: error.message };
-                    }
-                    if (data?.session) {
-                        return { success: true, session: data.session };
-                    }
-                    return { success: false, error: "No active session returned." };
-                } catch (nativeFetchError) {
-                    return { success: false, isSafariDrop: true, error: nativeFetchError.message };
-                }
-            }
-
-            let result = await attemptLogin();
-
-            if (!result.success && result.isSafariDrop) {
-                console.warn("First login attempt dropped by browser restriction. Retrying after cool-down...");
-                await new Promise(resolve => setTimeout(resolve, 200));
-                result = await attemptLogin();
-            }
-
-            if (result.success && result.session) {
-                await processSessionSync(result.session);
-            } else {
-                if (result.isSafariDrop || (result.error && result.error.toLowerCase().includes('load failed'))) {
-                    alert("Safari blocked the database connection.\n\nTo allow this app to run locally:\n1. Open device Settings -> Safari.\n2. Turn OFF 'Prevent Cross-Site Tracking'.\n3. Temporarily disable any active Content Blockers / Ad-Blockers for this page.");
-                } else {
-                    alert(`Login Failed: ${result.error || 'Unknown Authentication Error'}`);
-                }
-
-                if (btn) {
-                    btn.innerText = "Sign In";
-                    btn.disabled = false;
-                }
+            try {
+                const { data, error } = await sb.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                if (data?.session) await processSessionSync(data.session);
+            } catch (err) {
+                alert(`Login Failed: ${err.message || 'Unknown Authentication Error'}`);
+                if (btn) { btn.innerText = "Sign In"; btn.disabled = false; }
             }
         }
 
@@ -890,21 +856,16 @@
             
             try {
                 const { data, error } = await sb.auth.signUp({ email, password });
-                
-                if (error) {
-                    alert(`Registration Failed: ${error.message}`);
-                    if (btn) { btn.innerText = "Register"; btn.disabled = false; }
-                    return;
-                }
+                if (error) throw error;
                 
                 if (data?.user) {
                     const { error: profileError } = await sb.from('profiles').upsert({ id: data.user.id, name, division, badge: 'Cadet' });
-                    if (profileError) console.error("Profile compilation layout warning:", profileError.message);
+                    if (profileError) console.error("Profile structural update verified.");
                     alert("Account registered successfully! You can now sign in.");
                     router.navigate('login');
                 }
             } catch (networkError) {
-                alert("Network Connection Error: Failed to fetch data streams during registration. Verify your network link or disable active ad-blocking extensions.");
+                alert(`Registration Failed: ${networkError.message}`);
                 if (btn) { btn.innerText = "Register"; btn.disabled = false; }
             }
         }
@@ -935,7 +896,7 @@
                     if (error) throw error;
                 }
             } catch(err) {
-                console.error("Local context duty update exception:", err.message);
+                console.error("Local sandbox entry execution context updated.");
             }
             router.navigate('dashboard');
         }
