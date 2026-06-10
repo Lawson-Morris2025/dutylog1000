@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DutyLog">
     
-    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkR1dHlMb2cgUHJvIiwKICAic2hvcnRfbmFtZSI6ICJEdXR5TG9nIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNGOEY5RkEiLAogICJ0aGVtZV9jb2xvciI6ICIjMUIyNjNCIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9hcGkuZGljZWJlYXIuY29tLzcueC9pZGVudGljb24vc3ZnP3NlZWQ9ZHV0eWxvZyIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkR1dHlMb2cgUHJvIiwKICAic2hvcnRfbmFtZSI6ICJEdXR5TG9nIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNGOEY5RkEiLAogICJ0aGVtZV9jb2xvciI6ICIjMUIyNjNCIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9hcGkuZGljZWJlYXIuY29tLzcueC9pZGVudGicol9zdmc/c2VlZD1kdXR5bG9nIiwKICAic2l6ZXMiOiA1MTJ4NTEyIiwKICAidHlwZSI6ICJpbWFnZS9zdmcreG1sIgogICB9CiAgXQp9">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -27,6 +27,7 @@
         #view-container { overflow-y: auto; height: 100vh; -webkit-overflow-scrolling: touch; padding-bottom: calc(120px + env(safe-area-inset-bottom)); }
         .btn-primary { background: var(--navy); color: white; padding: 1rem; border-radius: 1rem; font-weight: bold; width: 100%; transition: all 0.2s; border: none; cursor: pointer; }
         .btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+        .btn-primary:disabled { background: #94A3B8; cursor: not-allowed; }
         
         .scroller-container { display: flex; align-items: center; justify-content: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1rem; }
         .scroll-wheel-column { display: flex; flex-direction: column; align-items: center; flex: 1; }
@@ -174,7 +175,7 @@
                 <div onclick="router.navigate('welcome')" class="back-btn"><i class="fas fa-arrow-left"></i> Back</div>
                 <h2 class="text-2xl font-bold mb-8">Sign In</h2>
                 <form onsubmit="handleLogin(event)" class="space-y-4">
-                    <input type="email" id="login-email" placeholder="Email" required class="input-field">
+                    <input type="email" id="login-email" placeholder="Email" bookkeeping="off" required class="input-field">
                     <input type="password" id="login-password" placeholder="Password" required class="input-field">
                     <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
                 </form>
@@ -812,23 +813,47 @@
 
         async function handleLogin(e) {
             e.preventDefault();
-            try {
-                await sb.auth.signInWithPassword({ email: document.getElementById('login-email').value, password: document.getElementById('login-password').value });
-            } catch (err) { alert(err.message); }
+            const btn = document.getElementById('login-btn');
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            if (btn) { btn.innerText = "Verifying..."; btn.disabled = true; }
+            
+            const { data, error } = await sb.auth.signInWithPassword({ email, password });
+            
+            if (error) {
+                alert(`Login Failed: ${error.message}`);
+                if (btn) { btn.innerText = "Sign In"; btn.disabled = false; }
+            }
+            // Note: If dynamic authentication succeeds, sb.auth.onAuthStateChange takes over cleanly.
         }
 
         async function handleSignup(e) {
             e.preventDefault();
+            const btn = document.getElementById('signup-btn');
             const name = document.getElementById('signup-name').value;
             const division = document.getElementById('signup-division').value;
-            try {
-                const { data } = await sb.auth.signUp({ email: document.getElementById('signup-email').value, password: document.getElementById('signup-password').value });
-                if(data?.user) {
-                    await sb.from('profiles').upsert({ id: data.user.id, name, division, badge: 'Cadet' });
-                    alert("Account registered successfully! Please sign in.");
-                    router.navigate('login');
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            
+            if (btn) { btn.innerText = "Registering..."; btn.disabled = true; }
+            
+            const { data, error } = await sb.auth.signUp({ email, password });
+            
+            if (error) {
+                alert(`Registration Failed: ${error.message}`);
+                if (btn) { btn.innerText = "Register"; btn.disabled = false; }
+                return;
+            }
+            
+            if (data?.user) {
+                const { error: profileError } = await sb.from('profiles').upsert({ id: data.user.id, name, division, badge: 'Cadet' });
+                if (profileError) {
+                    console.error("Profile initial compilation layout warning:", profileError.message);
                 }
-            } catch (err) { alert(err.message); }
+                alert("Account registered successfully! You can now sign in.");
+                router.navigate('login');
+            }
         }
 
         window.triggerEditDuty = function(id) { state.editingDutyId = id; router.navigate('add-duty'); };
@@ -902,10 +927,14 @@
             setTimeout(hideLoader, 1000);
 
             try {
-                const { data: { session } } = await sb.auth.getSession();
+                // Intercept dynamic user tokens cleanly without hard failures
+                const { data: { session }, error } = await sb.auth.getSession();
+                if (error) throw error;
+                
                 await processSessionSync(session);
                 sb.auth.onAuthStateChange((e, s) => processSessionSync(s));
             } catch(err) {
+                console.warn("Session auto recovery skipped:", err.message);
                 await router.navigate('welcome');
                 hideLoader();
             }
