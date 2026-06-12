@@ -177,7 +177,7 @@
                 <h2 class="text-2xl font-bold mb-6">Create Account</h2>
                 <form onsubmit="handleSignup(event)" class="space-y-4">
                     <input type="text" id="signup-name" placeholder="Full Name" required class="input-field">
-                    <input type="text" id="signup-division" placeholder="Division (e.g. Cardiff)" required class="input-field">
+                    <input type="text" id="signup-division" placeholder="Division (e.g. City of Cardiff)" required class="input-field">
                     <input type="email" id="signup-email" placeholder="Email" required class="input-field">
                     <input type="password" id="signup-password" placeholder="Password" required class="input-field">
                     <button type="submit" id="signup-btn" class="btn-primary">Register</button>
@@ -192,7 +192,7 @@
                         <div>
                             <h1 class="text-xl font-bold text-navy">${state.profile?.name || 'Volunteer'}</h1>
                             <div class="flex gap-1.5 items-center mt-0.5">
-                                <span class="tag text-[9px]">${state.profile?.division || 'Cardiff'}</span>
+                                <span class="tag text-[9px]">${state.profile?.division || 'City of Cardiff'}</span>
                                 <span class="tag tag-badge text-[9px]">${state.profile?.badge || 'Cadet'}</span>
                             </div>
                         </div>
@@ -420,7 +420,7 @@
             let emailBody = `DutyLog Pro - Operational Hours Export\n`;
             emailBody += `Generated on: ${new Date().toLocaleDateString()}\n`;
             emailBody += `Volunteer Name: ${state.profile?.name || 'Member'}\n`;
-            emailBody += `Division Unit: ${state.profile?.division || 'Cardiff'}\n`;
+            emailBody += `Division Unit: ${state.profile?.division || 'City of Cardiff'}\n`;
             emailBody += `Rank/Badge: ${state.profile?.badge || 'Cadet'}\n`;
             emailBody += `Total Cumulative Hours: ${state.totalHoursString}\n\n`;
             emailBody += `--- SHIFT RECORDS BREAKDOWN ---\n`;
@@ -439,7 +439,6 @@
                 alert("No shift logs available to export.");
                 return;
             }
-            // Headers matches standard reporting columns
             let csvRows = ["Title,Date,Decimal Hours,Formatted Hours"];
             state.currentDuties.forEach(d => {
                 const t = parseDatabaseHoursToUiTime(d.total_hours);
@@ -466,7 +465,7 @@
                 return;
             }
             let copyText = `DutyLog Pro Hours Summary\n`;
-            copyText += `Volunteer: ${state.profile?.name || 'Member'} (${state.profile?.division || 'Cardiff'})\n`;
+            copyText += `Volunteer: ${state.profile?.name || 'Member'} (${state.profile?.division || 'City of Cardiff'})\n`;
             copyText += `Total Hours: ${state.totalHoursString}\n\n`;
             
             state.currentDuties.forEach((d, i) => {
@@ -880,9 +879,9 @@
                 state.user = session.user;
                 try {
                     const { data } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
-                    state.profile = data || { name: 'Cadet Member', division: 'Cardiff', badge: 'Cadet' };
+                    state.profile = data || { name: 'Cadet Member', division: 'City of Cardiff', badge: 'Cadet' };
                 } catch(e) {
-                    state.profile = { name: 'Cadet Member', division: 'Cardiff', badge: 'Cadet' };
+                    state.profile = { name: 'Cadet Member', division: 'City of Cardiff', badge: 'Cadet' };
                 }
                 await router.navigate('dashboard');
             } else {
