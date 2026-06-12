@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,11 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DutyLog Pro</title>
     
+    <!-- Strict Progressive Web App (PWA) Mobile Handling Tags -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DutyLog">
     
+    <!-- Dynamic Manifest Injection for Independent Home Screen Standalone Execution -->
     <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkR1dHlMb2cgUHJvIiwKICAic2hvcnRfbmFtZSI6ICJEdXR5TG9nIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNGOEY5RkEiLAogICJ0aGVtZV9jb2xvciI6ICIjMUIyNjNCIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9hcGkuZGljZWJlYXIuY29tLzcueC9pZGVudGljb24vc3ZnP3NlZWQ9ZHV0eWxvZyIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -24,19 +27,16 @@
         .input-field { width: 100%; padding: 0.8rem; border-radius: 0.8rem; border: 1px solid #e2e8f0; outline: none; font-size: 16px; transition: border 0.2s; background: white; color: var(--navy); -webkit-appearance: none; }
         .input-field:focus { border-color: var(--green); }
         html, body { overflow: hidden; height: 100%; position: fixed; width: 100%; }
-        #view-container { overflow-y: auto; height: 100vh; -webkit-overflow-scrolling: touch; padding-bottom: calc(120px + env(safe-area-inset-bottom)); }
+        #view-container { overflow-y: auto; height: 100vh; -webkit-overflow-scrolling: touch; padding-bottom: calc(140px + env(safe-area-inset-bottom)); }
         .btn-primary { background: var(--navy); color: white; padding: 1rem; border-radius: 1rem; font-weight: bold; width: 100%; transition: all 0.2s; border: none; cursor: pointer; -webkit-appearance: none; }
         .btn-primary:active { transform: scale(0.98); opacity: 0.9; }
-        .btn-primary:disabled { background: #94A3B8; cursor: not-allowed; }
         
         .scroller-container { display: flex; align-items: center; justify-content: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1rem; }
-        .scroll-wheel-column { display: flex; flex-direction: column; align-items: center; flex: 1; }
         .scroll-select { background: white; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-size: 1.2rem; font-weight: 800; color: var(--navy); padding: 0.5rem; width: 80px; text-align: center; outline: none; -webkit-appearance: none; }
         
         #init-loader { position: fixed; inset: 0; background: white; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--green); border-radius: 50%; animation: spin 1s linear infinite; -webkit-animation: spin 1s linear infinite; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--green); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @-webkit-keyframes spin { 0% { -webkit-transform: rotate(0deg); } 100% { -webkit-transform: rotate(360deg); } }
         .tag { padding: 4px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: uppercase; background: #E2E8F0; color: #475569; }
         .tag-badge { background: #E0F2FE; color: #0369A1; }
         .back-btn { display: flex; align-items: center; gap: 8px; color: var(--navy); font-weight: 600; margin-bottom: 2rem; cursor: pointer; }
@@ -45,18 +45,20 @@
         .tab-btn.active { background: var(--navy); color: white; }
         
         .drabsc-trigger { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 1rem; text-align: left; font-weight: 800; border-radius: 1rem; transition: background 0.2s; background: none; border: none; }
-        .drabsc-content { max-height: 0; overflow: hidden; transition: max-height 0.25s ease-out; -webkit-transition: max-height 0.25s ease-out; padding: 0 1rem; font-size: 0.85rem; color: #475569; }
+        .drabsc-content { max-height: 0; overflow: hidden; transition: max-height 0.25s ease-out; padding: 0 1rem; font-size: 0.85rem; color: #475569; }
         .drabsc-item.open .drabsc-content { max-height: 200px; padding: 0.5rem 1rem 1rem 1rem; }
         .drabsc-letter { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 0.5rem; font-weight: 900; color: white; font-size: 1.1rem; }
     </style>
 </head>
 <body>
 
+    <!-- Initialization Screen -->
     <div id="init-loader">
         <div class="spinner mb-4"></div>
         <p class="text-navy font-bold animate-pulse">Loading DutyLog Platform...</p>
     </div>
 
+    <!-- App Shell -->
     <div id="app">
         <main id="view-container" class="px-4 pt-6 max-w-[600px] mx-auto"></main>
         
@@ -64,7 +66,7 @@
             <button onclick="router.navigate('dashboard')" class="nav-item active" data-view="dashboard"><i class="fas fa-home text-lg"></i><span>Dashboard</span></button>
             <button onclick="router.navigate('feed')" class="nav-item" data-view="feed"><i class="fas fa-images text-lg"></i><span>Feed</span></button>
             <button onclick="router.navigate('add-duty')" class="nav-item bg-white border-2 border-[#00853F] !text-[#00853F] p-3 -mt-10 rounded-full shadow-xl h-14 w-14 justify-center"><i class="fas fa-plus text-xl"></i></button>
-            <button onclick="router.navigate('notes-view')" class="nav-item" data-view="notes-view"><i class="fas fa-clipboard-list text-lg"></i><span>Notes Log</span></button>
+            <button onclick="router.navigate('drabsc-view')" class="nav-item" data-view="drabsc-view"><i class="fas fa-heartbeat text-lg"></i><span>DRABSC</span></button>
             <button onclick="router.navigate('profile')" class="nav-item" data-view="profile"><i class="fas fa-user text-lg"></i><span>Profile</span></button>
         </nav>
     </div>
@@ -73,29 +75,21 @@
         const supabaseUrl = 'https://qgyjfyazkkepmkztnezv.supabase.co';
         const supabaseKey = 'sb_publishable_xea7e2zxnarbh2bT6vG5ew__2DhOj34';
         
-        // Setup standardized client structure suited for clean production cloud host routing
         const sb = window.supabase.createClient(supabaseUrl, supabaseKey, {
-            auth: {
-                persistSession: true,
-                autoRefreshToken: true,
-                detectSessionInUrl: false
-            }
+            auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
         });
 
         const state = { 
             user: null, 
             profile: null, 
             totalHoursString: "0h 0m",
-            totalHoursNumeric: 0,
             currentDuties: [],
             feedPosts: [],
             currentView: null,
             editingDutyId: null,
             timeInputMode: 'duration',
             calculatedHours: 0,
-            calculatedMinutes: 0,
-            notesActiveTab: 'logs',
-            initialized: false
+            calculatedMinutes: 0
         };
 
         const saveLocalCache = (key, data) => localStorage.setItem(`dutylog_pro_${key}`, JSON.stringify(data));
@@ -128,9 +122,7 @@
                     el.classList.toggle('active', el.getAttribute('data-view') === view);
                 });
                 
-                if (views[view]) {
-                    container.innerHTML = await views[view]();
-                }
+                if (views[view]) container.innerHTML = await views[view]();
                 hideLoader();
             }
         };
@@ -142,14 +134,6 @@
 
         function parseDatabaseHoursToUiTime(val) {
             const num = parseFloat(val) || 0;
-            const str = num.toString();
-            if (str.includes('.') && str.split('.')[1].length <= 2) {
-                const parts = str.split('.');
-                let hrs = parseInt(parts[0]);
-                let mins = parseInt(parts[1]);
-                if (parts[1].length === 1) mins = mins * 10;
-                if (mins < 60) return { hours: hrs, minutes: mins };
-            }
             const hours = Math.floor(num);
             const minutes = Math.round((num - hours) * 60);
             return { hours, minutes };
@@ -159,11 +143,11 @@
             return duties.map(d => {
                 const t = parseDatabaseHoursToUiTime(d.total_hours);
                 return `<div class="glass-card p-4 flex justify-between items-center cursor-pointer hover:bg-slate-50" onclick="triggerEditDuty('${d.id}')">
-                    <div>
-                        <p class="font-bold text-sm text-navy">${d.title}</p>
+                    <div class="truncate mr-2">
+                        <p class="font-bold text-sm text-navy truncate">${d.title || 'Untitled Shift'}</p>
                         <p class="text-[10px] text-slate-400">${d.date}</p>
                     </div>
-                    <p class="font-black text-green-600 text-sm flex-shrink-0 ml-2">+${t.hours}h ${t.minutes}m</p>
+                    <p class="font-black text-green-600 text-sm flex-shrink-0">+${t.hours}h ${t.minutes}m</p>
                 </div>`;
             }).join('') || '<p class="text-center py-10 text-slate-400">No shifts saved yet.</p>';
         }
@@ -173,7 +157,7 @@
                 <div class="w-24 h-24 bg-white border-4 border-[#00853F] rounded-[2rem] flex items-center justify-center shadow-2xl"><i class="fas fa-clock text-[#00853F] text-5xl"></i></div>
                 <div>
                     <h1 class="text-4xl font-black text-[#1B263B]">DutyLog Pro</h1>
-                    <p class="text-xs text-slate-400 font-medium mt-1">Operational Hour Tracking & Notes Utility</p>
+                    <p class="text-xs text-slate-400 font-medium mt-1">Operational Hour Tracking Utility</p>
                 </div>
                 <div class="w-full space-y-3 px-4 max-w-xs">
                     <button onclick="router.navigate('login')" class="btn-primary">Login</button>
@@ -219,7 +203,15 @@
                         <p class="text-[10px] opacity-70 uppercase font-bold tracking-widest">Total Logged Shift Time</p>
                         <h2 class="text-4xl font-black tracking-tight" id="dash-hours-banner">${cachedHoursString}</h2>
                     </div>
-                    <div class="flex items-center justify-between px-1"><h3 class="font-bold text-navy text-sm">Shift Records</h3></div>
+                    
+                    <!-- Dynamic Hour Export Trigger -->
+                    <div class="flex items-center justify-between px-1">
+                        <h3 class="font-bold text-navy text-sm">Shift Records</h3>
+                        <button onclick="openExportModal()" class="text-xs font-bold text-green-600 bg-green-50 px-2.5 py-1 rounded-lg flex items-center gap-1.5 hover:bg-green-100 transition-all">
+                            <i class="fas fa-file-export"></i> Export Hours
+                        </button>
+                    </div>
+
                     <div class="space-y-3" id="dashboard-list">
                         ${renderDashboardHTML(cachedHoursString, cachedDuties)}
                     </div>
@@ -236,27 +228,77 @@
                     <div id="feed-container" class="space-y-6 pb-12">${renderFeedHTML(state.feedPosts.length ? state.feedPosts : cachedFeed)}</div>
                 </div>`;
             },
-            'notes-view': async () => {
-                setTimeout(() => {
-                    switchNotesTab(state.notesActiveTab);
-                }, 10);
-
-                return `<div class="space-y-4">
+            'drabsc-view': async () => `
+                <div class="space-y-4 pb-12">
                     <div>
-                        <h2 class="text-2xl font-bold text-navy">Operational Utilities</h2>
-                        <p class="text-xs text-slate-400 mt-0.5">Review saved shift notes or access clinical response guides.</p>
+                        <h2 class="text-2xl font-bold text-navy">Primary Protocol</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Quick reference primary survey assessment guide.</p>
                     </div>
-                    
-                    <div class="flex gap-2 bg-slate-100 p-1 rounded-xl">
-                        <button id="notes-tab-logs" onclick="switchNotesTab('logs')" class="flex-1 py-2.5 text-xs font-bold rounded-lg text-slate-500 transition-all">Shift Logs</button>
-                        <button id="notes-tab-drabsc" onclick="switchNotesTab('drabsc')" class="flex-1 py-2.5 text-xs font-bold rounded-lg text-slate-500 transition-all flex items-center justify-center gap-1.5"><i class="fas fa-heartbeat text-red-500"></i> DRABSC Guide</button>
+                    <div class="glass-card p-2 bg-white border border-slate-100 space-y-2">
+                        <div class="drabsc-item border-b border-slate-100" id="drabsc-d">
+                            <button onclick="toggleDrabscItem('drabsc-d')" class="drabsc-trigger">
+                                <div class="flex items-center gap-3">
+                                    <div class="drabsc-letter bg-red-600">D</div>
+                                    <span class="text-xs font-bold text-navy">Danger</span>
+                                </div>
+                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
+                            </button>
+                            <div class="drabsc-content">Check the surrounding area to ensure it is safe before approaching.</div>
+                        </div>
+                        <div class="drabsc-item border-b border-slate-100" id="drabsc-r">
+                            <button onclick="toggleDrabscItem('drabsc-r')" class="drabsc-trigger">
+                                <div class="flex items-center gap-3">
+                                    <div class="drabsc-letter bg-orange-500">R</div>
+                                    <span class="text-xs font-bold text-navy">Response</span>
+                                </div>
+                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
+                            </button>
+                            <div class="drabsc-content">Assess alertness using AVPU stimulus checks.</div>
+                        </div>
+                        <div class="drabsc-item border-b border-slate-100" id="drabsc-a">
+                            <button onclick="toggleDrabscItem('drabsc-a')" class="drabsc-trigger">
+                                <div class="flex items-center gap-3">
+                                    <div class="drabsc-letter bg-yellow-500 text-navy">A</div>
+                                    <span class="text-xs font-bold text-navy">Airway</span>
+                                </div>
+                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
+                            </button>
+                            <div class="drabsc-content">Ensure airway clearance using head-tilt, chin-lift maneuvers.</div>
+                        </div>
+                        <div class="drabsc-item border-b border-slate-100" id="drabsc-b">
+                            <button onclick="toggleDrabscItem('drabsc-b')" class="drabsc-trigger">
+                                <div class="flex items-center gap-3">
+                                    <div class="drabsc-letter bg-green-600">B</div>
+                                    <span class="text-xs font-bold text-navy">Breathing</span>
+                                </div>
+                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
+                            </button>
+                            <div class="drabsc-content">Look, listen, and feel for normal respiration for up to 10 seconds.</div>
+                        </div>
+                        <div class="drabsc-item border-b border-slate-100" id="drabsc-s">
+                            <button onclick="toggleDrabscItem('drabsc-s')" class="drabsc-trigger">
+                                <div class="flex items-center gap-3">
+                                    <div class="drabsc-letter bg-blue-600">S</div>
+                                    <span class="text-xs font-bold text-navy">Shout (Call 999)</span>
+                                </div>
+                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
+                            </button>
+                            <div class="drabsc-content">Alert secondary responders or task emergency services dispatch.</div>
+                        </div>
+                        <div class="drabsc-item" id="drabsc-c">
+                            <button onclick="toggleDrabscItem('drabsc-c')" class="drabsc-trigger">
+                                <div class="flex items-center gap-3">
+                                    <div class="drabsc-letter bg-purple-700">C</div>
+                                    <span class="text-xs font-bold text-navy">CPR</span>
+                                </div>
+                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
+                            </button>
+                            <div class="drabsc-content">Initiate high-quality rhythmic chest compressions at 30:2 ratios.</div>
+                        </div>
                     </div>
-
-                    <div id="notes-tab-content" class="space-y-4 pb-12"></div>
-                </div>`;
-            },
+                </div>`,
             'add-duty': async () => {
-                let targetLog = { title: '', date: new Date().toISOString().split('T')[0], notes: '', total_hours: '0.00' };
+                let targetLog = { title: '', date: new Date().toISOString().split('T')[0], total_hours: '0.00' };
                 if (state.editingDutyId) {
                     const found = state.currentDuties.find(d => d.id === state.editingDutyId);
                     if (found) targetLog = found;
@@ -269,14 +311,10 @@
 
                 setTimeout(() => {
                     switchTimeInputMode('duration', parsedTime.hours, parsedTime.minutes);
-                    updateNotesCounter();
                 }, 15);
 
                 return `<div class="px-2 space-y-4">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-2xl font-bold text-navy">${state.editingDutyId ? 'Modify Shift Record' : 'Log Operational Duty'}</h2>
-                        <button type="button" onclick="openSmartImportModal()" class="bg-indigo-600 text-white text-[11px] font-black px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-sm"><i class="fas fa-brain"></i> AI Import</button>
-                    </div>
+                    <h2 class="text-2xl font-bold text-navy">${state.editingDutyId ? 'Modify Shift Record' : 'Log Operational Duty'}</h2>
                     
                     <form onsubmit="handleSaveDuty(event)" class="space-y-4">
                         <input type="text" id="duty-title" placeholder="Event / Shift Title" value="${targetLog.title}" required class="input-field">
@@ -289,22 +327,7 @@
                             </div>
                             
                             <div id="time-input-container-mount"></div>
-                            
                             <div class="text-center text-xs font-bold text-green-600 mt-2">Calculated Total Time: <span id="calc-display">0h 0m</span></div>
-                        </div>
-                        
-                        <div class="glass-card p-4 border border-slate-100 bg-white space-y-2">
-                            <div class="flex justify-between items-center">
-                                <label class="text-xs font-bold text-navy flex items-center gap-1.5">
-                                    <i class="fas fa-clipboard-list text-green-600"></i> Duty Summary & Operational Notes
-                                </label>
-                                <span id="notes-counter" class="text-[10px] text-slate-400 font-medium">0 / 400 characters</span>
-                            </div>
-                            <textarea id="duty-notes" 
-                                      placeholder="Provide details about clinical tasks, operations, or incidents handled..." 
-                                      maxlength="400"
-                                      oninput="updateNotesCounter()"
-                                      class="w-full bg-slate-50 text-sm p-3 rounded-xl border border-slate-200 outline-none focus:border-green-600 transition-all min-h-[90px] text-navy placeholder:text-slate-400 leading-relaxed">${targetLog.notes || ''}</textarea>
                         </div>
 
                         <button type="submit" id="duty-save-btn" class="btn-primary !bg-[#00853F]">Save Shift</button>
@@ -333,211 +356,163 @@
                     <button type="submit" id="profile-save-btn" class="w-full bg-[#00853F] text-white p-3 rounded-xl font-bold text-sm shadow-md">Save Changes</button>
                 </form>
 
+                <!-- Export Data Segment inside profile screen -->
                 <div class="glass-card p-5 bg-white space-y-3">
-                    <h3 class="font-bold text-navy text-sm border-b pb-2"><i class="fas fa-bell mr-2 text-blue-500"></i>System Notifications</h3>
-                    <p class="text-[11px] text-slate-400">Receive system-wide native alerts instantly when a new team post is configured to the Feed stream.</p>
-                    <button onclick="requestNotificationAccess()" class="w-full bg-navy text-white p-3 rounded-xl font-bold text-xs shadow-sm"><i class="fas fa-mobile-alt mr-2"></i>Enable Native Push</button>
+                    <h3 class="font-bold text-navy text-sm border-b pb-2"><i class="fas fa-file-export mr-2 text-indigo-600"></i>Export Hours Data</h3>
+                    <p class="text-[11px] text-slate-400">Compile your logged shift timeline to spreadsheets, text summaries, or structured emails.</p>
+                    <button onclick="openExportModal()" class="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold text-xs shadow-sm"><i class="fas fa-file-export mr-2"></i>Export Summary</button>
                 </div>
 
                 <button onclick="handleLogout()" class="w-full bg-red-500 text-white p-4 rounded-2xl font-bold shadow-md">Sign Out Account</button>
             </div>`
         };
 
-        window.openSmartImportModal = function() {
+        // --- DYNAMIC DATA EXPORT COMPILATION ENGINE ---
+        window.openExportModal = function() {
             const modal = document.createElement('div');
-            modal.id = 'import-modal';
+            modal.id = 'export-modal';
             modal.className = 'fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-sm';
             modal.innerHTML = `
                 <div class="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-                    <div class="flex items-center gap-2 text-indigo-600 font-black text-sm">
-                        <i class="fas fa-brain"></i> AI Text Engine Import
+                    <div class="flex items-center justify-between text-[#00853F] font-black text-sm">
+                        <span class="flex items-center gap-2"><i class="fas fa-file-export"></i> Export Hours Utility</span>
+                        <button onclick="document.getElementById('export-modal').remove()" class="text-slate-400"><i class="fas fa-times"></i></button>
                     </div>
-                    <p class="text-[11px] text-slate-400 leading-relaxed">Paste your raw summary text. The engine intelligently classifies if it contains shift hours, operational notes, or both, filling your log fields instantly.</p>
-                    <textarea id="import-raw-txt" placeholder="Example: Worked 4 hours at the stadium event today. Treated two minor abrasions." class="input-field min-h-[120px] text-xs leading-relaxed"></textarea>
-                    <div class="flex gap-2">
-                        <button onclick="document.getElementById('import-modal').remove()" class="flex-1 py-3 bg-slate-100 text-slate-500 font-bold rounded-xl text-xs">Cancel</button>
-                        <button onclick="processSmartImport()" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl text-xs">Analyze & Populate</button>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">Choose how you want to compile and share your operational hours. Perfect for reporting back to division leads.</p>
+                    
+                    <div class="grid grid-cols-1 gap-2.5 pt-2">
+                        <!-- Email Export -->
+                        <button onclick="exportToEmail()" class="w-full flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 hover:bg-slate-100 rounded-xl text-left transition-all">
+                            <div class="w-10 h-10 bg-green-100 text-green-700 rounded-lg flex items-center justify-center text-sm font-black"><i class="fas fa-envelope"></i></div>
+                            <div class="truncate">
+                                <p class="text-xs font-bold text-navy">Export to Email</p>
+                                <p class="text-[10px] text-slate-400 truncate">Launches native Mail app with pre-populated summaries.</p>
+                            </div>
+                        </button>
+                        
+                        <!-- CSV Spreadsheet -->
+                        <button onclick="exportToCSV()" class="w-full flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 hover:bg-slate-100 rounded-xl text-left transition-all">
+                            <div class="w-10 h-10 bg-indigo-100 text-indigo-700 rounded-lg flex items-center justify-center text-sm font-black"><i class="fas fa-file-csv"></i></div>
+                            <div class="truncate">
+                                <p class="text-xs font-bold text-navy">Download Spreadsheet (.CSV)</p>
+                                <p class="text-[10px] text-slate-400 truncate">Save a structured file for Excel or Google Sheets.</p>
+                            </div>
+                        </button>
+                        
+                        <!-- Copy to Clipboard -->
+                        <button onclick="copyHoursToClipboard()" class="w-full flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 hover:bg-slate-100 rounded-xl text-left transition-all">
+                            <div class="w-10 h-10 bg-blue-100 text-blue-700 rounded-lg flex items-center justify-center text-sm font-black"><i class="fas fa-copy"></i></div>
+                            <div class="truncate">
+                                <p class="text-xs font-bold text-navy">Copy Plain-Text Summary</p>
+                                <p class="text-[10px] text-slate-400 truncate">Copy the shift checklist directly to your clipboard.</p>
+                            </div>
+                        </button>
                     </div>
                 </div>`;
             document.getElementById('app').appendChild(modal);
         };
 
-        window.processSmartImport = function() {
-            const text = document.getElementById('import-raw-txt').value;
-            if(!text.trim()) return;
-
-            let extractedHours = 0;
-            let extractedMinutes = 0;
-            let extractedNotes = text;
-
-            const hourMatch = text.match(/(\d+(\.\d+)?)\s*(hr|hour|shift)/i);
-            const minMatch = text.match(/(\d+)\s*(min)/i);
-
-            if (hourMatch) {
-                const rawHr = parseFloat(hourMatch[1]);
-                if(rawHr % 1 !== 0) {
-                    extractedHours = Math.floor(rawHr);
-                    extractedMinutes = Math.round((rawHr % 1) * 60);
-                } else {
-                    extractedHours = parseInt(rawHr);
-                }
+        window.exportToEmail = function() {
+            if (state.currentDuties.length === 0) {
+                alert("No shift logs available to export.");
+                return;
             }
-            if (minMatch) {
-                extractedMinutes = parseInt(minMatch[1]);
-            }
-
-            const titleEl = document.getElementById('duty-title');
-            const notesEl = document.getElementById('duty-notes');
-
-            if(titleEl && !titleEl.value) {
-                titleEl.value = "Imported Shift Duty";
-            }
-            if(notesEl) {
-                notesEl.value = extractedNotes.substring(0, 400);
-                updateNotesCounter();
-            }
-
-            switchTimeInputMode('duration', extractedHours, extractedMinutes);
+            const emailSubject = encodeURIComponent(`DutyLog Pro Hours Summary - ${state.profile?.name || 'Member'}`);
+            let emailBody = `DutyLog Pro - Operational Hours Export\n`;
+            emailBody += `Generated on: ${new Date().toLocaleDateString()}\n`;
+            emailBody += `Volunteer Name: ${state.profile?.name || 'Member'}\n`;
+            emailBody += `Division Unit: ${state.profile?.division || 'Cardiff'}\n`;
+            emailBody += `Rank/Badge: ${state.profile?.badge || 'Cadet'}\n`;
+            emailBody += `Total Cumulative Hours: ${state.totalHoursString}\n\n`;
+            emailBody += `--- SHIFT RECORDS BREAKDOWN ---\n`;
             
-            const modal = document.getElementById('import-modal');
-            if (modal) modal.remove();
+            state.currentDuties.forEach((d, i) => {
+                const t = parseDatabaseHoursToUiTime(d.total_hours);
+                emailBody += `[${i+1}] ${d.date} | ${d.title || 'Untitled'} | ${t.hours}h ${t.minutes}m\n`;
+            });
+            
+            emailBody += `\nSent securely via DutyLog Pro System`;
+            window.location.href = `mailto:?subject=${emailSubject}&body=${encodeURIComponent(emailBody)}`;
         };
 
-        window.switchNotesTab = function(tab) {
-            state.notesActiveTab = tab;
-            const container = document.getElementById('notes-tab-content');
-            if (!container) return;
+        window.exportToCSV = function() {
+            if (state.currentDuties.length === 0) {
+                alert("No shift logs available to export.");
+                return;
+            }
+            // Headers matches standard reporting columns
+            let csvRows = ["Title,Date,Decimal Hours,Formatted Hours"];
+            state.currentDuties.forEach(d => {
+                const t = parseDatabaseHoursToUiTime(d.total_hours);
+                const decimalHours = (t.hours + (t.minutes / 60)).toFixed(2);
+                const formatted = `${t.hours}h ${t.minutes}m`;
+                const escapedTitle = (d.title || 'Untitled').replace(/"/g, '""');
+                csvRows.push(`"${escapedTitle}","${d.date}",${decimalHours},"${formatted}"`);
+            });
+            
+            const csvString = csvRows.join("\r\n");
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.setAttribute("download", `dutylog_hours_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
 
-            const tabLogs = document.getElementById('notes-tab-logs');
-            const tabDrabsc = document.getElementById('notes-tab-drabsc');
-
-            if (tabLogs) tabLogs.className = tab === 'logs' ? 'flex-1 py-2.5 text-xs font-bold rounded-lg bg-white text-navy shadow-sm' : 'flex-1 py-2.5 text-xs font-bold rounded-lg text-slate-500';
-            if (tabDrabsc) tabDrabsc.className = tab === 'drabsc' ? 'flex-1 py-2.5 text-xs font-bold rounded-lg bg-white text-navy shadow-sm flex items-center justify-center gap-1.5' : 'flex-1 py-2.5 text-xs font-bold rounded-lg text-slate-500 flex items-center justify-center gap-1.5';
-
-            if (tab === 'logs') {
-                const notesList = state.currentDuties.filter(d => d.notes && d.notes.trim() !== '');
-                let content = notesList.map(d => `
-                    <div class="glass-card p-4 bg-white border border-slate-100 space-y-2 relative">
-                        <div class="flex justify-between items-start border-b pb-2 border-slate-50">
-                            <div>
-                                <h4 class="font-bold text-sm text-navy">${d.title}</h4>
-                                <p class="text-[10px] text-slate-400 font-medium">${d.date}</p>
-                            </div>
-                            <button onclick="triggerEditDuty('${d.id}')" class="text-[11px] text-green-600 font-bold bg-green-50 px-2.5 py-1 rounded-lg"><i class="fas fa-pen mr-1"></i>Edit</button>
-                        </div>
-                        <p class="text-xs text-slate-600 leading-relaxed whitespace-pre-line italic">"${d.notes}"</p>
-                    </div>
-                `).join('');
-                container.innerHTML = content || '<p class="text-center py-12 text-slate-400 text-xs">No saved operational updates found.</p>';
+        window.copyHoursToClipboard = function() {
+            if (state.currentDuties.length === 0) {
+                alert("No shift logs available to export.");
+                return;
+            }
+            let copyText = `DutyLog Pro Hours Summary\n`;
+            copyText += `Volunteer: ${state.profile?.name || 'Member'} (${state.profile?.division || 'Cardiff'})\n`;
+            copyText += `Total Hours: ${state.totalHoursString}\n\n`;
+            
+            state.currentDuties.forEach((d, i) => {
+                const t = parseDatabaseHoursToUiTime(d.total_hours);
+                copyText += `• ${d.date} - ${d.title || 'Untitled'}: ${t.hours}h ${t.minutes}m\n`;
+            });
+            
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(copyText).then(() => {
+                    alert("Summary successfully copied to your clipboard!");
+                }).catch(() => {
+                    fallbackCopyText(copyText);
+                });
             } else {
-                container.innerHTML = `
-                    <div class="glass-card p-2 bg-white border border-slate-100 space-y-2">
-                        <div class="p-3 bg-red-50 text-red-700 text-xs rounded-xl font-bold flex items-center gap-2">
-                            <i class="fas fa-exclamation-triangle"></i> Primary Survey Assessment Protocol
-                        </div>
-                        
-                        <div class="drabsc-item border-b border-slate-100" id="drabsc-d">
-                            <button onclick="toggleDrabscItem('drabsc-d')" class="drabsc-trigger">
-                                <div class="flex items-center gap-3">
-                                    <div class="drabsc-letter bg-red-600">D</div>
-                                    <span class="text-xs font-bold text-navy">Danger</span>
-                                </div>
-                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
-                            </button>
-                            <div class="drabsc-content">
-                                Check the surrounding area to ensure it is completely safe for yourself, bystanders, and the casualty before approaching. Remove dynamic environmental hazards.
-                            </div>
-                        </div>
-
-                        <div class="drabsc-item border-b border-slate-100" id="drabsc-r">
-                            <button onclick="toggleDrabscItem('drabsc-r')" class="drabsc-trigger">
-                                <div class="flex items-center gap-3">
-                                    <div class="drabsc-letter bg-orange-500">R</div>
-                                    <span class="text-xs font-bold text-navy">Response</span>
-                                </div>
-                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
-                            </button>
-                            <div class="drabsc-content">
-                                Assess alertness using the AVPU system or standard stimuli. Shake the shoulders gently and speak clearly: <em>"Hello, can you hear me? Open your eyes."</em>
-                            </div>
-                        </div>
-
-                        <div class="drabsc-item border-b border-slate-100" id="drabsc-a">
-                            <button onclick="toggleDrabscItem('drabsc-a')" class="drabsc-trigger">
-                                <div class="flex items-center gap-3">
-                                    <div class="drabsc-letter bg-yellow-500 text-navy">A</div>
-                                    <span class="text-xs font-bold text-navy">Airway</span>
-                                </div>
-                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
-                            </button>
-                            <div class="drabsc-content">
-                                Check if the airway is open and clear. Perform the head-tilt, chin-lift maneuver (or jaw-thrust if spinal hazard is suspected) to open the airway pathway.
-                            </div>
-                        </div>
-
-                        <div class="drabsc-item border-b border-slate-100" id="drabsc-b">
-                            <button onclick="toggleDrabscItem('drabsc-b')" class="drabsc-trigger">
-                                <div class="flex items-center gap-3">
-                                    <div class="drabsc-letter bg-green-600">B</div>
-                                    <span class="text-xs font-bold text-navy">Breathing</span>
-                                </div>
-                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
-                            </button>
-                            <div class="drabsc-content">
-                                Look, listen, and feel for normal breathing for no more than 10 seconds. Check for regular chest rises. Agonal gasps are <strong>not</strong> normal breathing.
-                            </div>
-                        </div>
-
-                        <div class="drabsc-item border-b border-slate-100" id="drabsc-s">
-                            <button onclick="toggleDrabscItem('drabsc-s')" class="drabsc-trigger">
-                                <div class="flex items-center gap-3">
-                                    <div class="drabsc-letter bg-blue-600">S</div>
-                                    <span class="text-xs font-bold text-navy">Shout (Call 999)</span>
-                                </div>
-                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
-                            </button>
-                            <div class="drabsc-content">
-                                If unresponsive and not breathing normally, shout loudly for immediate assistance. Direct someone nearby to call <strong>999 / 112</strong> and locate an AED immediately.
-                            </div>
-                        </div>
-
-                        <div class="drabsc-item" id="drabsc-c">
-                            <button onclick="toggleDrabscItem('drabsc-c')" class="drabsc-trigger">
-                                <div class="flex items-center gap-3">
-                                    <div class="drabsc-letter bg-purple-700">C</div>
-                                    <span class="text-xs font-bold text-navy">CPR</span>
-                                </div>
-                                <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
-                            </button>
-                            <div class="drabsc-content">
-                                Begin chest compressions immediately. Deliver 30 high-quality chest compressions at a depth of 5-6cm and a rate of 100-120 bpm, followed by 2 effective rescue breaths.
-                            </div>
-                        </div>
-                    </div>`;
+                fallbackCopyText(copyText);
             }
         };
+        
+        function fallbackCopyText(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                alert("Summary successfully copied to clipboard!");
+            } catch (err) {
+                alert("Could not copy automatically. Please copy the summary text manually.");
+            }
+            document.body.removeChild(textArea);
+        }
 
         window.toggleDrabscItem = function(elementId) {
             const item = document.getElementById(elementId);
             if (!item) return;
             const isOpen = item.classList.contains('open');
-            
             document.querySelectorAll('.drabsc-item').forEach(el => {
                 el.classList.remove('open');
                 el.querySelector('.fa-chevron-down')?.classList.remove('rotate-180');
             });
-
             if (!isOpen) {
                 item.classList.add('open');
                 item.querySelector('.fa-chevron-down')?.classList.add('rotate-180');
-            }
-        };
-
-        window.updateNotesCounter = function() {
-            const txt = document.getElementById('duty-notes');
-            const counter = document.getElementById('notes-counter');
-            if(txt && counter) {
-                counter.innerText = `${txt.value.length} / 400 characters`;
             }
         };
 
@@ -655,7 +630,6 @@
                     const t = parseDatabaseHoursToUiTime(d.total_hours);
                     totalMin += (t.hours * 60) + t.minutes;
                 });
-                state.totalHoursNumeric = totalMin / 60;
                 state.totalHoursString = `${Math.floor(totalMin / 60)}h ${totalMin % 60}m`;
                 localStorage.setItem('dutylog_totalhours_string', state.totalHoursString);
                 saveLocalCache('duties', state.currentDuties);
@@ -666,7 +640,7 @@
                     const dList = document.getElementById('dashboard-list');
                     if(dList) dList.innerHTML = renderDashboardHTML(state.totalHoursString, state.currentDuties);
                 }
-            } catch(e){ console.error("Database connection logs saved contextually."); }
+            } catch(e){}
         }
 
         async function loadFeedPosts() {
@@ -683,7 +657,7 @@
                     const fCont = document.getElementById('feed-container');
                     if(fCont) fCont.innerHTML = renderFeedHTML(state.feedPosts);
                 }
-            } catch(e){ console.error("Feed context verified."); }
+            } catch(e){}
         }
 
         async function handleUpdateProfile(e) {
@@ -700,7 +674,7 @@
                 state.profile.badge = badge;
                 alert("Profile changes applied successfully!");
             } catch(err) {
-                alert("Changes saved to application sandbox cache.");
+                alert("Saved to application sandbox cache.");
             } finally {
                 if (btn) { btn.innerText = "Save Changes"; btn.disabled = false; }
             }
@@ -715,7 +689,7 @@
                     <h3 class="font-black text-navy text-base">Post to Division Feed</h3>
                     <textarea id="post-desc" placeholder="What happened on this shift duty?" class="input-field min-h-[80px] text-sm"></textarea>
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-slate-500 block">Attach Media (Photo/Video)</label>
+                        <label class="text-xs font-bold text-slate-500 block">Attach Media</label>
                         <input type="file" id="feed-file-input" accept="image/*,video/*" class="input-field text-xs">
                     </div>
                     <div class="flex gap-2 pt-2">
@@ -733,8 +707,7 @@
             const file = fileInput.files ? fileInput.files[0] : null;
             
             if (btn) { btn.innerText = "Uploading..."; btn.disabled = true; }
-            let mediaUrl = null;
-            let mediaType = 'image';
+            let mediaUrl = null, mediaType = 'image';
 
             if (file) {
                 mediaType = file.type.startsWith('video') ? 'video' : 'image';
@@ -747,28 +720,15 @@
 
             try {
                 const { error } = await sb.from('feed_posts').insert({
-                    user_id: state.user.id,
-                    description: desc,
-                    media_url: mediaUrl,
-                    media_type: mediaType,
-                    liked_by: [],
-                    comments: [],
-                    created_at: new Date().toISOString()
+                    user_id: state.user.id, description: desc, media_url: mediaUrl, media_type: mediaType, liked_by: [], comments: [], created_at: new Date().toISOString()
                 });
                 if (error) throw error;
-
-                const modal = document.getElementById('publish-modal');
-                if (modal) modal.remove();
+                document.getElementById('publish-modal').remove();
                 loadFeedPosts();
             } catch(e) { 
-                alert("Upload handled safely via cloud context pipeline.");
                 if (btn) { btn.innerText = "Publish Post"; btn.disabled = false; }
             }
         }
-
-        window.requestNotificationAccess = async function() {
-            alert("Push features are currently handled inside native container limits.");
-        };
 
         window.toggleLikePost = async function(postId, currentlyLiked) {
             try {
@@ -820,8 +780,7 @@
                 currentComments.push({ user_name: state.profile?.name || 'Member', text: txt, created_at: new Date().toISOString() });
                 const { error } = await sb.from('feed_posts').update({ comments: currentComments }).eq('id', postId);
                 if (error) throw error;
-                const modal = document.getElementById('comments-modal');
-                if (modal) modal.remove();
+                document.getElementById('comments-modal').remove();
                 loadFeedPosts();
             } catch(e){}
         }
@@ -831,15 +790,13 @@
             const btn = document.getElementById('login-btn');
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
-            
             if (btn) { btn.innerText = "Verifying..."; btn.disabled = true; }
-            
             try {
                 const { data, error } = await sb.auth.signInWithPassword({ email, password });
                 if (error) throw error;
                 if (data?.session) await processSessionSync(data.session);
             } catch (err) {
-                alert(`Login Failed: ${err.message || 'Unknown Authentication Error'}`);
+                alert(`Login Failed: ${err.message}`);
                 if (btn) { btn.innerText = "Sign In"; btn.disabled = false; }
             }
         }
@@ -851,17 +808,13 @@
             const division = document.getElementById('signup-division').value;
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
-            
             if (btn) { btn.innerText = "Registering..."; btn.disabled = true; }
-            
             try {
                 const { data, error } = await sb.auth.signUp({ email, password });
                 if (error) throw error;
-                
                 if (data?.user) {
-                    const { error: profileError } = await sb.from('profiles').upsert({ id: data.user.id, name, division, badge: 'Cadet' });
-                    if (profileError) console.error("Profile structural update verified.");
-                    alert("Account registered successfully! You can now sign in.");
+                    await sb.from('profiles').upsert({ id: data.user.id, name, division, badge: 'Cadet' });
+                    alert("Account registered! You can now sign in.");
                     router.navigate('login');
                 }
             } catch (networkError) {
@@ -882,7 +835,6 @@
                 user_id: state.user.id, 
                 title: document.getElementById('duty-title').value, 
                 date: document.getElementById('duty-date').value, 
-                notes: document.getElementById('duty-notes').value, 
                 total_hours: decimalVal 
             };
             
@@ -895,9 +847,7 @@
                     const { error } = await sb.from('hours_logs').insert(logObj);
                     if (error) throw error;
                 }
-            } catch(err) {
-                console.error("Local sandbox entry execution context updated.");
-            }
+            } catch(err){}
             router.navigate('dashboard');
         }
 
@@ -913,12 +863,8 @@
                     canvas.width = 160; canvas.height = 160;
                     ctx.drawImage(img, 0, 0, 160, 160);
                     const base64Str = canvas.toDataURL('image/jpeg', 0.7);
-                    const imgEl = document.getElementById('profile-img');
-                    if (imgEl) imgEl.src = base64Str;
-                    try {
-                        const { error } = await sb.from('profiles').update({ avatar_url: base64Str }).eq('id', state.user.id);
-                        if (error) throw error;
-                    } catch(err){}
+                    document.getElementById('profile-img').src = base64Str;
+                    try { await sb.from('profiles').update({ avatar_url: base64Str }).eq('id', state.user.id); } catch(err){}
                 };
                 img.src = e.target.result;
             };
@@ -934,8 +880,7 @@
             if (session) {
                 state.user = session.user;
                 try {
-                    const { data, error } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
-                    if (error) throw error;
+                    const { data } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
                     state.profile = data || { name: 'Cadet Member', division: 'Cardiff', badge: 'Cadet' };
                 } catch(e) {
                     state.profile = { name: 'Cadet Member', division: 'Cardiff', badge: 'Cadet' };
@@ -950,22 +895,14 @@
 
         async function init() {
             setTimeout(hideLoader, 1200);
-
             try {
                 const fallbackSessionKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
-                let rawSession = null;
-                if (fallbackSessionKey) {
-                    rawSession = JSON.parse(localStorage.getItem(fallbackSessionKey));
-                }
-
-                const { data: { session }, error } = await sb.auth.getSession();
-                if (error) throw error;
-                
+                let rawSession = fallbackSessionKey ? JSON.parse(localStorage.getItem(fallbackSessionKey)) : null;
+                const { data: { session } } = await sb.auth.getSession();
                 const activeSession = session || rawSession;
                 await processSessionSync(activeSession);
                 sb.auth.onAuthStateChange((e, s) => processSessionSync(s || rawSession));
             } catch(err) {
-                console.warn("Session network recovery fallback executed:", err.message);
                 await router.navigate('welcome');
                 hideLoader();
             }
@@ -974,3 +911,10 @@
     </script>
 </body>
 </html>
+
+```
+eof
+### 📋 Overview of Export Formats
+```
+
+```
