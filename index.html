@@ -82,7 +82,7 @@
             border-radius: 0.8rem; 
             border: 1px solid var(--border-color); 
             outline: none; 
-            font-size: 16px; /* Prevents auto-zoom on iOS */
+            font-size: 16px;
             transition: border 0.2s, background-color 0.3s, color 0.3s; 
             background: var(--input-bg); 
             color: var(--text-main); 
@@ -124,7 +124,6 @@
         .scroller-container { display: flex; align-items: center; justify-content: center; background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 1rem; padding: 1rem; }
         .scroll-select { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 0.5rem; font-size: 1.2rem; font-weight: 800; color: var(--text-main); padding: 0.5rem; width: 80px; text-align: center; outline: none; -webkit-appearance: none; }
         
-        /* Splash Screen Overlay */
         #splash-screen {
             position: fixed;
             inset: 0;
@@ -170,17 +169,14 @@
         .drabsc-item.open .drabsc-content { max-height: 200px; padding: 0.5rem 1rem 1rem 1rem; }
         .drabsc-letter { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 0.5rem; font-weight: 900; color: white; font-size: 1.1rem; }
 
-        /* Accordion transition for Settings */
         .accordion-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-in-out; }
         .accordion-body.open { max-height: 500px; }
     </style>
 </head>
 <body>
 
-    <!-- Native App Splash Screen Sequence -->
     <div id="splash-screen">
         <div class="flex-1 flex flex-col items-center justify-center">
-            <!-- Stage 1: Brand -->
             <div id="splash-stage-1" class="splash-stage active">
                 <div class="w-24 h-24 bg-white/10 border-4 border-[#00853F] rounded-[2rem] flex items-center justify-center shadow-2xl mb-6 backdrop-blur-md">
                     <i class="fas fa-clock text-[#00853F] text-5xl"></i>
@@ -189,7 +185,6 @@
                 <p class="text-xs text-slate-300 font-semibold tracking-wider mt-2 uppercase">Operational Hour Tracking</p>
             </div>
 
-            <!-- Stage 2: Cadet Motto -->
             <div id="splash-stage-2" class="splash-stage">
                 <div class="w-20 h-20 bg-emerald-500/20 border-2 border-emerald-400 rounded-full flex items-center justify-center mb-6">
                     <i class="fas fa-user-shield text-emerald-400 text-3xl"></i>
@@ -198,7 +193,6 @@
                 <p class="text-xs text-slate-300 font-medium mt-3 px-8 leading-relaxed">Designed specifically for divisional duty logging and service tracking.</p>
             </div>
 
-            <!-- Stage 3: Feature Highlights -->
             <div id="splash-stage-3" class="splash-stage">
                 <div class="w-20 h-20 bg-blue-500/20 border-2 border-blue-400 rounded-full flex items-center justify-center mb-6">
                     <i class="fas fa-file-check text-blue-400 text-3xl"></i>
@@ -208,20 +202,17 @@
             </div>
         </div>
 
-        <!-- Universal Splash Footer -->
         <div class="text-center space-y-1">
             <p class="text-xs font-semibold text-slate-200 tracking-wide">Made by Lawson Morris</p>
             <p class="text-[10px] font-mono text-emerald-400/80 tracking-widest uppercase">lawsonmorris.uk</p>
         </div>
     </div>
 
-    <!-- Initialization Screen -->
     <div id="init-loader">
         <div class="spinner mb-4"></div>
         <p class="text-green-700 font-bold animate-pulse text-sm">Syncing DutyLog Platform...</p>
     </div>
 
-    <!-- Active Live Duty Floating Bar -->
     <div id="live-duty-bar" class="hidden fixed top-0 left-0 right-0 z-50 bg-[#1B263B] text-white px-4 py-2.5 shadow-xl flex items-center justify-between border-b border-emerald-500/30">
         <div class="flex items-center gap-3 truncate">
             <span class="relative flex h-3 w-3">
@@ -239,7 +230,6 @@
         </div>
     </div>
 
-    <!-- App Shell -->
     <div id="app">
         <main id="view-container" class="px-4 pt-6 max-w-[600px] mx-auto"></main>
         
@@ -282,7 +272,6 @@
 
         let dutyTimerInterval = null;
 
-        // Apply dark mode on initialization
         if (state.darkMode) document.body.classList.add('dark-theme');
 
         const saveLocalCache = (key, data) => localStorage.setItem(`dutylog_pro_${key}`, JSON.stringify(data));
@@ -389,8 +378,8 @@
 
                 <form onsubmit="handleVerifyOtp(event)" class="space-y-4">
                     <div>
-                        <label class="text-xs font-bold text-slate-400 block mb-1">6-Digit Code</label>
-                        <input type="text" id="otp-code-input" maxlength="6" pattern="[0-9]{6}" placeholder="123456" required class="input-field text-center font-mono text-2xl tracking-widest font-black">
+                        <label class="text-xs font-bold text-slate-400 block mb-1">8-Digit Code</label>
+                        <input type="text" id="otp-code-input" maxlength="8" pattern="[0-9]{8}" placeholder="12345678" inputmode="numeric" required class="input-field text-center font-mono text-2xl tracking-widest font-black">
                     </div>
                     <button type="submit" id="otp-verify-btn" class="btn-primary !bg-[#00853F]">Confirm Code & Create Profile</button>
                 </form>
@@ -472,7 +461,6 @@
                     </div>`;
                 }
 
-                // Render Unlocked Beta View with DutyTracker Live
                 return `<div class="space-y-6 pb-12">
                     <div class="flex justify-between items-center">
                         <div>
@@ -508,7 +496,6 @@
                         `}
                     </div>
 
-                    <!-- Primary Survey Reference (DRABSC) -->
                     <div class="space-y-3">
                         <h3 class="font-bold text-sm">DRABSC Primary Survey Reference</h3>
                         <div class="glass-card p-2 space-y-2">
@@ -624,7 +611,6 @@
                     </label>
                 </div>
 
-                <!-- Dark Mode Theme Toggle Card -->
                 <div class="glass-card p-4 flex justify-between items-center">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-lg"><i class="fas fa-moon"></i></div>
@@ -639,7 +625,6 @@
                     </label>
                 </div>
 
-                <!-- Collapsible Settings Accordion -->
                 <div class="glass-card overflow-hidden">
                     <button onclick="toggleSettingsAccordion()" class="w-full p-4 flex items-center justify-between font-bold text-sm text-left">
                         <span class="flex items-center gap-2"><i class="fas fa-sliders-h text-green-600"></i> Edit Profile Settings</span>
@@ -669,7 +654,6 @@
             </div>`
         };
 
-        // --- SPLASH SCREEN CONTROLLER ENGINE ---
         function runSplashSequence() {
             const splash = document.getElementById('splash-screen');
             const s1 = document.getElementById('splash-stage-1');
@@ -695,14 +679,12 @@
             }, 6600);
         }
 
-        // --- DARK MODE THEME TOGGLE ---
         window.toggleDarkMode = function(enabled) {
             state.darkMode = enabled;
             localStorage.setItem('dutylog_theme', enabled ? 'dark' : 'light');
             document.body.classList.toggle('dark-theme', enabled);
         };
 
-        // --- SETTINGS ACCORDION TOGGLE ---
         window.toggleSettingsAccordion = function() {
             state.settingsOpen = !state.settingsOpen;
             const body = document.getElementById('settings-body');
@@ -711,7 +693,6 @@
             if (chevron) chevron.classList.toggle('rotate-180', state.settingsOpen);
         };
 
-        // --- BETA UNLOCK ENGINE ---
         window.handleBetaUnlock = function(e) {
             e.preventDefault();
             const input = document.getElementById('beta-key-input');
@@ -731,7 +712,6 @@
             router.navigate('beta-tab');
         };
 
-        // --- DUTYTRACKER LIVE ENGINE ---
         window.startLiveDutyTracker = async function(e) {
             if (e) e.preventDefault();
             const titleInput = document.getElementById('live-duty-title-input');
@@ -834,7 +814,6 @@
             dutyTimerInterval = setInterval(updateClocks, 1000);
         }
 
-        // --- EMAIL OTP HANDLERS ---
         async function handleSignup(e) {
             e.preventDefault();
             const btn = document.getElementById('signup-btn');
@@ -894,7 +873,6 @@
             }
         }
 
-        // --- EXPORT DATA ENGINE ---
         window.openExportModal = function() {
             const modal = document.createElement('div');
             modal.id = 'export-modal';
