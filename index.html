@@ -9,19 +9,20 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="DutyLog">
+    <meta name="apple-mobile-web-app-title" content="DutyLog Pro">
     
     <!-- Dynamic Manifest Injection for Independent Home Screen Standalone Execution -->
-    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkR1dHlMb2cgUHJvIiwKICAic2hvcnRfbmFtZSI6ICJEdXR5TG9nIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNGOEY5RkEiLAogICJ0aGVtZV9jb2xvciI6ICIjMUIyNjNCIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9hcGkuZGljZWJlYXIuY29tLzcueC9pZGVudGljb24vc3ZnP3NlZWQ9ZHV0eWxvZyIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkR1dHlMb2cgUHJvIiwKICAic2hvcnRfbmFtZSI6ICJEdXR5TG9nIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNGOEY5RkEiLAogICJ0aGVtZV9colorIjogIjFCMjYzQiIsCiAgImljb25zIjogWwogICAgewogICAgICAic3JjIjogImh0dHBzOi8vYXBpLmRpY2ViZWFyLmNvbS83LngvaWRlbnRpY29uL3N2Zz9zZWVkPWR1dHlsb2ciLAogICAgICAic2l6ZXMiOiAiNTEyeDUxMiIsCiAgICAgICJ0eXBlIjogImltYWdlL3N2Zyt4bWwiCiAgICB9CiAgXQp9">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
     <style>
         :root { --navy: #1B263B; --green: #00853F; --light-bg: #F8F9FA; --red: #DC2626; }
         body { font-family: 'Inter', sans-serif; background-color: var(--light-bg); -webkit-tap-highlight-color: transparent; margin: 0; padding-top: env(safe-area-inset-top); }
         .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 1.5rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); }
-        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 0.7rem; color: #94A3B8; cursor: pointer; flex: 1; transition: color 0.2s; background: none; border: none; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 0.65rem; color: #94A3B8; cursor: pointer; flex: 1; transition: color 0.2s; background: none; border: none; }
         .nav-item.active { color: var(--green); }
         .input-field { width: 100%; padding: 0.8rem; border-radius: 0.8rem; border: 1px solid #e2e8f0; outline: none; font-size: 16px; transition: border 0.2s; background: white; color: var(--navy); -webkit-appearance: none; }
         .input-field:focus { border-color: var(--green); }
@@ -38,6 +39,7 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .tag { padding: 4px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: uppercase; background: #E2E8F0; color: #475569; }
         .tag-badge { background: #E0F2FE; color: #0369A1; }
+        .tag-beta { background: #DCFCE7; color: #166534; border: 1px solid #86EFAC; }
         .back-btn { display: flex; align-items: center; gap: 8px; color: var(--navy); font-weight: 600; margin-bottom: 2rem; cursor: pointer; }
         
         .tab-btn { padding: 0.6rem 1rem; font-size: 0.75rem; font-weight: 700; border-radius: 0.75rem; color: #64748B; background: #F1F5F9; transition: all 0.2s; }
@@ -54,19 +56,51 @@
     <!-- Initialization Screen -->
     <div id="init-loader">
         <div class="spinner mb-4"></div>
-        <p class="text-navy font-bold animate-pulse">Loading DutyLog Platform...</p>
+        <p class="text-navy font-bold animate-pulse flex items-center gap-2">
+            Loading DutyLog Platform
+        </p>
     </div>
+
+    <!-- Live Lockscreen & Top-Bar Active Tracker Widget -->
+    <div id="live-duty-banner" class="hidden fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] bg-slate-900/95 text-white p-3 z-50 shadow-2xl backdrop-blur-md rounded-b-2xl border-b border-emerald-500 animate-slide-down">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="relative flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping absolute"></span>
+                    <i class="fas fa-stopwatch text-xs"></i>
+                </div>
+                <div>
+                    <p class="text-[11px] font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                        DutyTracker Live <span class="bg-emerald-900 text-emerald-300 text-[8px] px-1.5 py-0.2 rounded font-mono">LOCKSCREEN SYNC</span>
+                    </p>
+                    <p id="live-duty-title-text" class="text-xs font-bold truncate max-w-[170px]">On Shift</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <span id="live-duty-timer" class="font-mono text-sm font-black text-emerald-300 bg-slate-800 px-2 py-1 rounded-lg border border-slate-700">00:00:00</span>
+                <button onclick="router.navigate('beta')" class="bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-all">View</button>
+                <button onclick="endLiveDuty()" class="bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-md transition-all flex items-center gap-1">
+                    <i class="fas fa-stop text-[8px]"></i> End
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden audio element required for persistent MediaSession lockscreen controls -->
+    <audio id="silent-audio-loop" loop src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="></audio>
 
     <!-- App Shell -->
     <div id="app">
         <main id="view-container" class="px-4 pt-6 max-w-[600px] mx-auto"></main>
         
-        <nav id="bottom-nav" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] hidden bg-white border-t px-4 py-3 justify-between items-center z-40 shadow-lg pb-safe">
-            <button onclick="router.navigate('dashboard')" class="nav-item active" data-view="dashboard"><i class="fas fa-home text-lg"></i><span>Dashboard</span></button>
-            <button onclick="router.navigate('feed')" class="nav-item" data-view="feed"><i class="fas fa-images text-lg"></i><span>Feed</span></button>
-            <button onclick="router.navigate('add-duty')" class="nav-item bg-white border-2 border-[#00853F] !text-[#00853F] p-3 -mt-10 rounded-full shadow-xl h-14 w-14 justify-center"><i class="fas fa-plus text-xl"></i></button>
-            <button onclick="router.navigate('drabsc-view')" class="nav-item" data-view="drabsc-view"><i class="fas fa-heartbeat text-lg"></i><span>DRABSC</span></button>
-            <button onclick="router.navigate('profile')" class="nav-item" data-view="profile"><i class="fas fa-user text-lg"></i><span>Profile</span></button>
+        <nav id="bottom-nav" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] hidden bg-white border-t px-2 py-3 justify-between items-center z-40 shadow-lg pb-safe">
+            <button onclick="router.navigate('dashboard')" class="nav-item active" data-view="dashboard"><i class="fas fa-home text-base"></i><span>Dashboard</span></button>
+            <button onclick="router.navigate('feed')" class="nav-item" data-view="feed"><i class="fas fa-images text-base"></i><span>Feed</span></button>
+            <button onclick="router.navigate('add-duty')" class="nav-item bg-white border-2 border-[#00853F] !text-[#00853F] p-3 -mt-10 rounded-full shadow-xl h-12 w-12 justify-center"><i class="fas fa-plus text-lg"></i></button>
+            <button onclick="router.navigate('drabsc-view')" class="nav-item" data-view="drabsc-view"><i class="fas fa-heartbeat text-base"></i><span>DRABSC</span></button>
+            <button onclick="router.navigate('beta')" class="nav-item" data-view="beta"><i class="fas fa-vial text-base"></i><span>Beta</span></button>
+            <button onclick="router.navigate('profile')" class="nav-item" data-view="profile"><i class="fas fa-user text-base"></i><span>Profile</span></button>
         </nav>
     </div>
 
@@ -88,12 +122,236 @@
             editingDutyId: null,
             timeInputMode: 'duration',
             calculatedHours: 0,
-            calculatedMinutes: 0
+            calculatedMinutes: 0,
+            activeDuty: null,
+            betaUnlocked: localStorage.getItem('dutylog_beta_unlocked') === 'true'
         };
+
+        const VALID_BETA_KEYS = ['603-DUTY', '814-BETA', '108-LIVE', '920-LOGS', '501-DUTY', 'DL2025', 'DL2026', 'DLBETA'];
 
         const saveLocalCache = (key, data) => localStorage.setItem(`dutylog_pro_${key}`, JSON.stringify(data));
         const getLocalCache = (key) => JSON.parse(localStorage.getItem(`dutylog_pro_${key}`));
         const getUserPFP = (url, id) => url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${id || 'volunteer'}`;
+
+        window.verifyBetaAccessKey = function(e) {
+            if (e) e.preventDefault();
+            const input = document.getElementById('beta-key-input');
+            const errEl = document.getElementById('beta-key-error');
+            if (!input) return;
+
+            const val = input.value.trim().toUpperCase();
+            const isValid = VALID_BETA_KEYS.some(k => k === val || k.replace('-', '') === val);
+
+            if (isValid) {
+                state.betaUnlocked = true;
+                localStorage.setItem('dutylog_beta_unlocked', 'true');
+                state.currentView = null; // Reset view state so router forces re-render
+                router.navigate('beta');
+            } else {
+                if (errEl) {
+                    errEl.innerText = 'Invalid access code. Please check your key or request access below.';
+                    errEl.classList.remove('hidden');
+                }
+            }
+        };
+
+        window.lockBetaAccess = function() {
+            state.betaUnlocked = false;
+            localStorage.removeItem('dutylog_beta_unlocked');
+            state.currentView = null;
+            router.navigate('beta');
+        };
+
+        function checkActiveDutyPersistence() {
+            const saved = localStorage.getItem('dutylog_active_duty');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed && parsed.startTime) {
+                        state.activeDuty = {
+                            title: parsed.title || 'DutyTracker Live Shift',
+                            startTime: parsed.startTime,
+                            intervalId: null
+                        };
+                        if (state.activeDuty.intervalId) clearInterval(state.activeDuty.intervalId);
+                        state.activeDuty.intervalId = setInterval(updateLiveDutyTimer, 1000);
+                        updateLiveDutyTimer();
+                        
+                        const banner = document.getElementById('live-duty-banner');
+                        const titleText = document.getElementById('live-duty-title-text');
+                        if (banner) banner.classList.remove('hidden');
+                        if (titleText) titleText.innerText = state.activeDuty.title;
+                    }
+                } catch(e) {
+                    console.error("Error parsing saved duty state:", e);
+                }
+            }
+        }
+
+        window.startLiveDuty = async function(customTitle) {
+            const titleInput = document.getElementById('live-duty-input-title') || document.getElementById('beta-live-duty-input');
+            const title = customTitle || (titleInput ? titleInput.value : '') || 'DutyTracker Live Shift';
+            
+            if (state.activeDuty) {
+                alert("DutyTracker Live is already active!");
+                return;
+            }
+
+            // Prompt user for notification permissions when starting live duty
+            if ("Notification" in window && Notification.permission === "default") {
+                try {
+                    await Notification.requestPermission();
+                } catch(e) {
+                    console.log("Notification permission error:", e);
+                }
+            }
+
+            const activeDutyObj = {
+                title: title,
+                startTime: Date.now()
+            };
+
+            // Save to localStorage so it survives tucking/backgrounding or app refresh
+            localStorage.setItem('dutylog_active_duty', JSON.stringify(activeDutyObj));
+
+            state.activeDuty = {
+                ...activeDutyObj,
+                intervalId: null
+            };
+
+            // Play silent audio loop so iOS/Android keeps MediaSession lockscreen widget alive
+            const audioEl = document.getElementById('silent-audio-loop');
+            if (audioEl) {
+                audioEl.play().catch(() => {});
+            }
+
+            // Setup Media Session API for lockscreen display
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: `DutyTracker Live: ${title}`,
+                    artist: `Timer Active | Auto-Saving Shift`,
+                    album: `DutyLog Pro Active Shift`,
+                    artwork: [
+                        { src: 'https://api.dicebear.com/7.x/identicon/svg?seed=dutylog', sizes: '512x512', type: 'image/svg+xml' }
+                    ]
+                });
+
+                navigator.mediaSession.setActionHandler('pause', () => { window.endLiveDuty(); });
+                navigator.mediaSession.setActionHandler('stop', () => { window.endLiveDuty(); });
+            }
+
+            // Update timer every second
+            if (state.activeDuty.intervalId) clearInterval(state.activeDuty.intervalId);
+            state.activeDuty.intervalId = setInterval(updateLiveDutyTimer, 1000);
+            updateLiveDutyTimer();
+
+            // Display UI banner
+            const banner = document.getElementById('live-duty-banner');
+            const titleText = document.getElementById('live-duty-title-text');
+            if (banner) banner.classList.remove('hidden');
+            if (titleText) titleText.innerText = title;
+
+            // Trigger Lockscreen push notification if permitted
+            if ("Notification" in window && Notification.permission === "granted") {
+                try {
+                    new Notification(`DutyTracker Live Started`, {
+                        body: `Tracking "${title}". Shift will auto-record when ended.`,
+                        icon: 'https://api.dicebear.com/7.x/identicon/svg?seed=dutylog'
+                    });
+                } catch(e) {}
+            }
+
+            router.navigate('beta');
+        };
+
+        function updateLiveDutyTimer() {
+            if (!state.activeDuty) return;
+            
+            // Calculating exact elapsed timestamp difference so tucking for 5s or hours is 100% accurate
+            const elapsedMs = Date.now() - state.activeDuty.startTime;
+            const totalSec = Math.max(0, Math.floor(elapsedMs / 1000));
+            const hrs = Math.floor(totalSec / 3600);
+            const mins = Math.floor((totalSec % 3600) / 60);
+            const secs = totalSec % 60;
+
+            const timeStr = `${hrs < 10 ? '0' + hrs : hrs}:${mins < 10 ? '0' + mins : mins}:${secs < 10 ? '0' + secs : secs}`;
+            
+            const timerEl = document.getElementById('live-duty-timer');
+            if (timerEl) timerEl.innerText = timeStr;
+
+            const betaTimerEl = document.getElementById('beta-live-timer');
+            if (betaTimerEl) betaTimerEl.innerText = timeStr;
+
+            // Update Media Session Lock Screen text live
+            if ('mediaSession' in navigator && navigator.mediaSession.metadata) {
+                navigator.mediaSession.metadata.artist = `Elapsed: ${timeStr} | Tap pause to End & Save`;
+            }
+
+            state.calculatedHours = hrs;
+            state.calculatedMinutes = mins;
+            const display = document.getElementById('calc-display');
+            if (display) display.innerText = `${hrs}h ${mins}m`;
+        }
+
+        window.endLiveDuty = async function() {
+            if (!state.activeDuty) return;
+
+            clearInterval(state.activeDuty.intervalId);
+            
+            const audioEl = document.getElementById('silent-audio-loop');
+            if (audioEl) audioEl.pause();
+
+            const elapsedMs = Date.now() - state.activeDuty.startTime;
+            const totalSec = Math.max(1, Math.floor(elapsedMs / 1000));
+            const finalHrs = Math.floor(totalSec / 3600);
+            const finalMins = Math.floor((totalSec % 3600) / 60);
+            const totalHoursNum = (finalHrs + (finalMins / 60)).toFixed(2);
+
+            const savedTitle = state.activeDuty.title;
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            // Clear persistent active duty
+            localStorage.removeItem('dutylog_active_duty');
+            state.activeDuty = null;
+
+            const banner = document.getElementById('live-duty-banner');
+            if (banner) banner.classList.add('hidden');
+
+            // Automatically create a new shift record directly into database & local state
+            try {
+                if (state.user) {
+                    const { data, error } = await sb.from('hours_logs').insert({
+                        user_id: state.user.id,
+                        title: savedTitle,
+                        date: todayStr,
+                        total_hours: totalHoursNum,
+                        created_at: new Date().toISOString()
+                    }).select();
+
+                    if (error) throw error;
+                }
+                
+                alert(`DutyTracker Live complete!\nNew Record Created: "${savedTitle}" (${finalHrs}h ${finalMins}m).`);
+                await loadDashboardData();
+                router.navigate('dashboard');
+            } catch(err) {
+                console.error("Error creating live shift record:", err);
+                alert(`Shift completed (${finalHrs}h ${finalMins}m). Please verify and save manually.`);
+                state.calculatedHours = finalHrs;
+                state.calculatedMinutes = finalMins;
+                router.navigate('add-duty');
+            }
+        };
+
+        // Sync timer state when app is untucked/unfocused
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && state.activeDuty) {
+                updateLiveDutyTimer();
+            }
+        });
+        window.addEventListener('pageshow', () => {
+            if (state.activeDuty) updateLiveDutyTimer();
+        });
 
         const router = {
             navigate: async (view) => {
@@ -153,9 +411,13 @@
 
         const views = {
             welcome: async () => `<div class="flex flex-col items-center justify-center min-h-[80vh] text-center space-y-8">
-                <div class="w-24 h-24 bg-white border-4 border-[#00853F] rounded-[2rem] flex items-center justify-center shadow-2xl"><i class="fas fa-clock text-[#00853F] text-5xl"></i></div>
+                <div class="w-24 h-24 bg-white border-4 border-[#00853F] rounded-[2rem] flex items-center justify-center shadow-2xl relative">
+                    <i class="fas fa-clock text-[#00853F] text-5xl"></i>
+                </div>
                 <div>
-                    <h1 class="text-4xl font-black text-[#1B263B]">DutyLog Pro</h1>
+                    <div class="flex items-center justify-center gap-2">
+                        <h1 class="text-4xl font-black text-[#1B263B]">DutyLog Pro</h1>
+                    </div>
                     <p class="text-xs text-slate-400 font-medium mt-1">Operational Hour Tracking Utility</p>
                 </div>
                 <div class="w-full space-y-3 px-4 max-w-xs">
@@ -165,7 +427,9 @@
             </div>`,
             login: async () => `<div class="pt-4 max-w-sm mx-auto">
                 <div onclick="router.navigate('welcome')" class="back-btn"><i class="fas fa-arrow-left"></i> Back</div>
-                <h2 class="text-2xl font-bold mb-8">Sign In</h2>
+                <div class="flex items-center gap-2 mb-8">
+                    <h2 class="text-2xl font-bold">Sign In</h2>
+                </div>
                 <form onsubmit="handleLogin(event)" class="space-y-4">
                     <input type="email" id="login-email" placeholder="Email" autocomplete="username" required class="input-field">
                     <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" required class="input-field">
@@ -174,7 +438,9 @@
             </div>`,
             signup: async () => `<div class="pt-4 max-w-sm mx-auto">
                 <div onclick="router.navigate('welcome')" class="back-btn"><i class="fas fa-arrow-left"></i> Back</div>
-                <h2 class="text-2xl font-bold mb-6">Create Account</h2>
+                <div class="flex items-center gap-2 mb-6">
+                    <h2 class="text-2xl font-bold">Create Account</h2>
+                </div>
                 <form onsubmit="handleSignup(event)" class="space-y-4">
                     <input type="text" id="signup-name" placeholder="Full Name" required class="input-field">
                     <input type="text" id="signup-division" placeholder="Division (e.g. City of Cardiff)" required class="input-field">
@@ -190,7 +456,9 @@
                 return `<div class="space-y-6">
                     <header class="flex justify-between items-center">
                         <div>
-                            <h1 class="text-xl font-bold text-navy">${state.profile?.name || 'Volunteer'}</h1>
+                            <div class="flex items-center gap-2">
+                                <h1 class="text-xl font-bold text-navy">${state.profile?.name || 'Volunteer'}</h1>
+                            </div>
                             <div class="flex flex-wrap gap-1.5 items-center mt-0.5">
                                 <span class="tag text-[9px]">${state.profile?.division || 'City of Cardiff'}</span>
                                 <span class="tag tag-badge text-[9px]">${state.profile?.badge || 'Cadet'}</span>
@@ -201,9 +469,13 @@
                         </div>
                         <img src="${getUserPFP(state.profile?.avatar_url, state.user?.id)}" class="w-10 h-10 rounded-full border-2 border-green-500 object-cover shadow-sm">
                     </header>
+
                     <div class="glass-card p-6 bg-[#1B263B] text-white relative overflow-hidden">
-                        <p class="text-[10px] opacity-70 uppercase font-bold tracking-widest">Total Logged Shift Time</p>
-                        <h2 class="text-4xl font-black tracking-tight" id="dash-hours-banner">${cachedHoursString}</h2>
+                        <div class="flex justify-between items-center">
+                            <p class="text-[10px] opacity-70 uppercase font-bold tracking-widest">Total Logged Shift Time</p>
+                            <span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-black border border-emerald-500/30 uppercase">System Sync</span>
+                        </div>
+                        <h2 class="text-4xl font-black tracking-tight mt-1" id="dash-hours-banner">${cachedHoursString}</h2>
                     </div>
                     
                     <!-- Dynamic Hour Export Trigger -->
@@ -224,7 +496,9 @@
                 setTimeout(loadFeedPosts, 10);
                 return `<div class="space-y-4">
                     <div class="flex justify-between items-center">
-                        <h2 class="text-2xl font-bold text-navy">Division Feed</h2>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-2xl font-bold text-navy">Division Feed</h2>
+                        </div>
                         <button onclick="openPublishMediaModal()" class="bg-green-600 text-white text-xs font-bold py-2 px-4 rounded-xl"><i class="fas fa-camera mr-1"></i> Post Media</button>
                     </div>
                     <div id="feed-container" class="space-y-6 pb-12">${renderFeedHTML(state.feedPosts.length ? state.feedPosts : cachedFeed)}</div>
@@ -233,7 +507,9 @@
             'drabsc-view': async () => `
                 <div class="space-y-4 pb-12">
                     <div>
-                        <h2 class="text-2xl font-bold text-navy">Primary Protocol</h2>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-2xl font-bold text-navy">Primary Protocol</h2>
+                        </div>
                         <p class="text-xs text-slate-400 mt-0.5">Quick reference primary survey assessment guide.</p>
                     </div>
                     <div class="glass-card p-2 bg-white border border-slate-100 space-y-2">
@@ -299,6 +575,106 @@
                         </div>
                     </div>
                 </div>`,
+
+            beta: async () => {
+                if (!state.betaUnlocked) {
+                    return `<div class="space-y-6 pt-6 max-w-sm mx-auto">
+                        <div class="text-center space-y-3">
+                            <div class="w-16 h-16 bg-slate-900 text-amber-400 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-lg border border-amber-500/30">
+                                <i class="fas fa-key"></i>
+                            </div>
+                            <h2 class="text-xl font-bold text-navy">Beta Features Locked</h2>
+                            <p class="text-xs text-slate-500 max-w-xs mx-auto">Enter a division access code to unlock experimental utilities such as DutyTracker Live.</p>
+                        </div>
+
+                        <form onsubmit="verifyBetaAccessKey(event)" class="glass-card p-5 space-y-4 bg-white border border-slate-100 shadow-md">
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">Division Access Code</label>
+                                <input type="text" id="beta-key-input" placeholder="e.g. 603-DUTY" required class="input-field uppercase font-mono font-bold text-center tracking-widest text-lg" maxlength="9">
+                            </div>
+                            <p id="beta-key-error" class="hidden text-xs text-red-500 font-bold text-center bg-red-50 p-2 rounded-lg border border-red-200"></p>
+                            <button type="submit" class="btn-primary !bg-slate-900 flex items-center justify-center gap-2">
+                                <i class="fas fa-lock-open text-amber-400 text-xs"></i> Unlock Beta Features
+                            </button>
+                        </form>
+
+                        <div class="text-center pt-2">
+                            <p class="text-xs text-slate-500 mb-2">Don't have an access code for your division?</p>
+                            <a href="mailto:dutylog@lawsonmorris.uk?subject=DutyLog%20Beta%20Access%20Request&body=DutyLog%20Pro%20-%20Beta%20Access%20Request%0A%0AFull%20Name%3A%20%0AEmail%20Address%3A%20%0ADivision%20%2F%20Unit%3A%20%0A%0AReason%20for%20Beta%20Access%3A%20" class="inline-flex items-center gap-2 text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-4 py-2.5 rounded-xl border border-emerald-200 transition-all">
+                                <i class="fas fa-envelope"></i> Click here to request Beta access
+                            </a>
+                        </div>
+                    </div>`;
+                }
+
+                return `<div class="space-y-6 pb-12">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-2xl font-bold text-navy">Beta Features</h2>
+                                <span class="tag tag-beta text-[9px]">UNLOCKED</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-0.5">Experimental operational utilities and features.</p>
+                        </div>
+                        <button onclick="lockBetaAccess()" class="text-xs text-slate-400 hover:text-red-500 font-bold bg-slate-100 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                            <i class="fas fa-lock"></i> Lock
+                        </button>
+                    </div>
+
+                    <!-- Feature 1: DutyTracker Live -->
+                    <div class="glass-card p-5 bg-gradient-to-br from-slate-900 to-[#1B263B] text-white space-y-4 shadow-xl border border-emerald-500/30">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-2">
+                                <div class="w-9 h-9 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-lg">
+                                    <i class="fas fa-stopwatch"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-black text-sm text-emerald-400">DutyTracker Live</h3>
+                                    <p class="text-[10px] text-slate-300">Active Shift & Lockscreen Sync</p>
+                                </div>
+                            </div>
+                            <span class="text-[8px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-mono font-bold border border-emerald-500/30">ACTIVE LAB</span>
+                        </div>
+
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            Tracks real-time operational shift duration. Works accurately even if the device screen locks or the app is tucked away. Automatically creates a new shift record upon completion.
+                        </p>
+
+                        <div class="space-y-3 pt-2">
+                            <input type="text" id="beta-live-duty-input" placeholder="Enter Shift Title (e.g. Stadium Event Shift)" class="input-field text-xs !bg-slate-800 !border-slate-700 !text-white">
+                            
+                            ${state.activeDuty ? `
+                                <div class="p-3 bg-emerald-950/80 border border-emerald-500/40 rounded-xl flex items-center justify-between">
+                                    <div>
+                                        <p class="text-[10px] font-bold text-emerald-400 uppercase">Shift In Progress</p>
+                                        <p class="text-xs font-bold text-white truncate max-w-[150px]">${state.activeDuty.title}</p>
+                                        <span id="beta-live-timer" class="font-mono text-sm font-black text-emerald-300">00:00:00</span>
+                                    </div>
+                                    <button onclick="endLiveDuty()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-2 rounded-xl shadow transition-all flex items-center gap-1.5">
+                                        <i class="fas fa-stop text-[10px]"></i> End & Save Record
+                                    </button>
+                                </div>
+                            ` : `
+                                <button onclick="startLiveDuty(document.getElementById('beta-live-duty-input').value)" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-xl font-bold text-xs shadow-md flex items-center justify-center gap-2">
+                                    <i class="fas fa-play text-xs"></i> Start DutyTracker Live
+                                </button>
+                            `}
+                        </div>
+                    </div>
+
+                    <!-- Feature 2: Background Resilience Status -->
+                    <div class="glass-card p-4 bg-white space-y-3">
+                        <div class="flex items-center justify-between border-b pb-2">
+                            <h4 class="font-bold text-xs text-navy flex items-center gap-2"><i class="fas fa-shield-alt text-indigo-600"></i> Background Persistence Engine</h4>
+                            <span class="tag tag-beta text-[8px]">ACTIVE</span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 leading-relaxed">
+                            Timestamp-driven tracking ensures exact time accuracy regardless of device sleep or app backgrounding.
+                        </p>
+                    </div>
+                </div>`;
+            },
+
             'add-duty': async () => {
                 let targetLog = { title: '', date: new Date().toISOString().split('T')[0], total_hours: '0.00' };
                 if (state.editingDutyId) {
@@ -307,17 +683,33 @@
                 }
                 const parsedTime = parseDatabaseHoursToUiTime(targetLog.total_hours);
                 
-                state.calculatedHours = parsedTime.hours;
-                state.calculatedMinutes = parsedTime.minutes;
+                if (!state.activeDuty) {
+                    state.calculatedHours = parsedTime.hours;
+                    state.calculatedMinutes = parsedTime.minutes;
+                }
                 state.timeInputMode = 'duration'; 
 
                 setTimeout(() => {
-                    switchTimeInputMode('duration', parsedTime.hours, parsedTime.minutes);
+                    switchTimeInputMode('duration', state.calculatedHours, state.calculatedMinutes);
                 }, 15);
 
                 return `<div class="px-2 space-y-4">
-                    <h2 class="text-2xl font-bold text-navy">${state.editingDutyId ? 'Modify Shift Record' : 'Log Operational Duty'}</h2>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-2xl font-bold text-navy">${state.editingDutyId ? 'Modify Shift Record' : 'Log Operational Duty'}</h2>
+                        </div>
+                    </div>
                     
+                    ${state.activeDuty ? `
+                    <div class="glass-card p-4 bg-emerald-900 text-white space-y-2 border border-emerald-400/40">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] font-black text-emerald-300 uppercase">DutyTracker Live Active</span>
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        </div>
+                        <p class="text-xs font-bold">${state.activeDuty.title}</p>
+                        <button onclick="endLiveDuty()" class="w-full bg-red-600 text-white py-2 rounded-xl font-bold text-xs shadow">End Live Shift & Save Record</button>
+                    </div>` : ''}
+
                     <form onsubmit="handleSaveDuty(event)" class="space-y-4">
                         <input type="text" id="duty-title" placeholder="Event / Shift Title" value="${targetLog.title}" required class="input-field">
                         <input type="date" id="duty-date" value="${targetLog.date}" class="input-field">
@@ -329,10 +721,10 @@
                             </div>
                             
                             <div id="time-input-container-mount"></div>
-                            <div class="text-center text-xs font-bold text-green-600 mt-2">Calculated Total Time: <span id="calc-display">0h 0m</span></div>
+                            <div class="text-center text-xs font-bold text-green-600 mt-2">Calculated Total Time: <span id="calc-display">${state.calculatedHours}h ${state.calculatedMinutes}m</span></div>
                         </div>
 
-                        <button type="submit" id="duty-save-btn" class="btn-primary !bg-[#00853F]">Save Shift</button>
+                        <button type="submit" id="duty-save-btn" class="btn-primary !bg-[#00853F]">Save Shift Record</button>
                     </form>
                 </div>`;
             },
@@ -346,7 +738,10 @@
                 </div>
                 
                 <form onsubmit="handleUpdateProfile(event)" class="glass-card p-5 space-y-4 bg-white">
-                    <h3 class="font-bold text-navy text-sm border-b pb-2"><i class="fas fa-sliders-h mr-2 text-green-600"></i>Edit Settings</h3>
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <h3 class="font-bold text-navy text-sm"><i class="fas fa-sliders-h mr-2 text-green-600"></i>Edit Settings</h3>
+                        <span class="tag tag-beta text-[8px]">PRO v1.0</span>
+                    </div>
                     <div>
                         <label class="text-xs font-bold text-slate-400 block mb-1">Username / Name</label>
                         <input type="text" id="profile-name" value="${state.profile?.name || ''}" class="input-field text-sm" required placeholder="Enter name">
@@ -369,7 +764,6 @@
             </div>`
         };
 
-        // --- DYNAMIC DATA EXPORT COMPILATION ENGINE ---
         window.openExportModal = function() {
             const modal = document.createElement('div');
             modal.id = 'export-modal';
@@ -687,7 +1081,9 @@
             modal.className = 'fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-sm';
             modal.innerHTML = `
                 <div class="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-                    <h3 class="font-black text-navy text-base">Post to Division Feed</h3>
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-black text-navy text-base">Post to Division Feed</h3>
+                    </div>
                     <textarea id="post-desc" placeholder="What happened on this shift duty?" class="input-field min-h-[80px] text-sm"></textarea>
                     <div class="space-y-2">
                         <label class="text-xs font-bold text-slate-500 block">Attach Media</label>
@@ -777,168 +1173,178 @@
             if(!txt) return;
             try {
                 const post = state.feedPosts.find(p => p.id === postId);
-                const currentComments = Array.isArray(post.comments) ? post.comments : [];
-                currentComments.push({ user_name: state.profile?.name || 'Member', text: txt, created_at: new Date().toISOString() });
-                const { error } = await sb.from('feed_posts').update({ comments: currentComments }).eq('id', postId);
+                if (!post) return;
+                const newComment = {
+                    user_id: state.user?.id,
+                    user_name: state.profile?.name || 'Member',
+                    text: txt,
+                    created_at: new Date().toISOString()
+                };
+                const existingComments = Array.isArray(post.comments) ? post.comments : [];
+                const updatedComments = [...existingComments, newComment];
+                
+                const { error } = await sb.from('feed_posts').update({ comments: updatedComments }).eq('id', postId);
                 if (error) throw error;
-                document.getElementById('comments-modal').remove();
+                const modal = document.getElementById('comments-modal');
+                if (modal) modal.remove();
                 loadFeedPosts();
-            } catch(e){}
+            } catch(e) {
+                console.error("Error submitting comment:", e);
+            }
+        }
+
+        window.triggerEditDuty = function(dutyId) {
+            state.editingDutyId = dutyId;
+            router.navigate('add-duty');
+        };
+
+        async function handleSaveDuty(e) {
+            e.preventDefault();
+            const btn = document.getElementById('duty-save-btn');
+            const title = document.getElementById('duty-title').value;
+            const date = document.getElementById('duty-date').value;
+            
+            const totalHoursNum = (state.calculatedHours + (state.calculatedMinutes / 60)).toFixed(2);
+            
+            if (btn) { btn.innerText = "Saving Shift..."; btn.disabled = true; }
+            
+            try {
+                if (state.editingDutyId) {
+                    const { error } = await sb.from('hours_logs').update({
+                        title,
+                        date,
+                        total_hours: totalHoursNum
+                    }).eq('id', state.editingDutyId);
+                    if (error) throw error;
+                    state.editingDutyId = null;
+                } else {
+                    const { error } = await sb.from('hours_logs').insert({
+                        user_id: state.user.id,
+                        title,
+                        date,
+                        total_hours: totalHoursNum,
+                        created_at: new Date().toISOString()
+                    });
+                    if (error) throw error;
+                }
+                router.navigate('dashboard');
+            } catch(err) {
+                console.error("Error saving shift:", err);
+                alert("Failed to save shift record.");
+            } finally {
+                if (btn) { btn.innerText = "Save Shift"; btn.disabled = false; }
+            }
+        }
+
+        async function uploadCompressedAvatar(e) {
+            const file = e.target.files ? e.target.files[0] : null;
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const imgDataUrl = event.target.result;
+                const imgEl = document.getElementById('profile-img');
+                if (imgEl) imgEl.src = imgDataUrl;
+                try {
+                    const { error } = await sb.from('profiles').update({ avatar_url: imgDataUrl }).eq('id', state.user.id);
+                    if (error) throw error;
+                    if (state.profile) state.profile.avatar_url = imgDataUrl;
+                } catch(err) {
+                    console.error("Avatar update error:", err);
+                }
+            };
+            reader.readAsDataURL(file);
         }
 
         async function handleLogin(e) {
             e.preventDefault();
-            const btn = document.getElementById('login-btn');
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
-            if (btn) { btn.innerText = "Verifying..."; btn.disabled = true; }
+            const btn = document.getElementById('login-btn');
+            if (btn) { btn.innerText = "Signing In..."; btn.disabled = true; }
             try {
                 const { data, error } = await sb.auth.signInWithPassword({ email, password });
                 if (error) throw error;
-                if (data?.session) await processSessionSync(data.session);
-            } catch (err) {
-                alert(`Login Failed: ${err.message}`);
+                state.user = data.user;
+                await fetchProfile();
+                router.navigate('dashboard');
+            } catch(err) {
+                alert(err.message || "Failed to sign in");
+            } finally {
                 if (btn) { btn.innerText = "Sign In"; btn.disabled = false; }
             }
         }
 
         async function handleSignup(e) {
             e.preventDefault();
-            const btn = document.getElementById('signup-btn');
             const name = document.getElementById('signup-name').value;
             const division = document.getElementById('signup-division').value;
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
+            const btn = document.getElementById('signup-btn');
             if (btn) { btn.innerText = "Registering..."; btn.disabled = true; }
             try {
                 const { data, error } = await sb.auth.signUp({ email, password });
                 if (error) throw error;
-                if (data?.user) {
-                    await sb.from('profiles').upsert({ id: data.user.id, name, division, badge: 'Cadet' });
-                    alert("Account registered! You can now sign in.");
-                    router.navigate('login');
+                if (data.user) {
+                    state.user = data.user;
+                    await sb.from('profiles').upsert({
+                        id: data.user.id,
+                        name,
+                        division,
+                        badge: 'Cadet'
+                    });
+                    await fetchProfile();
+                    router.navigate('dashboard');
                 }
-            } catch (networkError) {
-                alert(`Registration Failed: ${networkError.message}`);
+            } catch(err) {
+                alert(err.message || "Registration failed");
+            } finally {
                 if (btn) { btn.innerText = "Register"; btn.disabled = false; }
             }
         }
 
-        window.triggerEditDuty = function(id) { state.editingDutyId = id; router.navigate('add-duty'); };
+        async function handleLogout() {
+            await sb.auth.signOut();
+            state.user = null;
+            state.profile = null;
+            state.currentDuties = [];
+            state.feedPosts = [];
+            router.navigate('welcome');
+        }
 
-        async function handleSaveDuty(e) {
-            e.preventDefault();
-            const h = state.calculatedHours;
-            const m = state.calculatedMinutes;
-            const decimalVal = parseFloat(`${h}.${m < 10 ? '0' + m : m}`);
-            
-            const logObj = { 
-                user_id: state.user.id, 
-                title: document.getElementById('duty-title').value, 
-                date: document.getElementById('duty-date').value, 
-                total_hours: decimalVal 
-            };
-            
+        async function fetchProfile() {
+            if (!state.user) return;
             try {
-                if (state.editingDutyId) {
-                    const { error } = await sb.from('hours_logs').update(logObj).eq('id', state.editingDutyId);
-                    if (error) throw error;
-                    state.editingDutyId = null;
+                const { data, error } = await sb.from('profiles').select('*').eq('id', state.user.id).single();
+                if (data) {
+                    state.profile = data;
                 } else {
-                    const { error } = await sb.from('hours_logs').insert(logObj);
-                    if (error) throw error;
+                    state.profile = { name: 'Volunteer', division: 'City of Cardiff', badge: 'Cadet' };
                 }
-            } catch(err){}
-            router.navigate('dashboard');
-        }
-
-        window.uploadCompressedAvatar = function(event) {
-            const file = event.target.files ? event.target.files[0] : null;
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = async function() {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    canvas.width = 160; canvas.height = 160;
-                    ctx.drawImage(img, 0, 0, 160, 160);
-                    const base64Str = canvas.toDataURL('image/jpeg', 0.7);
-                    document.getElementById('profile-img').src = base64Str;
-                    try { await sb.from('profiles').update({ avatar_url: base64Str }).eq('id', state.user.id); } catch(err){}
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        };
-
-        async function handleLogout() { 
-            try { await sb.auth.signOut(); } catch(e){}
-            window.location.reload(); 
-        }
-
-        async function processSessionSync(session) {
-            if (session) {
-                state.user = session.user;
-                try {
-                    const { data } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
-                    state.profile = data || { name: 'Cadet Member', division: 'City of Cardiff', badge: 'Cadet' };
-                } catch(e) {
-                    state.profile = { name: 'Cadet Member', division: 'City of Cardiff', badge: 'Cadet' };
-                }
-                // Trigger 5-day Keep Alive engine check upon login
-                triggerKeepAlivePing();
-                await router.navigate('dashboard');
-            } else {
-                state.user = null; state.profile = null;
-                await router.navigate('welcome');
-            }
-            hideLoader();
-        }
-
-        // --- SILENT 5-DAY AUTOMATED KEEPALIVE ENGINE ---
-        async function triggerKeepAlivePing() {
-            try {
-                const lastPing = localStorage.getItem('dutylog_last_keepalive_ping');
-                const now = Date.now();
-                // 5 days in milliseconds = 5 days * 24 hrs * 60 mins * 60 secs * 1000 ms
-                const fiveDays = 5 * 24 * 60 * 60 * 1000;
-                
-                // If no record exists or if 5 days have elapsed, execute wake-up query to prevent pausing
-                if (!lastPing || (now - parseInt(lastPing)) > fiveDays) {
-                    console.log("5-Day Database Wake-up query executing...");
-                    
-                    // Simple select query on profiles table to keep database connection warm and active
-                    const { data, error } = await sb.from('profiles').select('id').limit(1);
-                    if (error) throw error;
-                    
-                    // Update timestamp on successful query execution
-                    localStorage.setItem('dutylog_last_keepalive_ping', now.toString());
-                    console.log("Database successfully pinged. 7-Day pause timer reset.");
-                } else {
-                    const daysRemaining = ((fiveDays - (now - parseInt(lastPing))) / (24 * 60 * 60 * 1000)).toFixed(1);
-                    console.log(`Keep-Alive warm. Next wake-up query scheduled in ${daysRemaining} days.`);
-                }
-            } catch(err) {
-                console.warn("Could not fire database ping. Connection may be restricted:", err.message);
+            } catch(e) {
+                state.profile = { name: 'Volunteer', division: 'City of Cardiff', badge: 'Cadet' };
             }
         }
 
-        async function init() {
-            setTimeout(hideLoader, 1200);
+        async function initApp() {
             try {
-                const fallbackSessionKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
-                let rawSession = fallbackSessionKey ? JSON.parse(localStorage.getItem(fallbackSessionKey)) : null;
+                checkActiveDutyPersistence();
                 const { data: { session } } = await sb.auth.getSession();
-                const activeSession = session || rawSession;
-                await processSessionSync(activeSession);
-                sb.auth.onAuthStateChange((e, s) => processSessionSync(s || rawSession));
-            } catch(err) {
-                await router.navigate('welcome');
+                if (session && session.user) {
+                    state.user = session.user;
+                    await fetchProfile();
+                    router.navigate('dashboard');
+                } else {
+                    router.navigate('welcome');
+                }
+            } catch(e) {
+                router.navigate('welcome');
+            } finally {
                 hideLoader();
             }
         }
-        window.onload = init;
+
+        window.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>
