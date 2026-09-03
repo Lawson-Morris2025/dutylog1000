@@ -5,15 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DutyLog Pro</title>
     
-    <!-- Strict Progressive Web App (PWA) Mobile Handling Tags -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DutyLog">
     <meta name="theme-color" content="#00853F">
     
-    <!-- Dynamic Manifest Injection for Independent Home Screen Standalone Execution -->
-    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkR1dHlMb2cgUHJvIiwKICAic2hvcnRfbmFtZSI6ICJEdXR5TG9nIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNGOEY5RkEiLAogICJ0aGVtZV9jb2xvciI6ICIjMUIyNjNCIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9hcGkuZGljZWJlYXIuY29tLzcueC9pZGVudGljb24vc3ZnP3NlZWQ9ZHV0eWxvZyIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICA5XQp9">
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkR1dHlMb2cgUHJvIiwKICAic2hvcnRfbmFtZSI6ICJEdXR5TG9nIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNGOEY5RkEiLAogICJ0aGVtZV9jb2xvciI6ICIjMUIyNjNCIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9hcGkuZGljZWJlYXIuY29tLzcueC9pZGVudGljb24vc3ZnP3NlZWQ9ZHV0eWxvZyIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -31,6 +29,7 @@
             --border-color: #E2E8F0;
             --input-bg: #FFFFFF;
             --nav-bg: #FFFFFF;
+            --app-height: 100dvh;
         }
 
         body.dark-theme {
@@ -44,12 +43,17 @@
             --nav-bg: #0F172A;
         }
 
+        html {
+            height: -webkit-fill-available;
+        }
+
         body { 
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
             background-color: var(--light-bg); 
             color: var(--text-main);
             -webkit-tap-highlight-color: transparent; 
             margin: 0; 
+            padding: 0;
             padding-top: env(safe-area-inset-top); 
             transition: background-color 0.3s ease, color 0.3s ease;
         }
@@ -95,16 +99,45 @@
 
         html, body { 
             overflow: hidden; 
-            height: 100%; 
-            position: fixed; 
-            width: 100%; 
+            width: 100%;
+            height: 100%;
+            height: -webkit-fill-available;
+            height: var(--app-height);
+            position: fixed;
+            inset: 0;
+        }
+
+        #app {
+            height: 100%;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
         }
 
         #view-container { 
             overflow-y: auto; 
-            height: 100vh; 
+            height: 100%;
             -webkit-overflow-scrolling: touch; 
-            padding-bottom: calc(100px + env(safe-area-inset-bottom)); 
+            padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)); 
+        }
+
+        #bottom-nav {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 50;
+            background-color: var(--nav-bg);
+            border-top: 1px solid var(--border-color);
+            padding: 0.65rem 1rem max(1rem, env(safe-area-inset-bottom, 0px));
+            display: none;
+            justify-content: space-around;
+            align-items: flex-end;
+            box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        #bottom-nav.nav-visible {
+            display: flex;
         }
 
         .btn-primary { 
@@ -213,13 +246,12 @@
     <div id="app">
         <main id="view-container" class="px-4 pt-4 max-w-[600px] mx-auto"></main>
         
-        <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 w-full hidden border-t px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] justify-around items-center z-40 shadow-2xl" style="background-color: var(--nav-bg); border-color: var(--border-color);">
-            <button onclick="router.navigate('dashboard')" class="nav-item active" data-view="dashboard"><i class="fas fa-home text-lg"></i><span>Dashboard</span></button>
-            <button onclick="router.navigate('feed')" class="nav-item" data-view="feed"><i class="fas fa-images text-lg"></i><span>Feed</span></button>
-            <button onclick="router.navigate('add-duty')" class="nav-item bg-white dark:bg-slate-800 border-2 border-[#00853F] !text-[#00853F] rounded-full shadow-lg h-12 w-12 -mt-5 flex items-center justify-center flex-shrink-0"><i class="fas fa-plus text-lg"></i></button>
-            <button id="admin-nav-item" onclick="router.navigate('admin')" class="nav-item hidden" data-view="admin"><i class="fas fa-user-shield text-lg text-amber-500"></i><span class="text-amber-500 font-bold">Admin</span></button>
-            <button onclick="router.navigate('beta-tab')" class="nav-item" data-view="beta-tab"><i class="fas fa-vial text-lg"></i><span>Beta</span></button>
-            <button onclick="router.navigate('profile')" class="nav-item" data-view="profile"><i class="fas fa-user text-lg"></i><span>Profile</span></button>
+        <nav id="bottom-nav">
+            <button type="button" onclick="router.navigate('dashboard')" class="nav-item active" data-view="dashboard"><i class="fas fa-home text-lg"></i><span>Dashboard</span></button>
+            <button type="button" onclick="router.navigate('feed')" class="nav-item" data-view="feed"><i class="fas fa-images text-lg"></i><span>Feed</span></button>
+            <button type="button" onclick="router.navigate('add-duty')" class="nav-item bg-white dark:bg-slate-800 border-2 border-[#00853F] !text-[#00853F] rounded-full shadow-lg h-12 w-12 flex items-center justify-center flex-shrink-0" aria-label="Log duty"><i class="fas fa-plus text-lg"></i></button>
+            <button type="button" onclick="router.navigate('beta-tab')" class="nav-item" data-view="beta-tab"><i class="fas fa-vial text-lg"></i><span>Beta</span></button>
+            <button type="button" onclick="router.navigate('profile')" class="nav-item" data-view="profile"><i class="fas fa-user text-lg"></i><span>Profile</span></button>
         </nav>
     </div>
 
@@ -230,14 +262,6 @@
         const sb = window.supabase.createClient(supabaseUrl, supabaseKey, {
             auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
         });
-
-        const ADMIN_UID = 'f3a6c15d-8663-41fe-bfd7-6a4e891b4db9';
-        const ADMIN_EMAIL = 'lawsonm6@icloud.com';
-
-        const isAdmin = () => {
-            if (!state.user) return false;
-            return state.user.id === ADMIN_UID || (state.user.email && state.user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
-        };
 
         const VALID_BETA_KEYS = ['603DUTY', '814-BETA', '814BETA', '108-LIVE', '108LIVE', '920-LOGS', '920LOGS', '501-DUTY', '501DUTY', 'DL2025', 'DL2026', 'DLBETA'];
 
@@ -268,6 +292,21 @@
         const getLocalCache = (key) => JSON.parse(localStorage.getItem(`dutylog_pro_${key}`));
         const getUserPFP = (url, id) => url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${id || 'volunteer'}`;
 
+        function pinAppToVisualViewport() {
+            const vv = window.visualViewport;
+            const height = vv ? vv.height : window.innerHeight;
+            document.documentElement.style.setProperty('--app-height', `${height}px`);
+
+            const nav = document.getElementById('bottom-nav');
+            if (!nav) return;
+            if (vv) {
+                const inset = window.innerHeight - vv.height - vv.offsetTop;
+                nav.style.bottom = `${Math.max(0, inset)}px`;
+            } else {
+                nav.style.bottom = '0px';
+            }
+        }
+
         const router = {
             navigate: async (view) => {
                 if (state.currentView === view && !state.editingDutyId && view !== 'beta-tab') return; 
@@ -287,22 +326,19 @@
                 if (!state.user && !isAuthView) {
                     state.currentView = 'welcome';
                     container.innerHTML = await views.welcome();
-                    nav.classList.add('hidden');
+                    nav.classList.remove('nav-visible');
                     hideLoader();
                     return;
                 }
 
-                nav.classList.toggle('hidden', isAuthView);
-                nav.classList.toggle('flex', !isAuthView);
+                nav.classList.toggle('nav-visible', !isAuthView);
                 
-                const adminNav = document.getElementById('admin-nav-item');
-                if (adminNav) adminNav.classList.toggle('hidden', !isAdmin());
-
                 document.querySelectorAll('.nav-item').forEach(el => {
                     el.classList.toggle('active', el.getAttribute('data-view') === view);
                 });
                 
                 if (views[view]) container.innerHTML = await views[view]();
+                pinAppToVisualViewport();
                 hideLoader();
             }
         };
@@ -350,7 +386,7 @@
                 </div>`;
             }).join('') || '<p class="text-center py-10 text-slate-400">No shifts saved yet.</p>';
 
-            return liveCardHtml + logsHtml;
+            return liveCardHtml + logsHtml + '<div class="h-28" aria-hidden="true"></div>';
         }
 
         const views = {
@@ -480,73 +516,6 @@
                 </div>`;
             },
 
-            admin: async () => {
-                if (!isAdmin()) {
-                    return `<div class="text-center py-20 space-y-4">
-                        <div class="w-16 h-16 bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fas fa-lock"></i></div>
-                        <h2 class="text-2xl font-bold">Access Restricted</h2>
-                        <p class="text-xs text-slate-400 px-6">The Admin Console is strictly reserved for Lawson Morris (lawsonm6@icloud.com).</p>
-                        <button onclick="router.navigate('dashboard')" class="btn-primary max-w-xs mx-auto">Return to Dashboard</button>
-                    </div>`;
-                }
-
-                setTimeout(loadAdminData, 10);
-
-                return `<div class="space-y-6 pb-12">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <span class="tag tag-badge !bg-amber-100 !text-amber-800 dark:!bg-amber-950 dark:!text-amber-300 text-[9px]">Super Admin Console</span>
-                            <h2 class="text-2xl font-black">Admin Management</h2>
-                        </div>
-                        <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg font-bold">
-                            <i class="fas fa-user-shield"></i>
-                        </div>
-                    </div>
-
-                    <!-- Invite User Section (Mailto integration) -->
-                    <div class="glass-card p-5 space-y-4 border-2 border-amber-500/30">
-                        <div class="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-                            <i class="fas fa-user-plus text-base"></i>
-                            <h3 class="font-bold text-sm">Invite New Cadet / Member</h3>
-                        </div>
-                        <p class="text-xs text-slate-400 leading-relaxed">Send an invitation email directly via your mail app with pre-populated DutyLog admin text.</p>
-
-                        <form onsubmit="handleMailtoInvite(event)" class="space-y-3">
-                            <div>
-                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Cadet Email Address</label>
-                                <input type="email" id="invite-email" placeholder="cadet@example.com" required class="input-field text-sm">
-                            </div>
-                            <button type="submit" id="invite-btn" class="btn-primary !bg-amber-600 hover:!bg-amber-700 flex items-center justify-center gap-2">
-                                <i class="fas fa-envelope"></i> Send Mailto Invite
-                            </button>
-                        </form>
-                    </div>
-
-                    <!-- System Stats Cards -->
-                    <div class="grid grid-cols-2 gap-3" id="admin-stats-grid">
-                        <div class="glass-card p-4 space-y-1">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase">Total Members</p>
-                            <p class="text-2xl font-black text-slate-800 dark:text-slate-100" id="admin-total-users">--</p>
-                        </div>
-                        <div class="glass-card p-4 space-y-1">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase">Global Shift Hours</p>
-                            <p class="text-2xl font-black text-emerald-600" id="admin-total-hours">--</p>
-                        </div>
-                    </div>
-
-                    <!-- Registered Profiles Directory -->
-                    <div class="glass-card p-5 space-y-3">
-                        <h3 class="font-bold text-sm border-b pb-2 border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                            <span><i class="fas fa-users text-indigo-500 mr-2"></i>User Directory</span>
-                            <span class="text-[10px] text-slate-400" id="user-count-label">Loading...</span>
-                        </h3>
-                        <div id="admin-user-list" class="space-y-2.5 max-h-80 overflow-y-auto pr-1">
-                            <p class="text-xs text-slate-400 text-center py-4">Loading user directory...</p>
-                        </div>
-                    </div>
-                </div>`;
-            },
-
             'beta-tab': async () => {
                 if (!state.betaUnlocked) {
                     return `<div class="space-y-6 max-w-sm mx-auto pt-6 pb-12">
@@ -660,19 +629,6 @@
                     </label>
                 </div>
 
-                ${isAdmin() ? `
-                <div class="glass-card p-4 border-2 border-amber-500/40 bg-amber-500/5 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg"><i class="fas fa-user-shield"></i></div>
-                        <div>
-                            <p class="text-xs font-bold text-amber-700 dark:text-amber-300">Admin Privileges Active</p>
-                            <p class="text-[10px] text-slate-400">Invite users & manage division</p>
-                        </div>
-                    </div>
-                    <button onclick="router.navigate('admin')" class="px-3 py-1.5 bg-amber-600 text-white font-bold text-xs rounded-xl shadow-sm hover:bg-amber-700">Open Console</button>
-                </div>
-                ` : ''}
-
                 <div class="glass-card p-4 flex justify-between items-center">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-lg"><i class="fas fa-moon"></i></div>
@@ -769,21 +725,6 @@
             }
         };
 
-        window.handleMailtoInvite = function(e) {
-            e.preventDefault();
-            if (!isAdmin()) return alert("Unauthorized access.");
-
-            const emailInput = document.getElementById('invite-email');
-            const email = emailInput ? emailInput.value.trim() : '';
-            if (!email) return alert("Please enter a valid cadet email address.");
-
-            const subject = encodeURIComponent("You have been invited by DutyLog admins");
-            const body = encodeURIComponent(`Hello,\n\nYou have been invited by DutyLog admins to join DutyLog Pro, your operational hour tracking and division utility platform.\n\nPlease sign up or log in to your account using this email address (${email}) to start tracking your operational hours and participating in the division feed.\n\nBest regards,\nDutyLog Administration`);
-
-            // Trigger mailto client directly
-            window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
-        };
-
         window.handleForcePasswordChange = async function(e) {
             e.preventDefault();
             const pw1 = document.getElementById('new-password-input').value;
@@ -811,60 +752,6 @@
                 if (btn) { btn.innerText = "Update Password & Continue"; btn.disabled = false; }
             }
         };
-
-        async function loadAdminData() {
-            if (!isAdmin()) return;
-            try {
-                const { data: profiles } = await sb.from('profiles').select('*');
-                const { data: hours } = await sb.from('hours_logs').select('total_hours');
-
-                const users = profiles || [];
-                const logs = hours || [];
-
-                let globalMin = 0;
-                logs.forEach(d => {
-                    const t = parseDatabaseHoursToUiTime(d.total_hours);
-                    globalMin += (t.hours * 60) + t.minutes;
-                });
-
-                const usersCountEl = document.getElementById('admin-total-users');
-                if (usersCountEl) usersCountEl.innerText = users.length;
-
-                const hoursTotalEl = document.getElementById('admin-total-hours');
-                if (hoursTotalEl) hoursTotalEl.innerText = `${Math.floor(globalMin / 60)}h ${globalMin % 60}m`;
-
-                const countLabel = document.getElementById('user-count-label');
-                if (countLabel) countLabel.innerText = `${users.length} Registered`;
-
-                const listEl = document.getElementById('admin-user-list');
-                if (listEl) {
-                    if (users.length === 0) {
-                        listEl.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">No profiles found in database.</p>`;
-                    } else {
-                        listEl.innerHTML = users.map(u => {
-                            const isSuper = u.id === ADMIN_UID || (u.email && u.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
-                            return `
-                            <div class="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                                <div class="flex items-center gap-3 truncate mr-2">
-                                    <img src="${getUserPFP(u.avatar_url, u.id)}" class="w-8 h-8 rounded-full border border-slate-200 object-cover flex-shrink-0">
-                                    <div class="truncate">
-                                        <div class="flex items-center gap-1.5">
-                                            <p class="text-xs font-bold truncate">${u.name || 'Unnamed Cadet'}</p>
-                                            ${isSuper ? '<span class="tag tag-badge !bg-amber-100 !text-amber-800 dark:!bg-amber-950 dark:!text-amber-300 text-[8px]">ADMIN</span>' : ''}
-                                            ${u.must_change_password ? '<span class="tag !bg-red-100 !text-red-700 text-[8px]">TEMP PW</span>' : ''}
-                                        </div>
-                                        <p class="text-[10px] text-slate-400 truncate">${u.email || u.division || 'No email registered'}</p>
-                                    </div>
-                                </div>
-                                <span class="tag text-[9px] flex-shrink-0">${u.badge || 'Cadet'}</span>
-                            </div>`;
-                        }).join('');
-                    }
-                }
-            } catch(err) {
-                console.error("Admin data load error:", err);
-            }
-        }
 
         window.lockBetaSection = function() {
             state.betaUnlocked = false;
@@ -1026,6 +913,45 @@
             }
         }
 
+        function buildHoursExportBody() {
+            const volunteer = state.profile?.name || 'Member';
+            const division = state.profile?.division || 'City of Cardiff';
+            const badge = state.profile?.badge || 'Cadet';
+            const generated = new Date().toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' });
+            const line = '========================================';
+            const thin = '----------------------------------------';
+
+            let body = '';
+            body += `${line}\n`;
+            body += `DUTYLOG PRO\n`;
+            body += `Operational Hour Tracking\n`;
+            body += `lawsonmorris.uk\n`;
+            body += `${line}\n\n`;
+            body += `HOURS SUMMARY\n`;
+            body += `${thin}\n`;
+            body += `Volunteer:  ${volunteer}\n`;
+            body += `Division:   ${division}\n`;
+            body += `Badge:      ${badge}\n`;
+            body += `Generated:  ${generated}\n`;
+            body += `Total time: ${state.totalHoursString}\n`;
+            body += `Shifts:     ${state.currentDuties.length}\n\n`;
+            body += `SHIFT RECORDS\n`;
+            body += `${thin}\n`;
+
+            state.currentDuties.forEach((d, i) => {
+                const t = parseDatabaseHoursToUiTime(d.total_hours);
+                const n = String(i + 1).padStart(2, '0');
+                body += `${n}.  ${d.date}  |  ${d.title || 'Untitled shift'}  |  ${t.hours}h ${t.minutes}m\n`;
+            });
+
+            body += `\n${line}\n`;
+            body += `This summary was generated by DutyLog Pro.\n`;
+            body += `Log shifts. Export verified records.\n`;
+            body += `Made by Lawson Morris  ·  lawsonmorris.uk\n`;
+            body += `${line}\n`;
+            return body;
+        }
+
         window.openExportModal = function() {
             const modal = document.createElement('div');
             modal.id = 'export-modal';
@@ -1043,7 +969,7 @@
                             <div class="w-10 h-10 bg-green-100 text-green-700 rounded-lg flex items-center justify-center text-sm font-black"><i class="fas fa-envelope"></i></div>
                             <div class="truncate">
                                 <p class="text-xs font-bold">Export to Email</p>
-                                <p class="text-[10px] text-slate-400 truncate">Launches native Mail app with summaries.</p>
+                                <p class="text-[10px] text-slate-400 truncate">Opens Mail with a branded DutyLog summary.</p>
                             </div>
                         </button>
                         
@@ -1069,13 +995,11 @@
 
         window.exportToEmail = function() {
             if (state.currentDuties.length === 0) return alert("No shift logs available to export.");
-            const emailSubject = encodeURIComponent(`DutyLog Pro Hours Summary - ${state.profile?.name || 'Member'}`);
-            let emailBody = `DutyLog Pro - Operational Hours Export\nGenerated: ${new Date().toLocaleDateString()}\nVolunteer: ${state.profile?.name || 'Member'}\nDivision: ${state.profile?.division || 'City of Cardiff'}\nTotal Cumulative Hours: ${state.totalHoursString}\n\n--- SHIFT RECORDS ---\n`;
-            state.currentDuties.forEach((d, i) => {
-                const t = parseDatabaseHoursToUiTime(d.total_hours);
-                emailBody += `[${i+1}] ${d.date} | ${d.title || 'Untitled'} | ${t.hours}h ${t.minutes}m\n`;
-            });
-            window.location.href = `mailto:?subject=${emailSubject}&body=${encodeURIComponent(emailBody)}`;
+            const volunteer = state.profile?.name || 'Member';
+            const division = state.profile?.division || 'City of Cardiff';
+            const emailSubject = encodeURIComponent(`DutyLog Pro — Hours Summary | ${volunteer} | ${division}`);
+            const emailBody = encodeURIComponent(buildHoursExportBody());
+            window.location.href = `mailto:?subject=${emailSubject}&body=${emailBody}`;
         };
 
         window.exportToCSV = function() {
@@ -1097,12 +1021,7 @@
 
         window.copyHoursToClipboard = function() {
             if (state.currentDuties.length === 0) return alert("No shift logs available to export.");
-            let text = `DutyLog Pro Hours Summary\nVolunteer: ${state.profile?.name || 'Member'}\nTotal Hours: ${state.totalHoursString}\n\n`;
-            state.currentDuties.forEach(d => {
-                const t = parseDatabaseHoursToUiTime(d.total_hours);
-                text += `• ${d.date} - ${d.title || 'Untitled'}: ${t.hours}h ${t.minutes}m\n`;
-            });
-            navigator.clipboard.writeText(text).then(() => alert("Copied summary to clipboard!")).catch(() => alert("Failed to copy automatically."));
+            navigator.clipboard.writeText(buildHoursExportBody()).then(() => alert("Copied DutyLog summary to clipboard!")).catch(() => alert("Failed to copy automatically."));
         };
 
         window.switchTimeInputMode = function(mode, defaultH = 0, defaultM = 0) {
@@ -1494,6 +1413,11 @@
         }
 
         async function init() {
+            pinAppToVisualViewport();
+            window.addEventListener('resize', pinAppToVisualViewport);
+            window.visualViewport?.addEventListener('resize', pinAppToVisualViewport);
+            window.visualViewport?.addEventListener('scroll', pinAppToVisualViewport);
+
             runSplashSequence();
             syncLiveDutyUI();
             setTimeout(hideLoader, 1200);
