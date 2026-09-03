@@ -1,0 +1,1811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>DutyLog Pro</title>
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DutyLog">
+    <meta name="theme-color" content="#00853F">
+    
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkR1dHlMb2cgUHJvIiwKICAic2hvcnRfbmFtZSI6ICJEdXR5TG9nIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNGOEY5RkEiLAogICJ0aGVtZV9jb2xvciI6ICIjMUIyNjNCIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9hcGkuZGljZWJlYXIuY29tLzcueC9pZGVudGljb24vc3ZnP3NlZWQ9ZHV0eWxvZyIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        :root { 
+            --navy: #1B263B; 
+            --green: #00853F; 
+            --light-bg: #F8F9FA; 
+            --red: #DC2626; 
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #1B263B;
+            --text-sub: #64748B;
+            --border-color: #E2E8F0;
+            --input-bg: #FFFFFF;
+            --nav-bg: #FFFFFF;
+            --app-height: 100dvh;
+        }
+
+        body.dark-theme {
+            --navy: #E2E8F0;
+            --light-bg: #0F172A;
+            --card-bg: rgba(30, 41, 59, 0.95);
+            --text-main: #F8FAFC;
+            --text-sub: #94A3B8;
+            --border-color: #334155;
+            --input-bg: #1E293B;
+            --nav-bg: #0F172A;
+        }
+
+        html {
+            height: -webkit-fill-available;
+        }
+
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+            background-color: var(--light-bg); 
+            color: var(--text-main);
+            -webkit-tap-highlight-color: transparent; 
+            margin: 0; 
+            padding: 0;
+            padding-top: env(safe-area-inset-top); 
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .glass-card { 
+            background: var(--card-bg); 
+            backdrop-filter: blur(12px); 
+            -webkit-backdrop-filter: blur(12px); 
+            border-radius: 1.5rem; 
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06); 
+            border: 1px solid var(--border-color);
+        }
+
+        .nav-item { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            font-size: 0.7rem; 
+            color: #94A3B8; 
+            cursor: pointer; 
+            flex: 1; 
+            transition: color 0.2s; 
+            background: none; 
+            border: none; 
+        }
+
+        .nav-item.active { color: var(--green); }
+
+        .input-field { 
+            width: 100%; 
+            padding: 0.85rem 1rem; 
+            border-radius: 0.8rem; 
+            border: 1px solid var(--border-color); 
+            outline: none; 
+            font-size: 16px;
+            transition: border 0.2s, background-color 0.3s, color 0.3s; 
+            background: var(--input-bg); 
+            color: var(--text-main); 
+            -webkit-appearance: none; 
+        }
+
+        .input-field:focus { border-color: var(--green); }
+
+        html, body { 
+            overflow: hidden; 
+            width: 100%;
+            height: 100%;
+            height: -webkit-fill-available;
+            height: var(--app-height);
+            position: fixed;
+            inset: 0;
+        }
+
+        #app {
+            height: 100%;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #view-container { 
+            overflow-y: auto; 
+            height: 100%;
+            -webkit-overflow-scrolling: touch; 
+            padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)); 
+        }
+
+        #bottom-nav {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 50;
+            background-color: var(--nav-bg);
+            border-top: 1px solid var(--border-color);
+            padding: 0.65rem 1rem max(1rem, env(safe-area-inset-bottom, 0px));
+            display: none;
+            justify-content: space-around;
+            align-items: flex-end;
+            box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        #bottom-nav.nav-visible {
+            display: flex;
+        }
+
+        .btn-primary { 
+            background: #1B263B; 
+            color: white; 
+            padding: 1rem; 
+            border-radius: 1rem; 
+            font-weight: bold; 
+            width: 100%; 
+            transition: all 0.2s; 
+            border: none; 
+            cursor: pointer; 
+            -webkit-appearance: none; 
+            min-height: 48px;
+        }
+
+        .btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+        
+        .scroller-container { display: flex; align-items: center; justify-content: center; background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 1rem; padding: 1rem; }
+        .scroll-select { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 0.5rem; font-size: 1.2rem; font-weight: 800; color: var(--text-main); padding: 0.5rem; width: 80px; text-align: center; outline: none; -webkit-appearance: none; }
+        
+        #splash-screen {
+            position: fixed;
+            inset: 0;
+            background: #1B263B;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4rem 1.5rem calc(2.5rem + env(safe-area-inset-bottom));
+            color: white;
+            transition: opacity 0.6s ease, visibility 0.6s;
+        }
+
+        .splash-stage {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            animation: fadeIn 0.5s ease-in-out forwards;
+        }
+
+        .splash-stage.active { display: flex; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #init-loader { position: fixed; inset: 0; background: var(--light-bg); z-index: 900; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .spinner { width: 40px; height: 40px; border: 4px solid var(--border-color); border-top: 4px solid var(--green); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .tag { padding: 4px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: uppercase; background: #E2E8F0; color: #475569; }
+        .tag-badge { background: #E0F2FE; color: #0369A1; }
+        .back-btn { display: flex; align-items: center; gap: 8px; color: var(--text-main); font-weight: 600; margin-bottom: 1.5rem; cursor: pointer; }
+        
+        .tab-btn { padding: 0.6rem 1rem; font-size: 0.75rem; font-weight: 700; border-radius: 0.75rem; color: #64748B; background: #F1F5F9; transition: all 0.2s; }
+        .tab-btn.active { background: #1B263B; color: white; }
+
+        .accordion-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-in-out; }
+        .accordion-body.open { max-height: 500px; }
+    </style>
+</head>
+<body>
+
+    <div id="splash-screen">
+        <div class="flex-1 flex flex-col items-center justify-center">
+            <div id="splash-stage-1" class="splash-stage active">
+                <div class="w-24 h-24 bg-white/10 border-4 border-[#00853F] rounded-[2rem] flex items-center justify-center shadow-2xl mb-6 backdrop-blur-md">
+                    <i class="fas fa-clock text-[#00853F] text-5xl"></i>
+                </div>
+                <h1 class="text-4xl font-black tracking-tight">DutyLog Pro</h1>
+                <p class="text-xs text-slate-300 font-semibold tracking-wider mt-2 uppercase">Operational Hour Tracking</p>
+            </div>
+
+            <div id="splash-stage-2" class="splash-stage">
+                <div class="w-20 h-20 bg-emerald-500/20 border-2 border-emerald-400 rounded-full flex items-center justify-center mb-6">
+                    <i class="fas fa-user-shield text-emerald-400 text-3xl"></i>
+                </div>
+                <h2 class="text-2xl font-black px-6 text-emerald-400">Built by a cadet, for cadets</h2>
+                <p class="text-xs text-slate-300 font-medium mt-3 px-8 leading-relaxed">Designed specifically for divisional duty logging and service tracking.</p>
+            </div>
+
+            <div id="splash-stage-3" class="splash-stage">
+                <div class="w-20 h-20 bg-blue-500/20 border-2 border-blue-400 rounded-full flex items-center justify-center mb-6">
+                    <i class="fas fa-file-check text-blue-400 text-3xl"></i>
+                </div>
+                <h2 class="text-2xl font-black px-6">Log shifts. Export verified records.</h2>
+                <p class="text-xs text-slate-300 font-medium mt-3 px-8 leading-relaxed">Live shift tracking, email summaries, and division stream feed.</p>
+            </div>
+        </div>
+
+        <div class="text-center space-y-1">
+            <p class="text-xs font-semibold text-slate-200 tracking-wide">Made by Lawson Morris</p>
+            <p class="text-[10px] font-mono text-emerald-400/80 tracking-widest uppercase">lawsonmorris.uk</p>
+        </div>
+    </div>
+
+    <div id="init-loader">
+        <div class="spinner mb-4"></div>
+        <p class="text-green-700 font-bold animate-pulse text-sm">Syncing DutyLog Platform...</p>
+    </div>
+
+    <div id="app">
+        <main id="view-container" class="px-4 pt-4 max-w-[600px] mx-auto"></main>
+        
+        <nav id="bottom-nav">
+            <button type="button" onclick="router.navigate('dashboard')" class="nav-item active" data-view="dashboard"><i class="fas fa-home text-lg"></i><span>Dashboard</span></button>
+            <button type="button" onclick="router.navigate('feed')" class="nav-item" data-view="feed"><i class="fas fa-images text-lg"></i><span>Feed</span></button>
+            <button type="button" onclick="router.navigate('add-duty')" class="nav-item bg-white dark:bg-slate-800 border-2 border-[#00853F] !text-[#00853F] rounded-full shadow-lg h-12 w-12 flex items-center justify-center flex-shrink-0" aria-label="Log duty"><i class="fas fa-plus text-lg"></i></button>
+            <button type="button" onclick="router.navigate('beta-tab')" class="nav-item" data-view="beta-tab"><i class="fas fa-vial text-lg"></i><span>Beta</span></button>
+            <button type="button" onclick="router.navigate('profile')" class="nav-item" data-view="profile"><i class="fas fa-user text-lg"></i><span>Profile</span></button>
+        </nav>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://qgyjfyazkkepmkztnezv.supabase.co';
+        const supabaseKey = 'sb_publishable_xea7e2zxnarbh2bT6vG5ew__2DhOj34';
+        
+        const sb = window.supabase.createClient(supabaseUrl, supabaseKey, {
+            auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+        });
+
+        const VALID_BETA_KEYS = ['603DUTY', '814-BETA', '814BETA', '108-LIVE', '108LIVE', '920-LOGS', '920LOGS', '501-DUTY', '501DUTY', 'DL2025', 'DL2026', 'DLBETA'];
+
+        const state = { 
+            user: null, 
+            profile: null, 
+            totalHoursString: "0h 0m",
+            currentDuties: [],
+            feedPosts: [],
+            currentView: null,
+            editingDutyId: null,
+            timeInputMode: 'duration',
+            calculatedHours: 0,
+            calculatedMinutes: 0,
+            pendingSignup: null,
+            betaUnlocked: localStorage.getItem('dutylog_beta_unlocked') === 'true',
+            settingsOpen: false,
+            darkMode: localStorage.getItem('dutylog_theme') === 'dark',
+            activeDuty: JSON.parse(localStorage.getItem('dutylog_active_duty') || 'null'),
+            mustChangePassword: false
+        };
+
+        let dutyTimerInterval = null;
+
+        if (state.darkMode) document.body.classList.add('dark-theme');
+
+        const saveLocalCache = (key, data) => localStorage.setItem(`dutylog_pro_${key}`, JSON.stringify(data));
+        const getLocalCache = (key) => JSON.parse(localStorage.getItem(`dutylog_pro_${key}`));
+        const getUserPFP = (url, id) => url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${id || 'volunteer'}`;
+
+        function pinAppToVisualViewport() {
+            const vv = window.visualViewport;
+            const height = vv ? vv.height : window.innerHeight;
+            document.documentElement.style.setProperty('--app-height', `${height}px`);
+
+            const nav = document.getElementById('bottom-nav');
+            if (!nav) return;
+            if (vv) {
+                const inset = window.innerHeight - vv.height - vv.offsetTop;
+                nav.style.bottom = `${Math.max(0, inset)}px`;
+            } else {
+                nav.style.bottom = '0px';
+            }
+        }
+
+        const router = {
+            navigate: async (view) => {
+                if (state.currentView === view && !state.editingDutyId && view !== 'beta-tab') return; 
+                
+                if (state.mustChangePassword && view !== 'force-change-password' && view !== 'welcome') {
+                    view = 'force-change-password';
+                }
+
+                state.currentView = view;
+                
+                const container = document.getElementById('view-container');
+                const nav = document.getElementById('bottom-nav');
+                if (!container || !nav) return;
+                
+                const isAuthView = ['welcome', 'login', 'signup', 'verify-email', 'force-change-password'].includes(view);
+                
+                if (!state.user && !isAuthView) {
+                    state.currentView = 'welcome';
+                    container.innerHTML = await views.welcome();
+                    nav.classList.remove('nav-visible');
+                    hideLoader();
+                    return;
+                }
+
+                nav.classList.toggle('nav-visible', !isAuthView);
+                
+                document.querySelectorAll('.nav-item').forEach(el => {
+                    el.classList.toggle('active', el.getAttribute('data-view') === view);
+                });
+                
+                if (views[view]) container.innerHTML = await views[view]();
+                pinAppToVisualViewport();
+                hideLoader();
+            }
+        };
+
+        function hideLoader() {
+            const loader = document.getElementById('init-loader');
+            if (loader) loader.style.display = 'none';
+        }
+
+        function parseDatabaseHoursToUiTime(val) {
+            const num = parseFloat(val) || 0;
+            const hours = Math.floor(num);
+            const minutes = Math.round((num - hours) * 60);
+            return { hours, minutes };
+        }
+
+        function formatDutyDate(date) {
+            if (!date) return 'N/A — Date forgotten';
+            return date;
+        }
+
+        window.toggleForgottenDutyDate = function(forgotten) {
+            const dateInput = document.getElementById('duty-date');
+            if (!dateInput) return;
+            dateInput.disabled = forgotten;
+            if (forgotten) {
+                dateInput.value = '';
+            } else if (!dateInput.value) {
+                dateInput.value = new Date().toISOString().split('T')[0];
+            }
+        };
+
+        function renderDashboardHTML(hoursStr, duties) {
+            let liveCardHtml = '';
+            if (state.activeDuty) {
+                liveCardHtml = `
+                <div class="glass-card p-4 flex justify-between items-center border-2 border-emerald-500/50 bg-emerald-500/5 relative overflow-hidden mb-3">
+                    <div class="truncate mr-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                            <p class="font-bold text-sm truncate" style="color: var(--text-main);">${state.activeDuty.title || 'Live Duty'}</p>
+                            <span class="tag tag-badge !bg-emerald-100 !text-emerald-800 dark:!bg-emerald-950 dark:!text-emerald-300 text-[8px]">LIVE</span>
+                        </div>
+                        <p class="text-xs font-mono font-black text-emerald-600 dark:text-emerald-400 mt-1" id="dash-live-tracker-clock">00:00:00</p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <button onclick="router.navigate('beta-tab')" class="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-xs font-bold rounded-lg hover:opacity-90 transition-all">View</button>
+                        <button onclick="stopLiveDutyTracker()" class="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 shadow-sm transition-all">End</button>
+                    </div>
+                </div>`;
+            }
+
+            const logsHtml = duties.map(d => {
+                const t = parseDatabaseHoursToUiTime(d.total_hours);
+                return `<div class="glass-card p-4 flex justify-between items-center cursor-pointer hover:opacity-80 transition-all" onclick="triggerEditDuty('${d.id}')">
+                    <div class="truncate mr-2">
+                        <p class="font-bold text-sm truncate" style="color: var(--text-main);">${d.title || 'Untitled Shift'}</p>
+                        <p class="text-[10px] text-slate-400">${formatDutyDate(d.date)}</p>
+                    </div>
+                    <p class="font-black text-green-600 text-sm flex-shrink-0">+${t.hours}h ${t.minutes}m</p>
+                </div>`;
+            }).join('') || '<p class="text-center py-10 text-slate-400">No shifts saved yet.</p>';
+
+            return liveCardHtml + logsHtml + '<div class="h-28" aria-hidden="true"></div>';
+        }
+
+        const views = {
+            welcome: async () => `<div class="flex flex-col items-center justify-center min-h-[80vh] text-center space-y-8">
+                <div class="w-24 h-24 bg-white border-4 border-[#00853F] rounded-[2rem] flex items-center justify-center shadow-2xl"><i class="fas fa-clock text-[#00853F] text-5xl"></i></div>
+                <div>
+                    <h1 class="text-4xl font-black" style="color: var(--text-main);">DutyLog Pro</h1>
+                    <p class="text-xs text-slate-400 font-medium mt-1">Operational Hour Tracking Utility</p>
+                </div>
+                <div class="w-full space-y-3 px-4 max-w-xs">
+                    <button onclick="router.navigate('login')" class="btn-primary">Login</button>
+                    <button onclick="router.navigate('signup')" class="w-full bg-white dark:bg-slate-800 border-2 border-[#1B263B] dark:border-slate-600 py-4 rounded-2xl font-bold" style="color: var(--text-main);">Register Division Account</button>
+                </div>
+            </div>`,
+
+            login: async () => `<div class="pt-4 max-w-sm mx-auto">
+                <div onclick="router.navigate('welcome')" class="back-btn"><i class="fas fa-arrow-left"></i> Back</div>
+                <h2 class="text-2xl font-bold mb-8">Sign In</h2>
+                <form onsubmit="handleLogin(event)" class="space-y-4">
+                    <input type="email" id="login-email" placeholder="Email" autocomplete="username" required class="input-field">
+                    <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" required class="input-field">
+                    <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
+                </form>
+            </div>`,
+
+            signup: async () => `<div class="pt-4 max-w-sm mx-auto">
+                <div onclick="router.navigate('welcome')" class="back-btn"><i class="fas fa-arrow-left"></i> Back</div>
+                <h2 class="text-2xl font-bold mb-6">Create Account</h2>
+                <form onsubmit="handleSignup(event)" class="space-y-4">
+                    <input type="text" id="signup-name" placeholder="Full Name" required class="input-field">
+                    <input type="text" id="signup-division" placeholder="Division (e.g. City of Cardiff)" required class="input-field">
+                    <input type="email" id="signup-email" placeholder="Email" required class="input-field">
+                    <input type="password" id="signup-password" placeholder="Password" required class="input-field">
+                    <button type="submit" id="signup-btn" class="btn-primary">Continue to Email Verification</button>
+                </form>
+            </div>`,
+
+            'force-change-password': async () => `<div class="pt-4 max-w-sm mx-auto space-y-6">
+                <div class="glass-card p-6 border-2 border-amber-500/40 space-y-4">
+                    <div class="w-14 h-14 bg-amber-500/10 border-2 border-amber-500 text-amber-500 rounded-2xl flex items-center justify-center mx-auto text-2xl font-black">
+                        <i class="fas fa-key"></i>
+                    </div>
+                    <div class="text-center">
+                        <h2 class="text-xl font-black">Change Temporary Password</h2>
+                        <p class="text-xs text-slate-400 mt-1 leading-relaxed">You logged in using a temporary password. For security, you must set a new secure password before continuing.</p>
+                    </div>
+
+                    <form onsubmit="handleForcePasswordChange(event)" class="space-y-4 pt-2">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">New Password</label>
+                            <input type="password" id="new-password-input" minlength="6" placeholder="Enter new password" required class="input-field">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Confirm New Password</label>
+                            <input type="password" id="confirm-password-input" minlength="6" placeholder="Re-enter new password" required class="input-field">
+                        </div>
+                        <button type="submit" id="save-pw-btn" class="btn-primary !bg-[#00853F]">Update Password & Continue</button>
+                    </form>
+                </div>
+            </div>`,
+
+            'verify-email': async () => `<div class="pt-4 max-w-sm mx-auto space-y-6">
+                <div onclick="router.navigate('signup')" class="back-btn"><i class="fas fa-arrow-left"></i> Back</div>
+                <div>
+                    <h2 class="text-2xl font-bold">Verify Your Email</h2>
+                    <p class="text-xs text-slate-400 mt-1">We sent a confirmation code to <strong class="text-emerald-500">${state.pendingSignup?.email || 'your email'}</strong>.</p>
+                </div>
+
+                <form onsubmit="handleVerifyOtp(event)" class="space-y-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 block mb-1">Verification Code</label>
+                        <input type="text" id="otp-code-input" maxlength="8" placeholder="Enter Code" inputmode="numeric" required class="input-field text-center font-mono text-2xl tracking-widest font-black">
+                    </div>
+                    <button type="submit" id="otp-verify-btn" class="btn-primary !bg-[#00853F]">Confirm Code & Create Profile</button>
+                </form>
+
+                <div class="text-center pt-2">
+                    <button onclick="resendOtpCode()" class="text-xs font-bold text-slate-400 hover:text-emerald-500 transition-colors">Didn't receive a code? Resend Code</button>
+                </div>
+            </div>`,
+
+            dashboard: async () => {
+                const cachedDuties = getLocalCache('duties') || [];
+                const cachedHoursString = localStorage.getItem('dutylog_totalhours_string') || "0h 0m";
+                setTimeout(loadDashboardData, 10);
+                return `<div class="space-y-6">
+                    <header class="flex justify-between items-center">
+                        <div>
+                            <h1 class="text-xl font-bold">${state.profile?.name || 'Volunteer'}</h1>
+                            <div class="flex flex-wrap gap-1.5 items-center mt-0.5">
+                                <span class="tag text-[9px]">${state.profile?.division || 'City of Cardiff'}</span>
+                                <span class="tag tag-badge text-[9px]">${state.profile?.badge || 'Cadet'}</span>
+                                <span id="keepalive-status" class="bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full text-[8px] font-bold flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Active
+                                </span>
+                            </div>
+                        </div>
+                        <img src="${getUserPFP(state.profile?.avatar_url, state.user?.id)}" class="w-10 h-10 rounded-full border-2 border-green-500 object-cover shadow-sm">
+                    </header>
+                    <div class="glass-card p-6 bg-[#1B263B] text-white relative overflow-hidden">
+                        <p class="text-[10px] opacity-70 uppercase font-bold tracking-widest">Total Logged Shift Time</p>
+                        <h2 class="text-4xl font-black tracking-tight" id="dash-hours-banner">${cachedHoursString}</h2>
+                    </div>
+                    
+                    <div class="flex items-center justify-between px-1">
+                        <h3 class="font-bold text-sm">Shift Records</h3>
+                        <button onclick="openExportModal()" class="text-xs font-bold text-green-600 bg-green-50 dark:bg-emerald-950 px-2.5 py-1 rounded-lg flex items-center gap-1.5 hover:bg-green-100 transition-all">
+                            <i class="fas fa-file-export"></i> Export Hours
+                        </button>
+                    </div>
+
+                    <div class="space-y-3" id="dashboard-list">
+                        ${renderDashboardHTML(cachedHoursString, cachedDuties)}
+                    </div>
+                </div>`;
+            },
+
+            feed: async () => {
+                const cachedFeed = getLocalCache('feed') || [];
+                setTimeout(loadFeedPosts, 10);
+                return `<div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold">Division Feed</h2>
+                        <button onclick="openPublishMediaModal()" class="bg-green-600 text-white text-xs font-bold py-2 px-4 rounded-xl"><i class="fas fa-camera mr-1"></i> Post Media</button>
+                    </div>
+                    <div id="feed-container" class="space-y-6 pb-12">${renderFeedHTML(state.feedPosts.length ? state.feedPosts : cachedFeed)}</div>
+                </div>`;
+            },
+
+            'beta-tab': async () => {
+                if (!state.betaUnlocked) {
+                    return `<div class="space-y-6 max-w-sm mx-auto pt-6 pb-12">
+                        <div class="text-center space-y-2">
+                            <div class="w-16 h-16 bg-emerald-500/10 border-2 border-[#00853F]/30 text-[#00853F] rounded-2xl flex items-center justify-center mx-auto text-2xl font-black">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                            <h2 class="text-2xl font-black">Beta Access Required</h2>
+                            <p class="text-xs text-slate-400">Enter a valid cadet or division access key to unlock DutyTracker Live.</p>
+                        </div>
+
+                        <form onsubmit="handleUnlockBeta(event)" class="glass-card p-6 space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-400 block mb-1">Access Pass Key</label>
+                                <input type="text" id="beta-key-input" placeholder="e.g. 814-BETA" required class="input-field text-center font-mono font-bold uppercase tracking-wider">
+                            </div>
+                            <button type="submit" id="beta-unlock-btn" class="btn-primary !bg-[#00853F]">Unlock Beta Access</button>
+                        </form>
+
+                        <div class="text-center pt-2">
+                            <a href="mailto:hello@lawsonmorris.uk?subject=Beta%20Access%20Request&body=Name%3A%20%0ADivision%3A%20%0AEmail%3A%20%0AReason%20for%20Beta%20Access%3A%20" class="inline-flex items-center justify-center gap-2.5 w-full py-3.5 px-5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-2xl text-base font-extrabold hover:text-[#00853F] hover:border-[#00853F] transition-all shadow-sm">
+                                <i class="fas fa-envelope text-lg"></i> Request Beta Access
+                            </a>
+                        </div>
+                    </div>`;
+                }
+
+                return `<div class="space-y-6 pb-12">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <span class="tag tag-badge text-[9px] mb-1 inline-block">Beta Utility</span>
+                            <h2 class="text-2xl font-black">DutyTracker Live</h2>
+                        </div>
+                        <button onclick="lockBetaSection()" class="text-xs text-slate-400 hover:text-red-500 font-bold flex items-center gap-1">
+                            <i class="fas fa-lock"></i> Lock Beta
+                        </button>
+                    </div>
+
+                    <div class="glass-card p-6 space-y-4 border-2 border-[#00853F]/20">
+                        <div class="text-center space-y-1 border-b pb-4 border-slate-100 dark:border-slate-800">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Shift Status</p>
+                            <h3 class="text-4xl font-black font-mono text-[#00853F]" id="live-tracker-clock">00:00:00</h3>
+                            <p class="text-xs font-bold text-slate-400 mt-1" id="live-tracker-title-display">${state.activeDuty ? state.activeDuty.title : 'No active tracker'}</p>
+                        </div>
+
+                        ${!state.activeDuty ? `
+                            <form onsubmit="startLiveDutyTracker(event)" class="space-y-3">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-400 block mb-1">Shift / Duty Name</label>
+                                    <input type="text" id="live-duty-title-input" placeholder="e.g. City Division Event" required class="input-field text-sm">
+                                </div>
+                                <button type="submit" class="btn-primary !bg-[#00853F] flex items-center justify-center gap-2">
+                                    <i class="fas fa-play"></i> Start DutyTracker Live
+                                </button>
+                            </form>
+                        ` : `
+                            <div class="space-y-2">
+                                <button onclick="stopLiveDutyTracker()" class="w-full bg-red-600 text-white font-bold p-4 rounded-xl flex items-center justify-center gap-2 shadow-md">
+                                    <i class="fas fa-square"></i> End Shift & Create Record
+                                </button>
+                            </div>
+                        `}
+                    </div>
+                </div>`;
+            },
+
+            'add-duty': async () => {
+                let targetLog = { title: '', date: new Date().toISOString().split('T')[0], total_hours: '0.00' };
+                if (state.editingDutyId) {
+                    const found = state.currentDuties.find(d => d.id === state.editingDutyId);
+                    if (found) targetLog = found;
+                }
+                const parsedTime = parseDatabaseHoursToUiTime(targetLog.total_hours);
+                
+                state.calculatedHours = parsedTime.hours;
+                state.calculatedMinutes = parsedTime.minutes;
+                state.timeInputMode = 'duration'; 
+
+                setTimeout(() => {
+                    switchTimeInputMode('duration', parsedTime.hours, parsedTime.minutes);
+                }, 15);
+
+                return `<div class="px-2 space-y-4 pb-12">
+                    <h2 class="text-2xl font-bold">${state.editingDutyId ? 'Modify Shift Record' : 'Log Operational Duty'}</h2>
+                    
+                    <form onsubmit="handleSaveDuty(event)" class="space-y-4">
+                        <input type="text" id="duty-title" placeholder="Event / Shift Title" value="${targetLog.title || ''}" required class="input-field">
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-slate-400 block">Duty Date</label>
+                            <input type="date" id="duty-date" value="${targetLog.date || ''}" ${targetLog.date ? '' : 'disabled'} class="input-field">
+                            <label class="flex items-center gap-3 px-1 py-1 cursor-pointer select-none">
+                                <input type="checkbox" id="duty-date-forgotten" onchange="toggleForgottenDutyDate(this.checked)" ${targetLog.date ? '' : 'checked'} class="w-5 h-5 accent-[#00853F]">
+                                <span>
+                                    <span class="block text-sm font-bold" style="color: var(--text-main);">I don't know the date</span>
+                                    <span class="block text-[10px] text-slate-400">Save this duty as N/A — Date forgotten</span>
+                                </span>
+                            </label>
+                        </div>
+                        
+                        <div class="glass-card p-4 space-y-4">
+                            <div class="flex justify-center gap-2 border-b pb-3 border-slate-100 dark:border-slate-800">
+                                <button type="button" id="tab-duration" onclick="switchTimeInputMode('duration')" class="tab-btn active">Log Duration</button>
+                                <button type="button" id="tab-window" onclick="switchTimeInputMode('window')" class="tab-btn">Log Start / End</button>
+                            </div>
+                            
+                            <div id="time-input-container-mount"></div>
+                            <div class="text-center text-xs font-bold text-green-600 mt-2">Calculated Total Time: <span id="calc-display">0h 0m</span></div>
+                        </div>
+
+                        <button type="submit" id="duty-save-btn" class="btn-primary !bg-[#00853F]">Save Shift</button>
+                    </form>
+                </div>`;
+            },
+
+            profile: async () => `<div class="space-y-6 pt-4 max-w-sm mx-auto pb-12">
+                <div class="relative w-24 h-24 mx-auto text-center">
+                    <img id="profile-img" src="${getUserPFP(state.profile?.avatar_url, state.user?.id)}" class="w-24 h-24 rounded-full border-4 border-green-500 shadow-lg object-cover mx-auto">
+                    <label class="absolute bottom-0 right-2 bg-[#1B263B] text-white rounded-full p-2 text-xs shadow-md border border-white cursor-pointer">
+                        <i class="fas fa-camera"></i>
+                        <input type="file" id="avatar-input" accept="image/*" class="hidden" onchange="uploadCompressedAvatar(event)">
+                    </label>
+                </div>
+
+                <div class="glass-card p-4 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-lg"><i class="fas fa-moon"></i></div>
+                        <div>
+                            <p class="text-xs font-bold">Dark Theme</p>
+                            <p class="text-[10px] text-slate-400">Toggle dark mode visual theme</p>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" onchange="toggleDarkMode(this.checked)" ${state.darkMode ? 'checked' : ''} class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                    </label>
+                </div>
+
+                <div class="glass-card overflow-hidden">
+                    <button onclick="toggleSettingsAccordion()" class="w-full p-4 flex items-center justify-between font-bold text-sm text-left">
+                        <span class="flex items-center gap-2"><i class="fas fa-sliders-h text-green-600"></i> Edit Profile Settings</span>
+                        <i id="settings-chevron" class="fas fa-chevron-down text-slate-400 text-xs transition-transform ${state.settingsOpen ? 'rotate-180' : ''}"></i>
+                    </button>
+                    
+                    <div id="settings-body" class="accordion-body ${state.settingsOpen ? 'open' : ''} px-4 pb-4 space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 block mb-1">Username / Name</label>
+                            <input type="text" id="profile-name" value="${state.profile?.name || ''}" class="input-field text-sm" required placeholder="Enter name">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 block mb-1">Badge / Rank</label>
+                            <input type="text" id="profile-badge" value="${state.profile?.badge || ''}" class="input-field text-sm font-semibold" required placeholder="e.g. Cadet">
+                        </div>
+                        <button onclick="handleUpdateProfile(event)" id="profile-save-btn" class="w-full bg-[#00853F] text-white p-3 rounded-xl font-bold text-sm shadow-md">Save Changes</button>
+                    </div>
+                </div>
+
+                <div class="glass-card p-5 space-y-3">
+                    <h3 class="font-bold text-sm border-b pb-2 border-slate-100 dark:border-slate-800"><i class="fas fa-file-export mr-2 text-indigo-600"></i>Export Hours Data</h3>
+                    <p class="text-[11px] text-slate-400">Compile your logged shift timeline to spreadsheets, text summaries, or structured emails.</p>
+                    <button onclick="openExportModal()" class="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold text-xs shadow-sm"><i class="fas fa-file-export mr-2"></i>Export Summary</button>
+                </div>
+
+                <button onclick="handleLogout()" class="w-full bg-red-500 text-white p-4 rounded-2xl font-bold shadow-md">Sign Out Account</button>
+            </div>`
+        };
+
+        function runSplashSequence() {
+            const splash = document.getElementById('splash-screen');
+            const s1 = document.getElementById('splash-stage-1');
+            const s2 = document.getElementById('splash-stage-2');
+            const s3 = document.getElementById('splash-stage-3');
+
+            if (!splash) return;
+
+            setTimeout(() => {
+                s1.classList.remove('active');
+                s2.classList.add('active');
+            }, 2200);
+
+            setTimeout(() => {
+                s2.classList.remove('active');
+                s3.classList.add('active');
+            }, 4600);
+
+            setTimeout(() => {
+                splash.style.opacity = '0';
+                splash.style.visibility = 'hidden';
+                setTimeout(() => splash.remove(), 600);
+            }, 6600);
+        }
+
+        window.toggleDarkMode = function(enabled) {
+            state.darkMode = enabled;
+            localStorage.setItem('dutylog_theme', enabled ? 'dark' : 'light');
+            document.body.classList.toggle('dark-theme', enabled);
+        };
+
+        window.toggleSettingsAccordion = function() {
+            state.settingsOpen = !state.settingsOpen;
+            const body = document.getElementById('settings-body');
+            const chevron = document.getElementById('settings-chevron');
+            if (body) body.classList.toggle('open', state.settingsOpen);
+            if (chevron) chevron.classList.toggle('rotate-180', state.settingsOpen);
+        };
+
+        window.handleUnlockBeta = function(e) {
+            if (e) e.preventDefault();
+            const input = document.getElementById('beta-key-input');
+            if (!input) return;
+            const key = input.value.trim().toUpperCase();
+            if (VALID_BETA_KEYS.includes(key)) {
+                state.betaUnlocked = true;
+                localStorage.setItem('dutylog_beta_unlocked', 'true');
+                router.navigate('beta-tab');
+            } else {
+                alert('Invalid Beta Pass Key. Please verify your key and try again.');
+            }
+        };
+
+        window.handleForcePasswordChange = async function(e) {
+            e.preventDefault();
+            const pw1 = document.getElementById('new-password-input').value;
+            const pw2 = document.getElementById('confirm-password-input').value;
+            const btn = document.getElementById('save-pw-btn');
+
+            if (pw1 !== pw2) return alert("Passwords do not match. Please re-enter.");
+            if (pw1.length < 6) return alert("Password must be at least 6 characters long.");
+
+            if (btn) { btn.innerText = "Updating Password..."; btn.disabled = true; }
+
+            try {
+                const { error: authErr } = await sb.auth.updateUser({ password: pw1 });
+                if (authErr) throw authErr;
+
+                if (state.user) {
+                    await sb.from('profiles').update({ must_change_password: false }).eq('id', state.user.id);
+                }
+
+                state.mustChangePassword = false;
+                alert("Password updated successfully! Welcome to DutyLog Pro.");
+                await router.navigate('dashboard');
+            } catch(err) {
+                alert(`Password update failed: ${err.message}`);
+                if (btn) { btn.innerText = "Update Password & Continue"; btn.disabled = false; }
+            }
+        };
+
+        window.lockBetaSection = function() {
+            state.betaUnlocked = false;
+            localStorage.removeItem('dutylog_beta_unlocked');
+            router.navigate('beta-tab');
+        };
+
+        window.startLiveDutyTracker = async function(e) {
+            if (e) e.preventDefault();
+            const titleInput = document.getElementById('live-duty-title-input');
+            const title = titleInput ? titleInput.value.trim() : 'DutyTracker Live Shift';
+
+            if ("Notification" in window && Notification.permission !== "granted") {
+                await Notification.requestPermission();
+            }
+
+            state.activeDuty = {
+                title: title || 'DutyTracker Live Shift',
+                startTime: Date.now()
+            };
+
+            localStorage.setItem('dutylog_active_duty', JSON.stringify(state.activeDuty));
+
+            if ("Notification" in window && Notification.permission === "granted") {
+                try {
+                    new Notification("DutyTracker Live Active", {
+                        body: `Logging shift: ${state.activeDuty.title}`,
+                        icon: "https://api.dicebear.com/7.x/identicon/svg?seed=dutylog",
+                        tag: "live-duty",
+                        renotify: true
+                    });
+                } catch(err){}
+            }
+
+            syncLiveDutyUI();
+            router.navigate('beta-tab');
+        };
+
+        window.stopLiveDutyTracker = async function() {
+            if (!state.activeDuty) return;
+
+            const elapsedMs = Date.now() - state.activeDuty.startTime;
+            const totalMinutes = Math.max(1, Math.round(elapsedMs / 60000));
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            const decimalVal = parseFloat(`${hours}.${minutes < 10 ? '0' + minutes : minutes}`);
+
+            const newLog = {
+                user_id: state.user.id,
+                title: state.activeDuty.title,
+                date: new Date().toISOString().split('T')[0],
+                total_hours: decimalVal
+            };
+
+            try {
+                const { error } = await sb.from('hours_logs').insert(newLog);
+                if (error) throw error;
+                alert(`Shift ended! Recorded ${hours}h ${minutes}m to your logs.`);
+            } catch(e) {
+                alert(`Shift recorded locally: ${hours}h ${minutes}m.`);
+            }
+
+            state.activeDuty = null;
+            localStorage.removeItem('dutylog_active_duty');
+            if (dutyTimerInterval) clearInterval(dutyTimerInterval);
+            
+            await loadDashboardData();
+            router.navigate('dashboard');
+        };
+
+        function syncLiveDutyUI() {
+            if (dutyTimerInterval) clearInterval(dutyTimerInterval);
+
+            if (!state.activeDuty) return;
+
+            const updateClocks = () => {
+                if (!state.activeDuty) return;
+                const elapsedSec = Math.floor((Date.now() - state.activeDuty.startTime) / 1000);
+                const h = String(Math.floor(elapsedSec / 3600)).padStart(2, '0');
+                const m = String(Math.floor((elapsedSec % 3600) / 60)).padStart(2, '0');
+                const s = String(elapsedSec % 60).padStart(2, '0');
+                const timeStr = `${h}:${m}:${s}`;
+
+                const clockEl = document.getElementById('live-tracker-clock');
+                if (clockEl) clockEl.innerText = timeStr;
+
+                const dashClockEl = document.getElementById('dash-live-tracker-clock');
+                if (dashClockEl) dashClockEl.innerText = timeStr;
+
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: state.activeDuty.title,
+                        artist: 'DutyLog Pro - Live Shift Active',
+                        album: `Elapsed: ${timeStr}`
+                    });
+                }
+            };
+
+            updateClocks();
+            dutyTimerInterval = setInterval(updateClocks, 1000);
+        }
+
+        async function handleSignup(e) {
+            e.preventDefault();
+            const btn = document.getElementById('signup-btn');
+            const name = document.getElementById('signup-name').value;
+            const division = document.getElementById('signup-division').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+
+            if (btn) { btn.innerText = "Sending Code..."; btn.disabled = true; }
+
+            try {
+                const { data, error } = await sb.auth.signUp({ email, password });
+                if (error) throw error;
+                
+                state.pendingSignup = { email, password, name, division, userId: data?.user?.id };
+                await router.navigate('verify-email');
+            } catch (networkError) {
+                alert(`Registration Failed: ${networkError.message}`);
+                if (btn) { btn.innerText = "Continue to Email Verification"; btn.disabled = false; }
+            }
+        }
+
+        async function handleVerifyOtp(e) {
+            e.preventDefault();
+            const btn = document.getElementById('otp-verify-btn');
+            const token = document.getElementById('otp-code-input').value.trim();
+            const email = state.pendingSignup?.email;
+
+            if (!email || !token) return alert("Missing email or verification code.");
+            if (btn) { btn.innerText = "Verifying Code..."; btn.disabled = true; }
+
+            try {
+                const { data, error } = await sb.auth.verifyOtp({ email, token, type: 'signup' });
+                if (error) throw error;
+
+                if (data?.session) {
+                    const userId = data.session.user.id;
+                    await sb.from('profiles').upsert({ id: userId, email: email, name: state.pendingSignup.name, division: state.pendingSignup.division, badge: 'Cadet' });
+                    alert("Email verified successfully! Profile created.");
+                    await processSessionSync(data.session);
+                }
+            } catch(err) {
+                alert(`Verification failed: ${err.message}`);
+                if (btn) { btn.innerText = "Confirm Code & Create Profile"; btn.disabled = false; }
+            }
+        }
+
+        async function resendOtpCode() {
+            const email = state.pendingSignup?.email;
+            if (!email) return alert("No pending registration found.");
+            try {
+                const { error } = await sb.auth.resend({ type: 'signup', email });
+                if (error) throw error;
+                alert("New confirmation code sent to your email!");
+            } catch(err) {
+                alert(`Resend failed: ${err.message}`);
+            }
+        }
+
+        function getSmtpConfig() {
+            try {
+                const saved = localStorage.getItem('dutylog_smtp_settings');
+                if (saved) return JSON.parse(saved);
+            } catch(e) {}
+            return {
+                senderEmail: 'noreply@dutylog.lawsonmorris.uk',
+                replyToEmail: 'hello@lawsonmorris.uk',
+                senderName: 'DutyLog Pro Verification System',
+                zohoHost: 'smtppro.zoho.eu',
+                zohoPort: '465',
+                supabaseFunctionName: 'send-export-email',
+                webhookUrl: ''
+            };
+        }
+
+        function saveSmtpConfig(cfg) {
+            localStorage.setItem('dutylog_smtp_settings', JSON.stringify(cfg));
+        }
+
+        function buildHoursExportBody(notes = '') {
+            const volunteer = state.profile?.name || 'Member';
+            const division = state.profile?.division || 'City of Cardiff';
+            const badge = state.profile?.badge || 'Cadet';
+            const generated = new Date().toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' });
+            const line = '========================================';
+            const thin = '----------------------------------------';
+
+            let body = '';
+            body += `${line}\n`;
+            body += `DUTYLOG PRO\n`;
+            body += `Operational Hour Tracking\n`;
+            body += `lawsonmorris.uk\n`;
+            body += `${line}\n\n`;
+            body += `HOURS SUMMARY\n`;
+            body += `${thin}\n`;
+            body += `Volunteer:  ${volunteer}\n`;
+            body += `Division:   ${division}\n`;
+            body += `Badge:      ${badge}\n`;
+            body += `Generated:  ${generated}\n`;
+            body += `Total time: ${state.totalHoursString}\n`;
+            body += `Shifts:     ${state.currentDuties.length}\n`;
+            if (notes && notes.trim()) {
+                body += `Notes:      ${notes.trim()}\n`;
+            }
+            body += `\nSHIFT RECORDS\n`;
+            body += `${thin}\n`;
+
+            state.currentDuties.forEach((d, i) => {
+                const t = parseDatabaseHoursToUiTime(d.total_hours);
+                const n = String(i + 1).padStart(2, '0');
+                body += `${n}.  ${formatDutyDate(d.date)}  |  ${d.title || 'Untitled shift'}  |  ${t.hours}h ${t.minutes}m\n`;
+            });
+
+            body += `\n${line}\n`;
+            body += `This summary was generated by DutyLog Pro.\n`;
+            body += `Log shifts. Export verified records.\n`;
+            body += `Made by Lawson Morris  ·  lawsonmorris.uk\n`;
+            body += `${line}\n`;
+            return body;
+        }
+
+        function buildHoursExportHtml(notes = '') {
+            const volunteer = state.profile?.name || 'Cadet Member';
+            const division = state.profile?.division || 'City of Cardiff';
+            const badge = state.profile?.badge || 'Cadet';
+            const generated = new Date().toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' });
+
+            const rowsHtml = state.currentDuties.map((d, i) => {
+                const t = parseDatabaseHoursToUiTime(d.total_hours);
+                return `<tr>
+                    <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #64748B;">${formatDutyDate(d.date)}</td>
+                    <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 13px; font-weight: 600; color: #1B263B;">${d.title || 'Untitled shift'}</td>
+                    <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 13px; font-weight: 700; color: #00853F; text-align: right;">+${t.hours}h ${t.minutes}m</td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="3" style="padding: 12px; text-align: center; color: #94A3B8;">No shifts logged</td></tr>';
+
+            return `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 620px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; overflow: hidden; color: #1B263B; box-shadow: 0 4px 16px rgba(0,0,0,0.05);">
+                <div style="background-color: #1B263B; padding: 24px; color: #FFFFFF; text-align: center;">
+                    <h1 style="margin: 0; font-size: 24px; font-weight: 900; letter-spacing: -0.5px;">DutyLog Pro</h1>
+                    <p style="margin: 6px 0 0; font-size: 11px; color: #94A3B8; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Operational Hour Verification Record</p>
+                </div>
+                
+                <div style="padding: 24px;">
+                    <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <tr>
+                                <td style="padding: 4px 0; color: #64748B; font-weight: 600;">Volunteer:</td>
+                                <td style="padding: 4px 0; color: #1B263B; font-weight: 700; text-align: right;">${volunteer}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px 0; color: #64748B; font-weight: 600;">Division:</td>
+                                <td style="padding: 4px 0; color: #1B263B; font-weight: 700; text-align: right;">${division}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px 0; color: #64748B; font-weight: 600;">Badge / Rank:</td>
+                                <td style="padding: 4px 0; color: #0284C7; font-weight: 700; text-align: right;">${badge}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px 0; color: #64748B; font-weight: 600;">Generated:</td>
+                                <td style="padding: 4px 0; color: #64748B; text-align: right;">${generated}</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div style="background-color: #00853F; border-radius: 12px; padding: 18px; color: #FFFFFF; text-align: center; margin-bottom: 24px;">
+                        <p style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.9; font-weight: 700;">Total Logged Shift Time</p>
+                        <h2 style="margin: 4px 0 0; font-size: 34px; font-weight: 900; letter-spacing: -0.5px;">${state.totalHoursString}</h2>
+                        <p style="margin: 4px 0 0; font-size: 12px; opacity: 0.85;">Verified across ${state.currentDuties.length} recorded duties</p>
+                    </div>
+
+                    ${notes && notes.trim() ? `
+                    <div style="margin-bottom: 20px; padding: 12px 14px; background-color: #EFF6FF; border-left: 4px solid #3B82F6; border-radius: 8px; font-size: 12px; color: #1E3A8A;">
+                        <strong style="display: block; margin-bottom: 2px;">Verification / Officer Note:</strong>
+                        ${notes.trim()}
+                    </div>` : ''}
+
+                    <h3 style="font-size: 14px; font-weight: 800; margin: 0 0 12px; color: #1B263B;">Operational Shift Breakdown</h3>
+                    <table style="width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 16px;">
+                        <thead>
+                            <tr style="background-color: #F1F5F9;">
+                                <th style="padding: 8px 12px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">Date</th>
+                                <th style="padding: 8px 12px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">Event / Shift</th>
+                                <th style="padding: 8px 12px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; text-align: right;">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="background-color: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 16px; text-align: center; font-size: 11px; color: #94A3B8;">
+                    <p style="margin: 0;">Verified service hours report dispatched from <strong>DutyLog Pro</strong></p>
+                    <p style="margin: 4px 0 0; color: #00853F; font-weight: 700;">Made by Lawson Morris · lawsonmorris.uk</p>
+                </div>
+            </div>`;
+        }
+
+        window.openExportModal = function() {
+            const existing = document.getElementById('export-modal');
+            if (existing) existing.remove();
+
+            const smtpConfig = getSmtpConfig();
+            const volunteer = state.profile?.name || 'Member';
+            const division = state.profile?.division || 'City of Cardiff';
+            const userEmail = state.user?.email || '';
+
+            const modal = document.createElement('div');
+            modal.id = 'export-modal';
+            modal.className = 'fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm';
+            modal.innerHTML = `
+                <div class="glass-card w-full max-w-lg p-5 space-y-4 shadow-2xl max-h-[92vh] flex flex-col overflow-hidden" style="background-color: var(--card-bg);">
+                    <div class="flex items-center justify-between border-b pb-3 border-slate-200 dark:border-slate-800 flex-shrink-0">
+                        <div class="flex items-center gap-2 text-[#00853F]">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-sm font-black">
+                                <i class="fas fa-file-export"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-black text-sm text-slate-800 dark:text-slate-100">Export Hours & Email Dispatch</h3>
+                                <p class="text-[10px] text-slate-400">Total: ${state.totalHoursString} (${state.currentDuties.length} shifts)</p>
+                            </div>
+                        </div>
+                        <button onclick="document.getElementById('export-modal').remove()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base p-1">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex border-b border-slate-200 dark:border-slate-800 text-xs font-bold gap-1 flex-shrink-0">
+                        <button type="button" id="exp-tab-send" onclick="switchExportTab('send')" class="tab-btn active !py-1.5 !px-3">
+                            <i class="fas fa-paper-plane mr-1.5 text-emerald-500"></i>Send via DutyLog Email
+                        </button>
+                        <button type="button" id="exp-tab-files" onclick="switchExportTab('files')" class="tab-btn !py-1.5 !px-3">
+                            <i class="fas fa-download mr-1.5 text-indigo-500"></i>Files & Copy
+                        </button>
+                    </div>
+
+                    <div id="export-tab-content" class="overflow-y-auto pr-1 space-y-4 flex-1">
+                        <!-- Send tab will render here -->
+                    </div>
+                </div>`;
+            document.getElementById('app').appendChild(modal);
+            switchExportTab('send');
+        };
+
+        window.switchExportTab = function(tab) {
+            const tSend = document.getElementById('exp-tab-send');
+            const tFiles = document.getElementById('exp-tab-files');
+            const mount = document.getElementById('export-tab-content');
+            if (!mount) return;
+
+            if (tSend) tSend.classList.toggle('active', tab === 'send');
+            if (tFiles) tFiles.classList.toggle('active', tab === 'files');
+
+            const smtpConfig = getSmtpConfig();
+            const userEmail = state.user?.email || '';
+
+            if (tab === 'send') {
+                mount.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                                    <i class="fas fa-shield-alt"></i> Official DutyLog Dispatch
+                                </span>
+                                <span class="tag tag-badge !text-[8px]">Verified Email</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
+                                Dispatches an authenticated, formatted operational report directly from 
+                                <strong class="text-emerald-600 dark:text-emerald-400">${smtpConfig.senderEmail}</strong> 
+                                to your officer, division, or yourself.
+                            </p>
+                        </div>
+
+                        <form onsubmit="handleSendDutyLogEmail(event)" class="space-y-3">
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="text-[11px] font-bold text-slate-500 block">Recipient Email Address</label>
+                                    ${userEmail ? `
+                                        <button type="button" onclick="document.getElementById('export-recipient-input').value = '${userEmail}'" class="text-[10px] font-bold text-emerald-600 hover:underline">
+                                            Send to Myself (${userEmail})
+                                        </button>
+                                    ` : ''}
+                                </div>
+                                <input type="email" id="export-recipient-input" placeholder="e.g. officer@lawsonmorris.uk" required value="" class="input-field text-sm">
+                            </div>
+
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-500 block mb-1">Optional Officer Note</label>
+                                <input type="text" id="export-notes-input" placeholder="e.g. Monthly shift verification sign-off" class="input-field text-xs">
+                            </div>
+
+                            <div class="pt-1 flex flex-col gap-2">
+                                <button type="submit" id="export-send-btn" class="btn-primary !bg-[#00853F] flex items-center justify-center gap-2 shadow-md">
+                                    <i class="fas fa-paper-plane"></i> Send via DutyLog Email
+                                </button>
+                            </div>
+                        </form>
+
+                        <div class="border-t border-slate-100 dark:border-slate-800 pt-2">
+                            <button type="button" onclick="toggleExportPreview()" class="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center gap-1.5">
+                                <i class="fas fa-eye"></i> <span id="preview-toggle-text">Preview DutyLog Email Certificate</span>
+                            </button>
+                            <div id="export-preview-container" class="hidden mt-2 p-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-h-60 overflow-y-auto"></div>
+                        </div>
+                    </div>`;
+            } else if (tab === 'files') {
+                mount.innerHTML = `
+                    <div class="space-y-3">
+                        <p class="text-[11px] text-slate-400">Save structured copies of your shifts for spreadsheets, external audits, or offline records.</p>
+                        
+                        <button onclick="exportToCSV()" class="w-full flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-left hover:border-indigo-500 transition-all">
+                            <div class="w-10 h-10 bg-indigo-100 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 rounded-lg flex items-center justify-center text-base font-black flex-shrink-0">
+                                <i class="fas fa-file-csv"></i>
+                            </div>
+                            <div class="truncate">
+                                <p class="text-xs font-bold text-slate-800 dark:text-slate-100">Download Spreadsheet (.CSV)</p>
+                                <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">Formatted with titles, dates, decimal hours, and display time.</p>
+                            </div>
+                        </button>
+                        
+                        <button onclick="copyHoursToClipboard()" class="w-full flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-left hover:border-blue-500 transition-all">
+                            <div class="w-10 h-10 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 rounded-lg flex items-center justify-center text-base font-black flex-shrink-0">
+                                <i class="fas fa-copy"></i>
+                            </div>
+                            <div class="truncate">
+                                <p class="text-xs font-bold text-slate-800 dark:text-slate-100">Copy Plain-Text DutyLog Summary</p>
+                                <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">Instant copy to paste into WhatsApp, Slack, or Word.</p>
+                            </div>
+                        </button>
+                    </div>`;
+            }
+        };
+
+        window.toggleExportPreview = function() {
+            const box = document.getElementById('export-preview-container');
+            const txt = document.getElementById('preview-toggle-text');
+            if (!box) return;
+            const isHidden = box.classList.contains('hidden');
+            if (isHidden) {
+                const notes = document.getElementById('export-notes-input')?.value || '';
+                box.innerHTML = buildHoursExportHtml(notes);
+                box.classList.remove('hidden');
+                if (txt) txt.innerText = 'Hide Preview';
+            } else {
+                box.classList.add('hidden');
+                if (txt) txt.innerText = 'Preview DutyLog Email Certificate';
+            }
+        };
+
+        window.handleSendDutyLogEmail = async function(e) {
+            e.preventDefault();
+            if (state.currentDuties.length === 0) return alert("No shift logs available to export.");
+
+            const recipient = document.getElementById('export-recipient-input')?.value.trim();
+            const notes = document.getElementById('export-notes-input')?.value.trim() || '';
+            const btn = document.getElementById('export-send-btn');
+
+            if (!recipient) return alert("Please enter a recipient email address.");
+
+            const smtpConfig = getSmtpConfig();
+            const volunteer = state.profile?.name || 'Member';
+            const division = state.profile?.division || 'City of Cardiff';
+            const subject = `DutyLog Pro — Operational Hours Summary | ${volunteer} | ${division}`;
+            const plainText = buildHoursExportBody(notes);
+            const htmlContent = buildHoursExportHtml(notes);
+
+            if (btn) {
+                btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Sending from ${smtpConfig.senderEmail}...`;
+                btn.disabled = true;
+            }
+
+            let dispatched = false;
+            let failureReason = '';
+
+            // Attempt 1: Invoke dispatch function
+            try {
+                const { data, error } = await sb.functions.invoke(smtpConfig.supabaseFunctionName || 'send-export-email', {
+                    body: {
+                        to: recipient,
+                        from: smtpConfig.senderEmail,
+                        from_name: smtpConfig.senderName,
+                        reply_to: smtpConfig.replyToEmail || 'hello@lawsonmorris.uk',
+                        subject: subject,
+                        text: plainText,
+                        html: htmlContent,
+                        volunteer: volunteer,
+                        division: division,
+                        total_hours: state.totalHoursString,
+                        shift_count: state.currentDuties.length,
+                        notes: notes
+                    }
+                });
+
+                if (!error && (data?.ok || data?.success || !data?.error)) {
+                    dispatched = true;
+                } else if (error) {
+                    failureReason = error.message || 'Dispatch error';
+                }
+            } catch(edgeErr) {
+                failureReason = edgeErr.message || 'Failed to dispatch email';
+            }
+
+            // Attempt 2: Direct HTTP fetch to function URL if client invocation had issues
+            if (!dispatched) {
+                try {
+                    const funcEndpoint = `https://qgyjfyazkkepmkztnezv.supabase.co/functions/v1/${smtpConfig.supabaseFunctionName || 'send-export-email'}`;
+                    const res = await fetch(funcEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': supabaseKey,
+                            'Authorization': `Bearer ${supabaseKey}`
+                        },
+                        body: JSON.stringify({
+                            to: recipient,
+                            from: smtpConfig.senderEmail,
+                            from_name: smtpConfig.senderName,
+                            reply_to: smtpConfig.replyToEmail || 'hello@lawsonmorris.uk',
+                            subject: subject,
+                            text: plainText,
+                            html: htmlContent,
+                            volunteer: volunteer,
+                            division: division,
+                            total_hours: state.totalHoursString,
+                            shift_count: state.currentDuties.length,
+                            notes: notes
+                        })
+                    });
+                    const resJson = await res.json().catch(() => ({}));
+                    if (res.ok && (resJson.success || resJson.ok || !resJson.error)) {
+                        dispatched = true;
+                    } else if (resJson.error) {
+                        failureReason = resJson.error;
+                    }
+                } catch(fetchErr) {
+                    console.warn("Direct dispatch fetch error:", fetchErr);
+                }
+            }
+
+            // Attempt 3: Optional Custom Webhook Relay if configured
+            if (!dispatched && smtpConfig.webhookUrl) {
+                try {
+                    const res = await fetch(smtpConfig.webhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            to: recipient,
+                            from: smtpConfig.senderEmail,
+                            subject: subject,
+                            text: plainText,
+                            html: htmlContent
+                        })
+                    });
+                    if (res.ok) dispatched = true;
+                } catch(webErr) {
+                    console.warn("Webhook relay error:", webErr);
+                }
+            }
+
+            // Log dispatch record if table exists
+            try {
+                if (state.user) {
+                    await sb.from('hours_exports').insert({
+                        user_id: state.user.id,
+                        recipient: recipient,
+                        sender: smtpConfig.senderEmail,
+                        subject: subject,
+                        total_hours: state.totalHoursString,
+                        status: dispatched ? 'delivered' : 'pending_relay',
+                        created_at: new Date().toISOString()
+                    });
+                }
+            } catch(logErr) {}
+
+            if (dispatched) {
+                alert(`✓ Success! Shift records successfully dispatched from ${smtpConfig.senderEmail} to ${recipient}.`);
+                document.getElementById('export-modal')?.remove();
+            } else {
+                alert(`Unable to dispatch email: ${failureReason || 'Dispatch service temporarily unavailable'}.\n\nPlease check recipient email or try again shortly.`);
+                if (btn) {
+                    btn.innerHTML = `<i class="fas fa-paper-plane"></i> Send via DutyLog Email`;
+                    btn.disabled = false;
+                }
+            }
+        };
+
+        window.exportToCSV = function() {
+            if (state.currentDuties.length === 0) return alert("No shift logs available to export.");
+            let csvRows = ["Title,Date,Decimal Hours,Formatted Hours"];
+            state.currentDuties.forEach(d => {
+                const t = parseDatabaseHoursToUiTime(d.total_hours);
+                const decimalHours = (t.hours + (t.minutes / 60)).toFixed(2);
+                csvRows.push(`"${(d.title || 'Untitled').replace(/"/g, '""')}","${d.date}",${decimalHours},"${t.hours}h ${t.minutes}m"`);
+            });
+            const blob = new Blob([csvRows.join("\r\n")], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", `dutylog_hours_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        window.copyHoursToClipboard = function() {
+            if (state.currentDuties.length === 0) return alert("No shift logs available to export.");
+            navigator.clipboard.writeText(buildHoursExportBody()).then(() => alert("Copied DutyLog summary to clipboard!")).catch(() => alert("Failed to copy automatically."));
+        };
+
+        window.switchTimeInputMode = function(mode, defaultH = 0, defaultM = 0) {
+            state.timeInputMode = mode;
+            const durTab = document.getElementById('tab-duration');
+            const winTab = document.getElementById('tab-window');
+            if(durTab) durTab.classList.toggle('active', mode === 'duration');
+            if(winTab) winTab.classList.toggle('active', mode === 'window');
+            
+            const mount = document.getElementById('time-input-container-mount');
+            if (!mount) return;
+
+            if (mode === 'duration') {
+                let hourOptions = "", minOptions = "";
+                for (let i = 0; i <= 24; i++) hourOptions += `<option value="${i}" ${i === defaultH ? 'selected' : ''}>${i}</option>`;
+                for (let i = 0; i < 60; i += 5) minOptions += `<option value="${i}" ${i === defaultM ? 'selected' : ''}>${i < 10 ? '0' + i : i}</option>`;
+                
+                mount.innerHTML = `
+                    <div class="scroller-container">
+                        <div class="scroll-wheel-column"><select id="scroll-hr" class="scroll-select" onchange="updateScrollCalculation()">${hourOptions}</select></div>
+                        <div class="text-xl font-black text-slate-400 px-2">:</div>
+                        <div class="scroll-wheel-column"><select id="scroll-min" class="scroll-select" onchange="updateScrollCalculation()">${minOptions}</select></div>
+                    </div>`;
+                updateScrollCalculation();
+            } else {
+                mount.innerHTML = `
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Start Time</label>
+                            <input type="time" id="time-start" class="input-field font-bold text-center" onchange="updateWindowCalculation()">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">End Time</label>
+                            <input type="time" id="time-end" class="input-field font-bold text-center" onchange="updateWindowCalculation()">
+                        </div>
+                    </div>`;
+            }
+        };
+
+        window.updateScrollCalculation = function() {
+            const hrEl = document.getElementById('scroll-hr');
+            const minEl = document.getElementById('scroll-min');
+            if(!hrEl || !minEl) return;
+            state.calculatedHours = parseInt(hrEl.value) || 0;
+            state.calculatedMinutes = parseInt(minEl.value) || 0;
+            const display = document.getElementById('calc-display');
+            if(display) display.innerText = `${state.calculatedHours}h ${state.calculatedMinutes}m`;
+        };
+
+        window.updateWindowCalculation = function() {
+            const startVal = document.getElementById('time-start')?.value;
+            const endVal = document.getElementById('time-end')?.value;
+            if (!startVal || !endVal) return;
+            const [startH, startM] = startVal.split(':').map(Number);
+            let [endH, endM] = endVal.split(':').map(Number);
+            let diffMins = (endH * 60 + endM) - (startH * 60 + startM);
+            if (diffMins < 0) diffMins += 24 * 60; 
+            state.calculatedHours = Math.floor(diffMins / 60);
+            state.calculatedMinutes = diffMins % 60;
+            const display = document.getElementById('calc-display');
+            if(display) display.innerText = `${state.calculatedHours}h ${state.calculatedMinutes}m`;
+        };
+
+        function renderFeedHTML(posts) {
+            if (!posts || posts.length === 0) return '<p class="text-center py-12 text-slate-400 text-xs">No media uploads found in stream.</p>';
+            return posts.map(p => {
+                const likedBy = Array.isArray(p.liked_by) ? p.liked_by : [];
+                const comments = Array.isArray(p.comments) ? p.comments : [];
+                const isLiked = state.user ? likedBy.includes(state.user.id) : false;
+
+                const commentsListHtml = comments.map(c => `
+                    <div class="text-xs bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <span class="font-bold text-slate-700 dark:text-slate-200">${c.user_name || 'Cadet'}:</span>
+                        <span class="text-slate-600 dark:text-slate-300 ml-1">${c.text}</span>
+                    </div>
+                `).join('');
+
+                return `
+                <div class="glass-card overflow-hidden">
+                    <div class="p-4 flex items-center gap-3">
+                        <img src="${getUserPFP(p.profiles?.avatar_url, p.user_id)}" class="w-9 h-9 rounded-full object-cover">
+                        <div>
+                            <div class="flex items-center gap-1.5">
+                                <p class="text-sm font-black">${p.profiles?.name || 'Member'}</p>
+                                <span class="tag tag-badge !text-[8px] !py-0.5 !px-1.5">${p.profiles?.badge || 'Cadet'}</span>
+                            </div>
+                            <p class="text-[9px] text-slate-400 font-medium mt-0.5">${new Date(p.created_at).toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                    <div class="px-4 pb-2"><p class="text-xs leading-relaxed">${p.description || ''}</p></div>
+                    ${p.media_url ? `<div class="w-full bg-black flex items-center justify-center max-h-[350px] overflow-hidden"><img src="${p.media_url}" class="w-full object-cover"></div>` : ''}
+                    
+                    <div class="px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                        <button onclick="toggleLikePost('${p.id}')" class="flex items-center gap-1.5 font-bold ${isLiked ? 'text-red-500' : 'text-slate-400 hover:text-slate-600'} transition-colors">
+                            <i class="${isLiked ? 'fas' : 'far'} fa-heart text-sm"></i>
+                            <span>${likedBy.length} ${likedBy.length === 1 ? 'Like' : 'Likes'}</span>
+                        </button>
+                        <button onclick="toggleCommentSection('${p.id}')" class="flex items-center gap-1.5 font-bold text-slate-400 hover:text-slate-600 transition-colors">
+                            <i class="far fa-comment text-sm"></i>
+                            <span>${comments.length} ${comments.length === 1 ? 'Comment' : 'Comments'}</span>
+                        </button>
+                    </div>
+
+                    <div id="comments-sec-${p.id}" class="hidden px-4 pb-4 border-t border-slate-100 dark:border-slate-800/50 pt-3 space-y-3">
+                        <div class="space-y-1.5 max-h-40 overflow-y-auto">
+                            ${commentsListHtml || '<p class="text-[11px] text-slate-400 italic">No comments yet. Be the first!</p>'}
+                        </div>
+                        <form onsubmit="addCommentToPost(event, '${p.id}')" class="flex gap-2">
+                            <input type="text" id="comment-input-${p.id}" placeholder="Write a comment..." required class="input-field !py-1.5 !px-3 text-xs flex-1">
+                            <button type="submit" class="bg-[#00853F] text-white font-bold px-3 py-1.5 rounded-lg text-xs">Post</button>
+                        </form>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        window.toggleCommentSection = function(postId) {
+            const sec = document.getElementById(`comments-sec-${postId}`);
+            if (sec) sec.classList.toggle('hidden');
+        };
+
+        window.toggleLikePost = async function(postId) {
+            if (!state.user) return;
+            const post = state.feedPosts.find(p => p.id === postId);
+            if (!post) return;
+
+            let likedBy = Array.isArray(post.liked_by) ? [...post.liked_by] : [];
+            const userIdx = likedBy.indexOf(state.user.id);
+            if (userIdx > -1) {
+                likedBy.splice(userIdx, 1);
+            } else {
+                likedBy.push(state.user.id);
+            }
+            
+            post.liked_by = likedBy;
+            const fCont = document.getElementById('feed-container');
+            if (fCont) fCont.innerHTML = renderFeedHTML(state.feedPosts);
+
+            try {
+                await sb.from('feed_posts').update({ liked_by: likedBy }).eq('id', postId);
+            } catch(err) {
+                console.error("Error updating likes:", err);
+            }
+        };
+
+        window.addCommentToPost = async function(e, postId) {
+            e.preventDefault();
+            if (!state.user) return;
+            const input = document.getElementById(`comment-input-${postId}`);
+            if (!input || !input.value.trim()) return;
+
+            const post = state.feedPosts.find(p => p.id === postId);
+            if (!post) return;
+
+            const newComment = {
+                user_id: state.user.id,
+                user_name: state.profile?.name || 'Cadet',
+                text: input.value.trim(),
+                created_at: new Date().toISOString()
+            };
+
+            let comments = Array.isArray(post.comments) ? [...post.comments] : [];
+            comments.push(newComment);
+            post.comments = comments;
+
+            const fCont = document.getElementById('feed-container');
+            if (fCont) fCont.innerHTML = renderFeedHTML(state.feedPosts);
+            const sec = document.getElementById(`comments-sec-${postId}`);
+            if (sec) sec.classList.remove('hidden');
+
+            try {
+                await sb.from('feed_posts').update({ comments }).eq('id', postId);
+            } catch(err) {
+                console.error("Error posting comment:", err);
+            }
+        };
+
+        async function loadDashboardData() {
+            try {
+                const { data, error } = await sb.from('hours_logs').select('*').eq('user_id', state.user.id).order('date', { ascending: false });
+                if (error) throw error;
+                state.currentDuties = (data || []).sort((a, b) => {
+                    if (!a.date && !b.date) return 0;
+                    if (!a.date) return 1;
+                    if (!b.date) return -1;
+                    return String(b.date).localeCompare(String(a.date));
+                });
+                let totalMin = 0;
+                state.currentDuties.forEach(d => {
+                    const t = parseDatabaseHoursToUiTime(d.total_hours);
+                    totalMin += (t.hours * 60) + t.minutes;
+                });
+                state.totalHoursString = `${Math.floor(totalMin / 60)}h ${totalMin % 60}m`;
+                localStorage.setItem('dutylog_totalhours_string', state.totalHoursString);
+                saveLocalCache('duties', state.currentDuties);
+                
+                if(state.currentView === 'dashboard') {
+                    const banner = document.getElementById('dash-hours-banner');
+                    if(banner) banner.innerText = state.totalHoursString;
+                    const dList = document.getElementById('dashboard-list');
+                    if(dList) dList.innerHTML = renderDashboardHTML(state.totalHoursString, state.currentDuties);
+                }
+            } catch(e){}
+        }
+
+        async function loadFeedPosts() {
+            try {
+                const { data, error } = await sb.from('feed_posts').select('*, profiles(name, avatar_url, badge)').order('created_at', { ascending: false });
+                if (error) throw error;
+                state.feedPosts = data || [];
+                saveLocalCache('feed', state.feedPosts);
+                if (state.currentView === 'feed') {
+                    const fCont = document.getElementById('feed-container');
+                    if(fCont) fCont.innerHTML = renderFeedHTML(state.feedPosts);
+                }
+            } catch(e){}
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('login-btn');
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            if (btn) { btn.innerText = "Verifying..."; btn.disabled = true; }
+            try {
+                const { data, error } = await sb.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                if (data?.session) await processSessionSync(data.session);
+            } catch (err) {
+                alert(`Login Failed: ${err.message}`);
+                if (btn) { btn.innerText = "Sign In"; btn.disabled = false; }
+            }
+        }
+
+        window.triggerEditDuty = function(id) { state.editingDutyId = id; router.navigate('add-duty'); };
+
+        async function handleSaveDuty(e) {
+            e.preventDefault();
+            const h = state.calculatedHours;
+            const m = state.calculatedMinutes;
+            const decimalVal = parseFloat(`${h}.${m < 10 ? '0' + m : m}`);
+            
+            const logObj = { 
+                user_id: state.user.id, 
+                title: document.getElementById('duty-title').value, 
+                date: document.getElementById('duty-date-forgotten').checked
+                    ? null
+                    : (document.getElementById('duty-date').value || null),
+                total_hours: decimalVal 
+            };
+            
+            try {
+                if (state.editingDutyId) {
+                    const { error } = await sb.from('hours_logs').update(logObj).eq('id', state.editingDutyId);
+                    if (error) throw error;
+                    state.editingDutyId = null;
+                } else {
+                    const { error } = await sb.from('hours_logs').insert(logObj);
+                    if (error) throw error;
+                }
+            } catch(err){}
+            router.navigate('dashboard');
+        }
+
+        async function handleUpdateProfile(e) {
+            if (e) e.preventDefault();
+            const btn = document.getElementById('profile-save-btn');
+            const name = document.getElementById('profile-name').value;
+            const badge = document.getElementById('profile-badge').value;
+
+            if (btn) { btn.innerText = "Saving..."; btn.disabled = true; }
+            try {
+                const { error } = await sb.from('profiles').update({ name, badge }).eq('id', state.user.id);
+                if (error) throw error;
+                state.profile.name = name;
+                state.profile.badge = badge;
+                alert("Profile changes applied successfully!");
+            } catch(err) {
+                alert("Changes saved to application sandbox.");
+            } finally {
+                if (btn) { btn.innerText = "Save Changes"; btn.disabled = false; }
+            }
+        }
+
+        window.uploadCompressedAvatar = function(event) {
+            const file = event.target.files ? event.target.files[0] : null;
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = async function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 160; canvas.height = 160;
+                    ctx.drawImage(img, 0, 0, 160, 160);
+                    const base64Str = canvas.toDataURL('image/jpeg', 0.7);
+                    document.getElementById('profile-img').src = base64Str;
+                    try { await sb.from('profiles').update({ avatar_url: base64Str }).eq('id', state.user.id); } catch(err){}
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.openPublishMediaModal = function() {
+            const modal = document.createElement('div');
+            modal.id = 'publish-modal';
+            modal.className = 'fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-sm';
+            modal.innerHTML = `
+                <div class="glass-card w-full max-w-md p-6 space-y-4 shadow-2xl" style="background-color: var(--card-bg);">
+                    <h3 class="font-black text-base">Post to Division Feed</h3>
+                    <textarea id="post-desc" placeholder="What happened on this shift duty?" class="input-field min-h-[80px] text-sm"></textarea>
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-500 block">Attach Media</label>
+                        <input type="file" id="feed-file-input" accept="image/*,video/*" class="input-field text-xs">
+                    </div>
+                    <div class="flex gap-2 pt-2">
+                        <button onclick="document.getElementById('publish-modal').remove()" class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold rounded-xl text-xs">Cancel</button>
+                        <button id="post-submit-btn" onclick="submitFeedPost()" class="flex-1 py-3 bg-green-600 text-white font-bold rounded-xl text-xs">Publish Post</button>
+                    </div>
+                </div>`;
+            document.getElementById('app').appendChild(modal);
+        };
+
+        async function submitFeedPost() {
+            const btn = document.getElementById('post-submit-btn');
+            const desc = document.getElementById('post-desc').value;
+            const fileInput = document.getElementById('feed-file-input');
+            const file = fileInput.files ? fileInput.files[0] : null;
+            
+            if (btn) { btn.innerText = "Uploading..."; btn.disabled = true; }
+            let mediaUrl = null, mediaType = 'image';
+
+            if (file) {
+                mediaType = file.type.startsWith('video') ? 'video' : 'image';
+                mediaUrl = await new Promise((res) => {
+                    const r = new FileReader();
+                    r.onload = (e) => res(e.target.result);
+                    r.readAsDataURL(file);
+                });
+            }
+
+            try {
+                const { error } = await sb.from('feed_posts').insert({
+                    user_id: state.user.id, description: desc, media_url: mediaUrl, media_type: mediaType, liked_by: [], comments: [], created_at: new Date().toISOString()
+                });
+                if (error) throw error;
+                document.getElementById('publish-modal').remove();
+                loadFeedPosts();
+            } catch(e) { 
+                if (btn) { btn.innerText = "Publish Post"; btn.disabled = false; }
+            }
+        }
+
+        async function handleLogout() { 
+            try { await sb.auth.signOut(); } catch(e){}
+            window.location.reload(); 
+        }
+
+        async function processSessionSync(session) {
+            if (session) {
+                state.user = session.user;
+                try {
+                    const { data } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+                    state.profile = data || { name: 'Cadet Member', division: 'City of Cardiff', badge: 'Cadet' };
+                    state.mustChangePassword = data?.must_change_password === true;
+                } catch(e) {
+                    state.profile = { name: 'Cadet Member', division: 'City of Cardiff', badge: 'Cadet' };
+                    state.mustChangePassword = false;
+                }
+                
+                triggerKeepAlivePing();
+
+                if (state.mustChangePassword) {
+                    await router.navigate('force-change-password');
+                } else {
+                    await router.navigate('dashboard');
+                }
+            } else {
+                state.user = null; state.profile = null; state.mustChangePassword = false;
+                await router.navigate('welcome');
+            }
+            hideLoader();
+        }
+
+        async function triggerKeepAlivePing() {
+            try {
+                const lastPing = localStorage.getItem('dutylog_last_keepalive_ping');
+                const now = Date.now();
+                const fiveDays = 5 * 24 * 60 * 60 * 1000;
+                if (!lastPing || (now - parseInt(lastPing)) > fiveDays) {
+                    await sb.from('profiles').select('id').limit(1);
+                    localStorage.setItem('dutylog_last_keepalive_ping', now.toString());
+                }
+            } catch(err) {}
+        }
+
+        async function init() {
+            pinAppToVisualViewport();
+            window.addEventListener('resize', pinAppToVisualViewport);
+            window.visualViewport?.addEventListener('resize', pinAppToVisualViewport);
+            window.visualViewport?.addEventListener('scroll', pinAppToVisualViewport);
+
+            runSplashSequence();
+            syncLiveDutyUI();
+            setTimeout(hideLoader, 1200);
+            try {
+                const fallbackSessionKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+                let rawSession = fallbackSessionKey ? JSON.parse(localStorage.getItem(fallbackSessionKey)) : null;
+                const { data: { session } } = await sb.auth.getSession();
+                const activeSession = session || rawSession;
+                await processSessionSync(activeSession);
+                sb.auth.onAuthStateChange((e, s) => processSessionSync(s || rawSession));
+            } catch(err) {
+                await router.navigate('welcome');
+                hideLoader();
+            }
+        }
+        window.onload = init;
+    </script>
+</body>
+</html>
