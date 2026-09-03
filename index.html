@@ -10,6 +10,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DutyLog">
+    <meta name="theme-color" content="#00853F">
     
     <!-- Dynamic Manifest Injection for Independent Home Screen Standalone Execution -->
     <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkR1dHlMb2cgUHJvIiwKICAic2hvcnRfbmFtZSI6ICJEdXR5TG9nIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNGOEY5RkEiLAogICJ0aGVtZV9jb2xvciI6ICIjMUIyNjNCIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9hcGkuZGljZWJlYXIuY29tLzcueC9pZGVudGljb24vc3ZnP3NlZWQ9ZHV0eWxvZyIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
@@ -102,7 +103,7 @@
             overflow-y: auto; 
             height: 100vh; 
             -webkit-overflow-scrolling: touch; 
-            padding-bottom: calc(140px + env(safe-area-inset-bottom)); 
+            padding-bottom: calc(100px + env(safe-area-inset-bottom)); 
         }
 
         .btn-primary { 
@@ -171,6 +172,11 @@
 
         .accordion-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-in-out; }
         .accordion-body.open { max-height: 500px; }
+
+        /* Notch Notch Integration Style */
+        #live-duty-bar {
+            padding-top: calc(0.5rem + env(safe-area-inset-top));
+        }
     </style>
 </head>
 <body>
@@ -213,27 +219,28 @@
         <p class="text-green-700 font-bold animate-pulse text-sm">Syncing DutyLog Platform...</p>
     </div>
 
-    <div id="live-duty-bar" class="hidden fixed top-0 left-0 right-0 z-50 bg-[#1B263B] text-white px-4 py-2.5 shadow-xl flex items-center justify-between border-b border-emerald-500/30">
+    <!-- Live Duty Bar (Notch Fitted Dynamic Banner) -->
+    <div id="live-duty-bar" class="hidden fixed top-0 left-0 right-0 z-50 bg-[#00853F] text-white px-4 pb-2.5 shadow-xl flex items-center justify-between border-b border-emerald-400/40">
         <div class="flex items-center gap-3 truncate">
             <span class="relative flex h-3 w-3">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
             </span>
             <div class="truncate">
-                <p class="text-xs font-black truncate" id="bar-duty-title">Live Duty Active</p>
-                <p class="text-[10px] text-emerald-400 font-mono font-bold" id="bar-duty-timer">00:00:00</p>
+                <p class="text-[10px] font-black uppercase text-emerald-100 tracking-wide truncate" id="bar-duty-title">Live Duty Active</p>
+                <p class="text-xs font-mono font-black text-white" id="bar-duty-timer">00:00:00</p>
             </div>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
-            <button onclick="router.navigate('beta-tab')" class="bg-emerald-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg">View</button>
+            <button onclick="router.navigate('beta-tab')" class="bg-white text-[#00853F] text-[11px] font-black px-2.5 py-1 rounded-lg">View</button>
             <button onclick="stopLiveDutyTracker()" class="bg-red-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg">End</button>
         </div>
     </div>
 
     <div id="app">
-        <main id="view-container" class="px-4 pt-6 max-w-[600px] mx-auto"></main>
+        <main id="view-container" class="px-4 pt-4 max-w-[600px] mx-auto"></main>
         
-        <nav id="bottom-nav" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] hidden border-t px-4 py-3 justify-between items-center z-40 shadow-lg pb-safe" style="background-color: var(--nav-bg); border-color: var(--border-color);">
+        <nav id="bottom-nav" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] hidden border-t px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] justify-between items-center z-40 shadow-lg" style="background-color: var(--nav-bg); border-color: var(--border-color);">
             <button onclick="router.navigate('dashboard')" class="nav-item active" data-view="dashboard"><i class="fas fa-home text-lg"></i><span>Dashboard</span></button>
             <button onclick="router.navigate('feed')" class="nav-item" data-view="feed"><i class="fas fa-images text-lg"></i><span>Feed</span></button>
             <button onclick="router.navigate('add-duty')" class="nav-item bg-white dark:bg-slate-800 border-2 border-[#00853F] !text-[#00853F] p-3 -mt-10 rounded-full shadow-xl h-14 w-14 justify-center"><i class="fas fa-plus text-xl"></i></button>
@@ -264,7 +271,7 @@
             calculatedHours: 0,
             calculatedMinutes: 0,
             pendingSignup: null,
-            betaUnlocked: localStorage.getItem('dutylog_beta_unlocked') === 'true',
+            betaUnlocked: true,
             settingsOpen: false,
             darkMode: localStorage.getItem('dutylog_theme') === 'dark',
             activeDuty: JSON.parse(localStorage.getItem('dutylog_active_duty') || 'null')
@@ -438,43 +445,19 @@
             },
 
             'beta-tab': async () => {
-                if (!state.betaUnlocked) {
-                    return `<div class="space-y-6 pt-4 max-w-sm mx-auto text-center">
-                        <div class="w-20 h-20 bg-amber-500/10 border-2 border-amber-500 rounded-3xl flex items-center justify-center mx-auto text-amber-500 text-3xl">
-                            <i class="fas fa-lock"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-2xl font-black">Beta Utilities Locked</h2>
-                            <p class="text-xs text-slate-400 mt-1">Enter your 6-character division key to access DutyTracker Live.</p>
-                        </div>
-
-                        <form onsubmit="handleBetaUnlock(event)" class="space-y-3">
-                            <input type="text" id="beta-key-input" placeholder="e.g. 603-DUTY" required class="input-field text-center font-mono font-bold tracking-widest uppercase">
-                            <button type="submit" class="btn-primary !bg-amber-600">Unlock Beta Features</button>
-                        </form>
-
-                        <div class="pt-4">
-                            <a href="mailto:hello@lawsonmorris.uk?subject=DutyLog%20Beta%20Access%20Request&body=Name:%20%0D%0AEmail:%20%0D%0ADivision/Unit:%20%0D%0AReason%20for%20access:%20" class="text-xs font-bold text-emerald-600 hover:underline">
-                                Click here to request Beta access
-                            </a>
-                        </div>
-                    </div>`;
-                }
-
                 return `<div class="space-y-6 pb-12">
                     <div class="flex justify-between items-center">
                         <div>
                             <span class="tag tag-badge text-[9px] mb-1 inline-block">Beta Utility</span>
                             <h2 class="text-2xl font-black">DutyTracker Live</h2>
                         </div>
-                        <button onclick="lockBetaTab()" class="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl"><i class="fas fa-lock mr-1"></i> Lock</button>
                     </div>
 
-                    <div class="glass-card p-6 space-y-4">
+                    <div class="glass-card p-6 space-y-4 border-2 border-[#00853F]/20">
                         <div class="text-center space-y-1 border-b pb-4 border-slate-100 dark:border-slate-800">
                             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Shift Status</p>
-                            <h3 class="text-3xl font-black font-mono text-emerald-600" id="live-tracker-clock">00:00:00</h3>
-                            <p class="text-xs font-bold text-slate-400" id="live-tracker-title-display">${state.activeDuty ? state.activeDuty.title : 'No active tracker'}</p>
+                            <h3 class="text-4xl font-black font-mono text-[#00853F]" id="live-tracker-clock">00:00:00</h3>
+                            <p class="text-xs font-bold text-slate-400 mt-1" id="live-tracker-title-display">${state.activeDuty ? state.activeDuty.title : 'No active tracker'}</p>
                         </div>
 
                         ${!state.activeDuty ? `
@@ -532,7 +515,7 @@
                             <div class="drabsc-item border-b border-slate-100 dark:border-slate-800" id="drabsc-b">
                                 <button onclick="toggleDrabscItem('drabsc-b')" class="drabsc-trigger">
                                     <div class="flex items-center gap-3">
-                                        <div class="drabsc-letter bg-green-600">B</div>
+                                        <div class="drabsc-letter bg-[#00853F]">B</div>
                                         <span class="text-xs font-bold">Breathing</span>
                                     </div>
                                     <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
@@ -580,7 +563,7 @@
                     switchTimeInputMode('duration', parsedTime.hours, parsedTime.minutes);
                 }, 15);
 
-                return `<div class="px-2 space-y-4">
+                return `<div class="px-2 space-y-4 pb-12">
                     <h2 class="text-2xl font-bold">${state.editingDutyId ? 'Modify Shift Record' : 'Log Operational Duty'}</h2>
                     
                     <form onsubmit="handleSaveDuty(event)" class="space-y-4">
@@ -602,7 +585,7 @@
                 </div>`;
             },
 
-            profile: async () => `<div class="space-y-6 pt-4 max-w-sm mx-auto">
+            profile: async () => `<div class="space-y-6 pt-4 max-w-sm mx-auto pb-12">
                 <div class="relative w-24 h-24 mx-auto text-center">
                     <img id="profile-img" src="${getUserPFP(state.profile?.avatar_url, state.user?.id)}" class="w-24 h-24 rounded-full border-4 border-green-500 shadow-lg object-cover mx-auto">
                     <label class="absolute bottom-0 right-2 bg-[#1B263B] text-white rounded-full p-2 text-xs shadow-md border border-white cursor-pointer">
@@ -693,25 +676,6 @@
             if (chevron) chevron.classList.toggle('rotate-180', state.settingsOpen);
         };
 
-        window.handleBetaUnlock = function(e) {
-            e.preventDefault();
-            const input = document.getElementById('beta-key-input');
-            const key = input ? input.value.trim().toUpperCase() : '';
-            if (VALID_BETA_KEYS.includes(key)) {
-                state.betaUnlocked = true;
-                localStorage.setItem('dutylog_beta_unlocked', 'true');
-                router.navigate('beta-tab');
-            } else {
-                alert("Invalid Beta Access Key. Please check the key or request access.");
-            }
-        };
-
-        window.lockBetaTab = function() {
-            state.betaUnlocked = false;
-            localStorage.removeItem('dutylog_beta_unlocked');
-            router.navigate('beta-tab');
-        };
-
         window.startLiveDutyTracker = async function(e) {
             if (e) e.preventDefault();
             const titleInput = document.getElementById('live-duty-title-input');
@@ -730,9 +694,11 @@
 
             if ("Notification" in window && Notification.permission === "granted") {
                 try {
-                    new Notification("DutyLog Live Tracker", {
-                        body: `DutyLog is currently recording your duty: ${state.activeDuty.title}`,
-                        icon: "https://api.dicebear.com/7.x/identicon/svg?seed=dutylog"
+                    new Notification("DutyTracker Live Active", {
+                        body: `Logging shift: ${state.activeDuty.title}`,
+                        icon: "https://api.dicebear.com/7.x/identicon/svg?seed=dutylog",
+                        tag: "live-duty",
+                        renotify: true
                     });
                 } catch(err){}
             }
@@ -804,8 +770,8 @@
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.metadata = new MediaMetadata({
                         title: state.activeDuty.title,
-                        artist: 'DutyLog Pro - DutyTracker Live',
-                        album: `Elapsed Time: ${timeStr}`
+                        artist: 'DutyLog Pro - Live Shift Active',
+                        album: `Elapsed: ${timeStr}`
                     });
                 }
             };
