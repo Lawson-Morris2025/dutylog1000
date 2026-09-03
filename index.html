@@ -18,6 +18,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
     <style>
         :root { 
             --navy: #1B263B; 
@@ -164,11 +165,6 @@
         
         .tab-btn { padding: 0.6rem 1rem; font-size: 0.75rem; font-weight: 700; border-radius: 0.75rem; color: #64748B; background: #F1F5F9; transition: all 0.2s; }
         .tab-btn.active { background: #1B263B; color: white; }
-        
-        .drabsc-trigger { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 1rem; text-align: left; font-weight: 800; border-radius: 1rem; transition: background 0.2s; background: none; border: none; color: var(--text-main); }
-        .drabsc-content { max-height: 0; overflow: hidden; transition: max-height 0.25s ease-out; padding: 0 1rem; font-size: 0.85rem; color: var(--text-sub); }
-        .drabsc-item.open .drabsc-content { max-height: 200px; padding: 0.5rem 1rem 1rem 1rem; }
-        .drabsc-letter { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 0.5rem; font-weight: 900; color: white; font-size: 1.1rem; }
 
         .accordion-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-in-out; }
         .accordion-body.open { max-height: 500px; }
@@ -231,8 +227,15 @@
         const supabaseUrl = 'https://qgyjfyazkkepmkztnezv.supabase.co';
         const supabaseKey = 'sb_publishable_xea7e2zxnarbh2bT6vG5ew__2DhOj34';
         
+        // Primary Supabase Client (Maintained for active user session)
         const sb = window.supabase.createClient(supabaseUrl, supabaseKey, {
             auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+        });
+
+        // Isolated Secondary Supabase Client for Admin User Provisioning
+        // Prevent clearing or overriding current admin session during invitations!
+        const secondaryAuthClient = window.supabase.createClient(supabaseUrl, supabaseKey, {
+            auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
 
         const ADMIN_UID = 'f3a6c15d-8663-41fe-bfd7-6a4e891b4db9';
@@ -421,13 +424,13 @@
                 <div onclick="router.navigate('signup')" class="back-btn"><i class="fas fa-arrow-left"></i> Back</div>
                 <div>
                     <h2 class="text-2xl font-bold">Verify Your Email</h2>
-                    <p class="text-xs text-slate-400 mt-1">We sent a 6-digit confirmation code to <strong class="text-emerald-500">${state.pendingSignup?.email || 'your email'}</strong>.</p>
+                    <p class="text-xs text-slate-400 mt-1">We sent a confirmation code to <strong class="text-emerald-500">${state.pendingSignup?.email || 'your email'}</strong>.</p>
                 </div>
 
                 <form onsubmit="handleVerifyOtp(event)" class="space-y-4">
                     <div>
-                        <label class="text-xs font-bold text-slate-400 block mb-1">8-Digit Code</label>
-                        <input type="text" id="otp-code-input" maxlength="8" pattern="[0-9]{8}" placeholder="12345678" inputmode="numeric" required class="input-field text-center font-mono text-2xl tracking-widest font-black">
+                        <label class="text-xs font-bold text-slate-400 block mb-1">Verification Code</label>
+                        <input type="text" id="otp-code-input" maxlength="8" placeholder="Enter Code" inputmode="numeric" required class="input-field text-center font-mono text-2xl tracking-widest font-black">
                     </div>
                     <button type="submit" id="otp-verify-btn" class="btn-primary !bg-[#00853F]">Confirm Code & Create Profile</button>
                 </form>
@@ -514,7 +517,7 @@
                             <i class="fas fa-user-plus text-base"></i>
                             <h3 class="font-bold text-sm">Invite New Cadet / Member</h3>
                         </div>
-                        <p class="text-xs text-slate-400 leading-relaxed">Pre-authorize a cadet's account. They will be given a temporary password and forced to change it upon their first sign-in.</p>
+                        <p class="text-xs text-slate-400 leading-relaxed">Provisions a genuine Supabase authentication user account with a temporary password. The member is forced to set a new private password upon first sign-in.</p>
 
                         <form onsubmit="handleInviteUser(event)" class="space-y-3">
                             <div>
@@ -548,7 +551,7 @@
                                 </div>
                             </div>
                             <button type="submit" id="invite-btn" class="btn-primary !bg-amber-600 hover:!bg-amber-700 flex items-center justify-center gap-2">
-                                <i class="fas fa-paper-plane"></i> Create Account & Generate Invite
+                                <i class="fas fa-paper-plane"></i> Create Auth Account & Send Invite
                             </button>
                         </form>
                     </div>
@@ -804,7 +807,7 @@
             e.preventDefault();
             if (!isAdmin()) return alert("Unauthorized access.");
 
-            const email = document.getElementById('invite-email').value.trim();
+            const email = document.getElementById('invite-email').value.trim().toLowerCase();
             const name = document.getElementById('invite-name').value.trim();
             const division = document.getElementById('invite-division').value.trim();
             const badge = document.getElementById('invite-badge').value;
@@ -813,21 +816,57 @@
 
             if (!email) return alert("Please enter a valid user email address.");
 
-            if (btn) { btn.innerText = "Provisioning Cadet Account..."; btn.disabled = true; }
+            if (btn) { btn.innerText = "Creating Supabase Auth Account..."; btn.disabled = true; }
 
             try {
-                // Upsert profile record with mandatory password change flag
-                await sb.from('profiles').upsert({
-                    email: email.toLowerCase(),
+                // Step 1: Create genuine Supabase Auth user via isolated secondary client (does not affect current admin login!)
+                const { data: authData, error: authErr } = await secondaryAuthClient.auth.signUp({
+                    email: email,
+                    password: tempPassword,
+                    options: {
+                        data: { name: name || 'Cadet Member', division: division || 'City of Cardiff', badge: badge || 'Cadet' }
+                    }
+                });
+
+                if (authErr) {
+                    // Handle edge case if user already exists in auth
+                    if (authErr.message.includes('User already registered') || authErr.status === 400) {
+                        alert(`Account with email ${email} already exists in Supabase Authentication.\nWe will update their profile record.`);
+                    } else {
+                        throw authErr;
+                    }
+                }
+
+                const newUserId = authData?.user?.id;
+
+                // Step 2: Create or update profile record bound to the Auth User ID
+                const profilePayload = {
+                    email: email,
                     name: name || 'Cadet Member',
                     division: division || 'City of Cardiff',
                     badge: badge || 'Cadet',
                     must_change_password: true,
                     invited_by: state.user.id,
                     created_at: new Date().toISOString()
-                }, { onConflict: 'email' });
+                };
 
-                const mailSubject = encodeURIComponent("Welcome to DutyLog Pro - Account Created");
+                if (newUserId) {
+                    profilePayload.id = newUserId;
+                }
+
+                const { error: profileErr } = await sb.from('profiles').upsert(profilePayload, { onConflict: 'email' });
+                if (profileErr) console.warn("Profile save warning:", profileErr);
+
+                // Step 3: Trigger Supabase system email reset/notification if configured
+                try {
+                    await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.href.split('#')[0] });
+                } catch(emailErr) {
+                    console.log("Supabase system email trigger status:", emailErr);
+                }
+
+                // Step 4: Display invitation confirmation & native dispatch options
+                const loginUrl = window.location.href.split('#')[0];
+                const mailSubject = encodeURIComponent("Welcome to DutyLog Pro - Account Credentials");
                 const mailBody = encodeURIComponent(
                     `Hello ${name || 'Cadet'},\n\n` +
                     `An account has been created for you on DutyLog Pro for operational hour tracking in ${division}.\n\n` +
@@ -838,25 +877,36 @@
                     `• Rank / Role: ${badge}\n\n` +
                     `IMPORTANT SECURITY NOTE:\n` +
                     `When you log in for the first time, you will be automatically prompted to change your temporary password to a private password of your choice.\n\n` +
-                    `Log in here: ${window.location.href.split('#')[0]}\n\n` +
+                    `Log in here: ${loginUrl}\n\n` +
                     `Best regards,\n` +
                     `DutyLog Pro Administration`
                 );
 
-                if (confirm(`Cadet ${name || email} has been created!\n\nTemporary Password: ${tempPassword}\nMust Change Password on First Login: YES\n\nClick OK to open your mail app with the formatted invitation.`)) {
+                const userChoice = confirm(
+                    `ACCOUNT CREATED SUCCESSFULLY!\n\n` +
+                    `Email: ${email}\n` +
+                    `Temp Password: ${tempPassword}\n` +
+                    `Must Change Password on First Login: YES\n\n` +
+                    `Press OK to launch your Mail app to send the credentials to ${email}.\n` +
+                    `Press CANCEL to copy credentials to your clipboard instead.`
+                );
+
+                if (userChoice) {
                     window.location.href = `mailto:${email}?subject=${mailSubject}&body=${mailBody}`;
                 } else {
-                    navigator.clipboard.writeText(`Email: ${email}\nPassword: ${tempPassword}`);
-                    alert(`Login credentials copied to clipboard! Share with ${email}.`);
+                    const textCopy = `DutyLog Pro Credentials\nEmail: ${email}\nTemp Password: ${tempPassword}\nLogin: ${loginUrl}`;
+                    navigator.clipboard.writeText(textCopy).then(() => {
+                        alert(`Account credentials copied to clipboard! You can paste and send them to ${email}.`);
+                    });
                 }
 
                 e.target.reset();
                 document.getElementById('invite-temp-password').value = 'ChangeMe123!';
                 loadAdminData();
             } catch(err) {
-                alert(`Invite failed: ${err.message}`);
+                alert(`Invite failed: ${err.message || 'Error provisioning account.'}`);
             } finally {
-                if (btn) { btn.innerText = "Create Account & Generate Invite"; btn.disabled = false; }
+                if (btn) { btn.innerText = "Create Auth Account & Send Invite"; btn.disabled = false; }
             }
         };
 
@@ -929,6 +979,7 @@
                                         <div class="flex items-center gap-1.5">
                                             <p class="text-xs font-bold truncate">${u.name || 'Unnamed Cadet'}</p>
                                             ${isSuper ? '<span class="tag tag-badge !bg-amber-100 !text-amber-800 dark:!bg-amber-950 dark:!text-amber-300 text-[8px]">ADMIN</span>' : ''}
+                                            ${u.must_change_password ? '<span class="tag !bg-red-100 !text-red-700 text-[8px]">TEMP PW</span>' : ''}
                                         </div>
                                         <p class="text-[10px] text-slate-400 truncate">${u.email || u.division || 'No email registered'}</p>
                                     </div>
@@ -1081,7 +1132,7 @@
 
                 if (data?.session) {
                     const userId = data.session.user.id;
-                    await sb.from('profiles').upsert({ id: userId, name: state.pendingSignup.name, division: state.pendingSignup.division, badge: 'Cadet' });
+                    await sb.from('profiles').upsert({ id: userId, email: email, name: state.pendingSignup.name, division: state.pendingSignup.division, badge: 'Cadet' });
                     alert("Email verified successfully! Profile created.");
                     await processSessionSync(data.session);
                 }
@@ -1180,14 +1231,6 @@
                 text += `• ${d.date} - ${d.title || 'Untitled'}: ${t.hours}h ${t.minutes}m\n`;
             });
             navigator.clipboard.writeText(text).then(() => alert("Copied summary to clipboard!")).catch(() => alert("Failed to copy automatically."));
-        };
-
-        window.toggleDrabscItem = function(elementId) {
-            const item = document.getElementById(elementId);
-            if (!item) return;
-            const isOpen = item.classList.contains('open');
-            document.querySelectorAll('.drabsc-item').forEach(el => el.classList.remove('open'));
-            if (!isOpen) item.classList.add('open');
         };
 
         window.switchTimeInputMode = function(mode, defaultH = 0, defaultM = 0) {
