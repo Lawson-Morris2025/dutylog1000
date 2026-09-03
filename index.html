@@ -221,6 +221,7 @@
             <button onclick="router.navigate('dashboard')" class="nav-item active" data-view="dashboard"><i class="fas fa-home text-lg"></i><span>Dashboard</span></button>
             <button onclick="router.navigate('feed')" class="nav-item" data-view="feed"><i class="fas fa-images text-lg"></i><span>Feed</span></button>
             <button onclick="router.navigate('add-duty')" class="nav-item bg-white dark:bg-slate-800 border-2 border-[#00853F] !text-[#00853F] rounded-full shadow-lg h-12 w-12 -mt-5 flex items-center justify-center flex-shrink-0"><i class="fas fa-plus text-lg"></i></button>
+            <button id="admin-nav-item" onclick="router.navigate('admin')" class="nav-item hidden" data-view="admin"><i class="fas fa-user-shield text-lg text-amber-500"></i><span class="text-amber-500 font-bold">Admin</span></button>
             <button onclick="router.navigate('beta-tab')" class="nav-item" data-view="beta-tab"><i class="fas fa-vial text-lg"></i><span>Beta</span></button>
             <button onclick="router.navigate('profile')" class="nav-item" data-view="profile"><i class="fas fa-user text-lg"></i><span>Profile</span></button>
         </nav>
@@ -233,6 +234,14 @@
         const sb = window.supabase.createClient(supabaseUrl, supabaseKey, {
             auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
         });
+
+        const ADMIN_UID = 'f3a6c15d-8663-41fe-bfd7-6a4e891b4db9';
+        const ADMIN_EMAIL = 'lawsonm6@icloud.com';
+
+        const isAdmin = () => {
+            if (!state.user) return false;
+            return state.user.id === ADMIN_UID || (state.user.email && state.user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+        };
 
         const VALID_BETA_KEYS = ['603DUTY', '814-BETA', '814BETA', '108-LIVE', '108LIVE', '920-LOGS', '920LOGS', '501-DUTY', '501DUTY', 'DL2025', 'DL2026', 'DLBETA'];
 
@@ -251,7 +260,8 @@
             betaUnlocked: localStorage.getItem('dutylog_beta_unlocked') === 'true',
             settingsOpen: false,
             darkMode: localStorage.getItem('dutylog_theme') === 'dark',
-            activeDuty: JSON.parse(localStorage.getItem('dutylog_active_duty') || 'null')
+            activeDuty: JSON.parse(localStorage.getItem('dutylog_active_duty') || 'null'),
+            mustChangePassword: false
         };
 
         let dutyTimerInterval = null;
@@ -265,13 +275,19 @@
         const router = {
             navigate: async (view) => {
                 if (state.currentView === view && !state.editingDutyId && view !== 'beta-tab') return; 
+                
+                // Force route to password update if required
+                if (state.mustChangePassword && view !== 'force-change-password' && view !== 'welcome') {
+                    view = 'force-change-password';
+                }
+
                 state.currentView = view;
                 
                 const container = document.getElementById('view-container');
                 const nav = document.getElementById('bottom-nav');
                 if (!container || !nav) return;
                 
-                const isAuthView = ['welcome', 'login', 'signup', 'verify-email'].includes(view);
+                const isAuthView = ['welcome', 'login', 'signup', 'verify-email', 'force-change-password'].includes(view);
                 
                 if (!state.user && !isAuthView) {
                     state.currentView = 'welcome';
@@ -284,6 +300,9 @@
                 nav.classList.toggle('hidden', isAuthView);
                 nav.classList.toggle('flex', !isAuthView);
                 
+                const adminNav = document.getElementById('admin-nav-item');
+                if (adminNav) adminNav.classList.toggle('hidden', !isAdmin());
+
                 document.querySelectorAll('.nav-item').forEach(el => {
                     el.classList.toggle('active', el.getAttribute('data-view') === view);
                 });
@@ -374,6 +393,30 @@
                 </form>
             </div>`,
 
+            'force-change-password': async () => `<div class="pt-4 max-w-sm mx-auto space-y-6">
+                <div class="glass-card p-6 border-2 border-amber-500/40 space-y-4">
+                    <div class="w-14 h-14 bg-amber-500/10 border-2 border-amber-500 text-amber-500 rounded-2xl flex items-center justify-center mx-auto text-2xl font-black">
+                        <i class="fas fa-key"></i>
+                    </div>
+                    <div class="text-center">
+                        <h2 class="text-xl font-black">Change Temporary Password</h2>
+                        <p class="text-xs text-slate-400 mt-1 leading-relaxed">You logged in using a temporary password. For security, you must set a new secure password before continuing.</p>
+                    </div>
+
+                    <form onsubmit="handleForcePasswordChange(event)" class="space-y-4 pt-2">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">New Password</label>
+                            <input type="password" id="new-password-input" minlength="6" placeholder="Enter new password" required class="input-field">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Confirm New Password</label>
+                            <input type="password" id="confirm-password-input" minlength="6" placeholder="Re-enter new password" required class="input-field">
+                        </div>
+                        <button type="submit" id="save-pw-btn" class="btn-primary !bg-[#00853F]">Update Password & Continue</button>
+                    </form>
+                </div>
+            </div>`,
+
             'verify-email': async () => `<div class="pt-4 max-w-sm mx-auto space-y-6">
                 <div onclick="router.navigate('signup')" class="back-btn"><i class="fas fa-arrow-left"></i> Back</div>
                 <div>
@@ -439,6 +482,99 @@
                         <button onclick="openPublishMediaModal()" class="bg-green-600 text-white text-xs font-bold py-2 px-4 rounded-xl"><i class="fas fa-camera mr-1"></i> Post Media</button>
                     </div>
                     <div id="feed-container" class="space-y-6 pb-12">${renderFeedHTML(state.feedPosts.length ? state.feedPosts : cachedFeed)}</div>
+                </div>`;
+            },
+
+            admin: async () => {
+                if (!isAdmin()) {
+                    return `<div class="text-center py-20 space-y-4">
+                        <div class="w-16 h-16 bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto text-2xl"><i class="fas fa-lock"></i></div>
+                        <h2 class="text-2xl font-bold">Access Restricted</h2>
+                        <p class="text-xs text-slate-400 px-6">The Admin Console is strictly reserved for Lawson Morris (lawsonm6@icloud.com).</p>
+                        <button onclick="router.navigate('dashboard')" class="btn-primary max-w-xs mx-auto">Return to Dashboard</button>
+                    </div>`;
+                }
+
+                setTimeout(loadAdminData, 10);
+
+                return `<div class="space-y-6 pb-12">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="tag tag-badge !bg-amber-100 !text-amber-800 dark:!bg-amber-950 dark:!text-amber-300 text-[9px]">Super Admin Console</span>
+                            <h2 class="text-2xl font-black">Admin Management</h2>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg font-bold">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                    </div>
+
+                    <!-- Invite User Section -->
+                    <div class="glass-card p-5 space-y-4 border-2 border-amber-500/30">
+                        <div class="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                            <i class="fas fa-user-plus text-base"></i>
+                            <h3 class="font-bold text-sm">Invite New Cadet / Member</h3>
+                        </div>
+                        <p class="text-xs text-slate-400 leading-relaxed">Pre-authorize a cadet's account. They will be given a temporary password and forced to change it upon their first sign-in.</p>
+
+                        <form onsubmit="handleInviteUser(event)" class="space-y-3">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Cadet Email Address</label>
+                                <input type="email" id="invite-email" placeholder="cadet@example.com" required class="input-field text-sm">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Full Name</label>
+                                    <input type="text" id="invite-name" placeholder="John Doe" required class="input-field text-sm">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Division</label>
+                                    <input type="text" id="invite-division" value="City of Cardiff" required class="input-field text-sm">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Role / Rank Badge</label>
+                                    <select id="invite-badge" class="input-field text-sm font-semibold">
+                                        <option value="Cadet">Cadet</option>
+                                        <option value="Corporal">Corporal</option>
+                                        <option value="Sergeant">Sergeant</option>
+                                        <option value="Staff Officer">Staff Officer</option>
+                                        <option value="Division Lead">Division Lead</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Temp Password</label>
+                                    <input type="text" id="invite-temp-password" value="ChangeMe123!" required class="input-field text-sm font-mono font-bold">
+                                </div>
+                            </div>
+                            <button type="submit" id="invite-btn" class="btn-primary !bg-amber-600 hover:!bg-amber-700 flex items-center justify-center gap-2">
+                                <i class="fas fa-paper-plane"></i> Create Account & Generate Invite
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- System Stats Cards -->
+                    <div class="grid grid-cols-2 gap-3" id="admin-stats-grid">
+                        <div class="glass-card p-4 space-y-1">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Total Members</p>
+                            <p class="text-2xl font-black text-slate-800 dark:text-slate-100" id="admin-total-users">--</p>
+                        </div>
+                        <div class="glass-card p-4 space-y-1">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Global Shift Hours</p>
+                            <p class="text-2xl font-black text-emerald-600" id="admin-total-hours">--</p>
+                        </div>
+                    </div>
+
+                    <!-- Registered Profiles Directory -->
+                    <div class="glass-card p-5 space-y-3">
+                        <h3 class="font-bold text-sm border-b pb-2 border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <span><i class="fas fa-users text-indigo-500 mr-2"></i>User Directory</span>
+                            <span class="text-[10px] text-slate-400" id="user-count-label">Loading...</span>
+                        </h3>
+                        <div id="admin-user-list" class="space-y-2.5 max-h-80 overflow-y-auto pr-1">
+                            <p class="text-xs text-slate-400 text-center py-4">Loading user directory...</p>
+                        </div>
+                    </div>
                 </div>`;
             },
 
@@ -555,6 +691,19 @@
                     </label>
                 </div>
 
+                ${isAdmin() ? `
+                <div class="glass-card p-4 border-2 border-amber-500/40 bg-amber-500/5 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg"><i class="fas fa-user-shield"></i></div>
+                        <div>
+                            <p class="text-xs font-bold text-amber-700 dark:text-amber-300">Admin Privileges Active</p>
+                            <p class="text-[10px] text-slate-400">Invite users & manage division</p>
+                        </div>
+                    </div>
+                    <button onclick="router.navigate('admin')" class="px-3 py-1.5 bg-amber-600 text-white font-bold text-xs rounded-xl shadow-sm hover:bg-amber-700">Open Console</button>
+                </div>
+                ` : ''}
+
                 <div class="glass-card p-4 flex justify-between items-center">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-lg"><i class="fas fa-moon"></i></div>
@@ -650,6 +799,149 @@
                 alert('Invalid Beta Pass Key. Please verify your key and try again.');
             }
         };
+
+        window.handleInviteUser = async function(e) {
+            e.preventDefault();
+            if (!isAdmin()) return alert("Unauthorized access.");
+
+            const email = document.getElementById('invite-email').value.trim();
+            const name = document.getElementById('invite-name').value.trim();
+            const division = document.getElementById('invite-division').value.trim();
+            const badge = document.getElementById('invite-badge').value;
+            const tempPassword = document.getElementById('invite-temp-password').value.trim() || 'ChangeMe123!';
+            const btn = document.getElementById('invite-btn');
+
+            if (!email) return alert("Please enter a valid user email address.");
+
+            if (btn) { btn.innerText = "Provisioning Cadet Account..."; btn.disabled = true; }
+
+            try {
+                // Upsert profile record with mandatory password change flag
+                await sb.from('profiles').upsert({
+                    email: email.toLowerCase(),
+                    name: name || 'Cadet Member',
+                    division: division || 'City of Cardiff',
+                    badge: badge || 'Cadet',
+                    must_change_password: true,
+                    invited_by: state.user.id,
+                    created_at: new Date().toISOString()
+                }, { onConflict: 'email' });
+
+                const mailSubject = encodeURIComponent("Welcome to DutyLog Pro - Account Created");
+                const mailBody = encodeURIComponent(
+                    `Hello ${name || 'Cadet'},\n\n` +
+                    `An account has been created for you on DutyLog Pro for operational hour tracking in ${division}.\n\n` +
+                    `ACCOUNT CREDENTIALS:\n` +
+                    `• Email: ${email}\n` +
+                    `• Temporary Password: ${tempPassword}\n` +
+                    `• Division: ${division}\n` +
+                    `• Rank / Role: ${badge}\n\n` +
+                    `IMPORTANT SECURITY NOTE:\n` +
+                    `When you log in for the first time, you will be automatically prompted to change your temporary password to a private password of your choice.\n\n` +
+                    `Log in here: ${window.location.href.split('#')[0]}\n\n` +
+                    `Best regards,\n` +
+                    `DutyLog Pro Administration`
+                );
+
+                if (confirm(`Cadet ${name || email} has been created!\n\nTemporary Password: ${tempPassword}\nMust Change Password on First Login: YES\n\nClick OK to open your mail app with the formatted invitation.`)) {
+                    window.location.href = `mailto:${email}?subject=${mailSubject}&body=${mailBody}`;
+                } else {
+                    navigator.clipboard.writeText(`Email: ${email}\nPassword: ${tempPassword}`);
+                    alert(`Login credentials copied to clipboard! Share with ${email}.`);
+                }
+
+                e.target.reset();
+                document.getElementById('invite-temp-password').value = 'ChangeMe123!';
+                loadAdminData();
+            } catch(err) {
+                alert(`Invite failed: ${err.message}`);
+            } finally {
+                if (btn) { btn.innerText = "Create Account & Generate Invite"; btn.disabled = false; }
+            }
+        };
+
+        window.handleForcePasswordChange = async function(e) {
+            e.preventDefault();
+            const pw1 = document.getElementById('new-password-input').value;
+            const pw2 = document.getElementById('confirm-password-input').value;
+            const btn = document.getElementById('save-pw-btn');
+
+            if (pw1 !== pw2) return alert("Passwords do not match. Please re-enter.");
+            if (pw1.length < 6) return alert("Password must be at least 6 characters long.");
+
+            if (btn) { btn.innerText = "Updating Password..."; btn.disabled = true; }
+
+            try {
+                // Update Supabase Auth user password
+                const { error: authErr } = await sb.auth.updateUser({ password: pw1 });
+                if (authErr) throw authErr;
+
+                // Clear the must_change_password flag in profiles table
+                if (state.user) {
+                    await sb.from('profiles').update({ must_change_password: false }).eq('id', state.user.id);
+                }
+
+                state.mustChangePassword = false;
+                alert("Password updated successfully! Welcome to DutyLog Pro.");
+                await router.navigate('dashboard');
+            } catch(err) {
+                alert(`Password update failed: ${err.message}`);
+                if (btn) { btn.innerText = "Update Password & Continue"; btn.disabled = false; }
+            }
+        };
+
+        async function loadAdminData() {
+            if (!isAdmin()) return;
+            try {
+                const { data: profiles } = await sb.from('profiles').select('*');
+                const { data: hours } = await sb.from('hours_logs').select('total_hours');
+
+                const users = profiles || [];
+                const logs = hours || [];
+
+                let globalMin = 0;
+                logs.forEach(d => {
+                    const t = parseDatabaseHoursToUiTime(d.total_hours);
+                    globalMin += (t.hours * 60) + t.minutes;
+                });
+
+                const usersCountEl = document.getElementById('admin-total-users');
+                if (usersCountEl) usersCountEl.innerText = users.length;
+
+                const hoursTotalEl = document.getElementById('admin-total-hours');
+                if (hoursTotalEl) hoursTotalEl.innerText = `${Math.floor(globalMin / 60)}h ${globalMin % 60}m`;
+
+                const countLabel = document.getElementById('user-count-label');
+                if (countLabel) countLabel.innerText = `${users.length} Registered`;
+
+                const listEl = document.getElementById('admin-user-list');
+                if (listEl) {
+                    if (users.length === 0) {
+                        listEl.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">No profiles found in database.</p>`;
+                    } else {
+                        listEl.innerHTML = users.map(u => {
+                            const isSuper = u.id === ADMIN_UID || (u.email && u.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+                            return `
+                            <div class="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                                <div class="flex items-center gap-3 truncate mr-2">
+                                    <img src="${getUserPFP(u.avatar_url, u.id)}" class="w-8 h-8 rounded-full border border-slate-200 object-cover flex-shrink-0">
+                                    <div class="truncate">
+                                        <div class="flex items-center gap-1.5">
+                                            <p class="text-xs font-bold truncate">${u.name || 'Unnamed Cadet'}</p>
+                                            ${isSuper ? '<span class="tag tag-badge !bg-amber-100 !text-amber-800 dark:!bg-amber-950 dark:!text-amber-300 text-[8px]">ADMIN</span>' : ''}
+                                        </div>
+                                        <p class="text-[10px] text-slate-400 truncate">${u.email || u.division || 'No email registered'}</p>
+                                    </div>
+                                </div>
+                                <span class="tag text-[9px] flex-shrink-0">${u.badge || 'Cadet'}</span>
+                            </div>`;
+                        }).join('');
+                    }
+                }
+            } catch(err) {
+                console.error("Admin data load error:", err);
+            }
+        }
 
         window.lockBetaSection = function() {
             state.betaUnlocked = false;
@@ -1254,13 +1546,21 @@
                 try {
                     const { data } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
                     state.profile = data || { name: 'Cadet Member', division: 'City of Cardiff', badge: 'Cadet' };
+                    state.mustChangePassword = data?.must_change_password === true;
                 } catch(e) {
                     state.profile = { name: 'Cadet Member', division: 'City of Cardiff', badge: 'Cadet' };
+                    state.mustChangePassword = false;
                 }
+                
                 triggerKeepAlivePing();
-                await router.navigate('dashboard');
+
+                if (state.mustChangePassword) {
+                    await router.navigate('force-change-password');
+                } else {
+                    await router.navigate('dashboard');
+                }
             } else {
-                state.user = null; state.profile = null;
+                state.user = null; state.profile = null; state.mustChangePassword = false;
                 await router.navigate('welcome');
             }
             hideLoader();
