@@ -172,11 +172,6 @@
 
         .accordion-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-in-out; }
         .accordion-body.open { max-height: 500px; }
-
-        /* Notch Notch Integration Style */
-        #live-duty-bar {
-            padding-top: calc(0.5rem + env(safe-area-inset-top));
-        }
     </style>
 </head>
 <body>
@@ -219,31 +214,13 @@
         <p class="text-green-700 font-bold animate-pulse text-sm">Syncing DutyLog Platform...</p>
     </div>
 
-    <!-- Live Duty Bar (Notch Fitted Dynamic Banner) -->
-    <div id="live-duty-bar" class="hidden fixed top-0 left-0 right-0 z-50 bg-[#00853F] text-white px-4 pb-2.5 shadow-xl flex items-center justify-between border-b border-emerald-400/40">
-        <div class="flex items-center gap-3 truncate">
-            <span class="relative flex h-3 w-3">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
-            </span>
-            <div class="truncate">
-                <p class="text-[10px] font-black uppercase text-emerald-100 tracking-wide truncate" id="bar-duty-title">Live Duty Active</p>
-                <p class="text-xs font-mono font-black text-white" id="bar-duty-timer">00:00:00</p>
-            </div>
-        </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
-            <button onclick="router.navigate('beta-tab')" class="bg-white text-[#00853F] text-[11px] font-black px-2.5 py-1 rounded-lg">View</button>
-            <button onclick="stopLiveDutyTracker()" class="bg-red-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg">End</button>
-        </div>
-    </div>
-
     <div id="app">
         <main id="view-container" class="px-4 pt-4 max-w-[600px] mx-auto"></main>
         
-        <nav id="bottom-nav" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] hidden border-t px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] justify-between items-center z-40 shadow-lg" style="background-color: var(--nav-bg); border-color: var(--border-color);">
+        <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 w-full hidden border-t px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] justify-around items-center z-40 shadow-2xl" style="background-color: var(--nav-bg); border-color: var(--border-color);">
             <button onclick="router.navigate('dashboard')" class="nav-item active" data-view="dashboard"><i class="fas fa-home text-lg"></i><span>Dashboard</span></button>
             <button onclick="router.navigate('feed')" class="nav-item" data-view="feed"><i class="fas fa-images text-lg"></i><span>Feed</span></button>
-            <button onclick="router.navigate('add-duty')" class="nav-item bg-white dark:bg-slate-800 border-2 border-[#00853F] !text-[#00853F] p-3 -mt-10 rounded-full shadow-xl h-14 w-14 justify-center"><i class="fas fa-plus text-xl"></i></button>
+            <button onclick="router.navigate('add-duty')" class="nav-item bg-white dark:bg-slate-800 border-2 border-[#00853F] !text-[#00853F] rounded-full shadow-lg h-12 w-12 -mt-5 flex items-center justify-center flex-shrink-0"><i class="fas fa-plus text-lg"></i></button>
             <button onclick="router.navigate('beta-tab')" class="nav-item" data-view="beta-tab"><i class="fas fa-vial text-lg"></i><span>Beta</span></button>
             <button onclick="router.navigate('profile')" class="nav-item" data-view="profile"><i class="fas fa-user text-lg"></i><span>Profile</span></button>
         </nav>
@@ -271,7 +248,7 @@
             calculatedHours: 0,
             calculatedMinutes: 0,
             pendingSignup: null,
-            betaUnlocked: true,
+            betaUnlocked: localStorage.getItem('dutylog_beta_unlocked') === 'true',
             settingsOpen: false,
             darkMode: localStorage.getItem('dutylog_theme') === 'dark',
             activeDuty: JSON.parse(localStorage.getItem('dutylog_active_duty') || 'null')
@@ -329,7 +306,26 @@
         }
 
         function renderDashboardHTML(hoursStr, duties) {
-            return duties.map(d => {
+            let liveCardHtml = '';
+            if (state.activeDuty) {
+                liveCardHtml = `
+                <div class="glass-card p-4 flex justify-between items-center border-2 border-emerald-500/50 bg-emerald-500/5 relative overflow-hidden mb-3">
+                    <div class="truncate mr-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                            <p class="font-bold text-sm truncate" style="color: var(--text-main);">${state.activeDuty.title || 'Live Duty'}</p>
+                            <span class="tag tag-badge !bg-emerald-100 !text-emerald-800 dark:!bg-emerald-950 dark:!text-emerald-300 text-[8px]">LIVE</span>
+                        </div>
+                        <p class="text-xs font-mono font-black text-emerald-600 dark:text-emerald-400 mt-1" id="dash-live-tracker-clock">00:00:00</p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <button onclick="router.navigate('beta-tab')" class="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-xs font-bold rounded-lg hover:opacity-90 transition-all">View</button>
+                        <button onclick="stopLiveDutyTracker()" class="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 shadow-sm transition-all">End</button>
+                    </div>
+                </div>`;
+            }
+
+            const logsHtml = duties.map(d => {
                 const t = parseDatabaseHoursToUiTime(d.total_hours);
                 return `<div class="glass-card p-4 flex justify-between items-center cursor-pointer hover:opacity-80 transition-all" onclick="triggerEditDuty('${d.id}')">
                     <div class="truncate mr-2">
@@ -339,6 +335,8 @@
                     <p class="font-black text-green-600 text-sm flex-shrink-0">+${t.hours}h ${t.minutes}m</p>
                 </div>`;
             }).join('') || '<p class="text-center py-10 text-slate-400">No shifts saved yet.</p>';
+
+            return liveCardHtml + logsHtml;
         }
 
         const views = {
@@ -445,12 +443,41 @@
             },
 
             'beta-tab': async () => {
+                if (!state.betaUnlocked) {
+                    return `<div class="space-y-6 max-w-sm mx-auto pt-6 pb-12">
+                        <div class="text-center space-y-2">
+                            <div class="w-16 h-16 bg-emerald-500/10 border-2 border-[#00853F]/30 text-[#00853F] rounded-2xl flex items-center justify-center mx-auto text-2xl font-black">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                            <h2 class="text-2xl font-black">Beta Access Required</h2>
+                            <p class="text-xs text-slate-400">Enter a valid cadet or division access key to unlock DutyTracker Live.</p>
+                        </div>
+
+                        <form onsubmit="handleUnlockBeta(event)" class="glass-card p-6 space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-400 block mb-1">Access Pass Key</label>
+                                <input type="text" id="beta-key-input" placeholder="e.g. 814-BETA" required class="input-field text-center font-mono font-bold uppercase tracking-wider">
+                            </div>
+                            <button type="submit" id="beta-unlock-btn" class="btn-primary !bg-[#00853F]">Unlock Beta Access</button>
+                        </form>
+
+                        <div class="text-center pt-2">
+                            <a href="mailto:hello@lawsonmorris.uk?subject=Beta%20Access%20Request&body=Name%3A%20%0ADivision%3A%20%0AEmail%3A%20%0AReason%20for%20Beta%20Access%3A%20" class="inline-flex items-center justify-center gap-2.5 w-full py-3.5 px-5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-2xl text-base font-extrabold hover:text-[#00853F] hover:border-[#00853F] transition-all shadow-sm">
+                                <i class="fas fa-envelope text-lg"></i> Request Beta Access
+                            </a>
+                        </div>
+                    </div>`;
+                }
+
                 return `<div class="space-y-6 pb-12">
                     <div class="flex justify-between items-center">
                         <div>
                             <span class="tag tag-badge text-[9px] mb-1 inline-block">Beta Utility</span>
                             <h2 class="text-2xl font-black">DutyTracker Live</h2>
                         </div>
+                        <button onclick="lockBetaSection()" class="text-xs text-slate-400 hover:text-red-500 font-bold flex items-center gap-1">
+                            <i class="fas fa-lock"></i> Lock Beta
+                        </button>
                     </div>
 
                     <div class="glass-card p-6 space-y-4 border-2 border-[#00853F]/20">
@@ -477,72 +504,6 @@
                                 </button>
                             </div>
                         `}
-                    </div>
-
-                    <div class="space-y-3">
-                        <h3 class="font-bold text-sm">DRABSC Primary Survey Reference</h3>
-                        <div class="glass-card p-2 space-y-2">
-                            <div class="drabsc-item border-b border-slate-100 dark:border-slate-800" id="drabsc-d">
-                                <button onclick="toggleDrabscItem('drabsc-d')" class="drabsc-trigger">
-                                    <div class="flex items-center gap-3">
-                                        <div class="drabsc-letter bg-red-600">D</div>
-                                        <span class="text-xs font-bold">Danger</span>
-                                    </div>
-                                    <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
-                                </button>
-                                <div class="drabsc-content">Check surrounding area safety before approaching.</div>
-                            </div>
-                            <div class="drabsc-item border-b border-slate-100 dark:border-slate-800" id="drabsc-r">
-                                <button onclick="toggleDrabscItem('drabsc-r')" class="drabsc-trigger">
-                                    <div class="flex items-center gap-3">
-                                        <div class="drabsc-letter bg-orange-500">R</div>
-                                        <span class="text-xs font-bold">Response</span>
-                                    </div>
-                                    <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
-                                </button>
-                                <div class="drabsc-content">Assess alertness using AVPU stimulus checks.</div>
-                            </div>
-                            <div class="drabsc-item border-b border-slate-100 dark:border-slate-800" id="drabsc-a">
-                                <button onclick="toggleDrabscItem('drabsc-a')" class="drabsc-trigger">
-                                    <div class="flex items-center gap-3">
-                                        <div class="drabsc-letter bg-yellow-500 text-slate-900">A</div>
-                                        <span class="text-xs font-bold">Airway</span>
-                                    </div>
-                                    <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
-                                </button>
-                                <div class="drabsc-content">Ensure airway clearance using head-tilt, chin-lift maneuvers.</div>
-                            </div>
-                            <div class="drabsc-item border-b border-slate-100 dark:border-slate-800" id="drabsc-b">
-                                <button onclick="toggleDrabscItem('drabsc-b')" class="drabsc-trigger">
-                                    <div class="flex items-center gap-3">
-                                        <div class="drabsc-letter bg-[#00853F]">B</div>
-                                        <span class="text-xs font-bold">Breathing</span>
-                                    </div>
-                                    <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
-                                </button>
-                                <div class="drabsc-content">Look, listen, and feel for respiration for up to 10 seconds.</div>
-                            </div>
-                            <div class="drabsc-item border-b border-slate-100 dark:border-slate-800" id="drabsc-s">
-                                <button onclick="toggleDrabscItem('drabsc-s')" class="drabsc-trigger">
-                                    <div class="flex items-center gap-3">
-                                        <div class="drabsc-letter bg-blue-600">S</div>
-                                        <span class="text-xs font-bold">Shout (Call 999)</span>
-                                    </div>
-                                    <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
-                                </button>
-                                <div class="drabsc-content">Task secondary responders or call emergency services.</div>
-                            </div>
-                            <div class="drabsc-item" id="drabsc-c">
-                                <button onclick="toggleDrabscItem('drabsc-c')" class="drabsc-trigger">
-                                    <div class="flex items-center gap-3">
-                                        <div class="drabsc-letter bg-purple-700">C</div>
-                                        <span class="text-xs font-bold">CPR</span>
-                                    </div>
-                                    <i class="fas fa-chevron-down text-slate-300 text-xs"></i>
-                                </button>
-                                <div class="drabsc-content">Initiate chest compressions at 30:2 ratios.</div>
-                            </div>
-                        </div>
                     </div>
                 </div>`;
             },
@@ -676,6 +637,26 @@
             if (chevron) chevron.classList.toggle('rotate-180', state.settingsOpen);
         };
 
+        window.handleUnlockBeta = function(e) {
+            if (e) e.preventDefault();
+            const input = document.getElementById('beta-key-input');
+            if (!input) return;
+            const key = input.value.trim().toUpperCase();
+            if (VALID_BETA_KEYS.includes(key)) {
+                state.betaUnlocked = true;
+                localStorage.setItem('dutylog_beta_unlocked', 'true');
+                router.navigate('beta-tab');
+            } else {
+                alert('Invalid Beta Pass Key. Please verify your key and try again.');
+            }
+        };
+
+        window.lockBetaSection = function() {
+            state.betaUnlocked = false;
+            localStorage.removeItem('dutylog_beta_unlocked');
+            router.navigate('beta-tab');
+        };
+
         window.startLiveDutyTracker = async function(e) {
             if (e) e.preventDefault();
             const titleInput = document.getElementById('live-duty-title-input');
@@ -735,7 +716,6 @@
             localStorage.removeItem('dutylog_active_duty');
             if (dutyTimerInterval) clearInterval(dutyTimerInterval);
             
-            document.getElementById('live-duty-bar')?.classList.add('hidden');
             await loadDashboardData();
             router.navigate('dashboard');
         };
@@ -743,17 +723,7 @@
         function syncLiveDutyUI() {
             if (dutyTimerInterval) clearInterval(dutyTimerInterval);
 
-            const bar = document.getElementById('live-duty-bar');
-            const barTitle = document.getElementById('bar-duty-title');
-            const barTimer = document.getElementById('bar-duty-timer');
-
-            if (!state.activeDuty) {
-                if (bar) bar.classList.add('hidden');
-                return;
-            }
-
-            if (bar) bar.classList.remove('hidden');
-            if (barTitle) barTitle.innerText = state.activeDuty.title;
+            if (!state.activeDuty) return;
 
             const updateClocks = () => {
                 if (!state.activeDuty) return;
@@ -763,9 +733,11 @@
                 const s = String(elapsedSec % 60).padStart(2, '0');
                 const timeStr = `${h}:${m}:${s}`;
 
-                if (barTimer) barTimer.innerText = timeStr;
                 const clockEl = document.getElementById('live-tracker-clock');
                 if (clockEl) clockEl.innerText = timeStr;
+
+                const dashClockEl = document.getElementById('dash-live-tracker-clock');
+                if (dashClockEl) dashClockEl.innerText = timeStr;
 
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.metadata = new MediaMetadata({
@@ -989,7 +961,19 @@
 
         function renderFeedHTML(posts) {
             if (!posts || posts.length === 0) return '<p class="text-center py-12 text-slate-400 text-xs">No media uploads found in stream.</p>';
-            return posts.map(p => `
+            return posts.map(p => {
+                const likedBy = Array.isArray(p.liked_by) ? p.liked_by : [];
+                const comments = Array.isArray(p.comments) ? p.comments : [];
+                const isLiked = state.user ? likedBy.includes(state.user.id) : false;
+
+                const commentsListHtml = comments.map(c => `
+                    <div class="text-xs bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <span class="font-bold text-slate-700 dark:text-slate-200">${c.user_name || 'Cadet'}:</span>
+                        <span class="text-slate-600 dark:text-slate-300 ml-1">${c.text}</span>
+                    </div>
+                `).join('');
+
+                return `
                 <div class="glass-card overflow-hidden">
                     <div class="p-4 flex items-center gap-3">
                         <img src="${getUserPFP(p.profiles?.avatar_url, p.user_id)}" class="w-9 h-9 rounded-full object-cover">
@@ -1003,8 +987,91 @@
                     </div>
                     <div class="px-4 pb-2"><p class="text-xs leading-relaxed">${p.description || ''}</p></div>
                     ${p.media_url ? `<div class="w-full bg-black flex items-center justify-center max-h-[350px] overflow-hidden"><img src="${p.media_url}" class="w-full object-cover"></div>` : ''}
-                </div>`).join('');
+                    
+                    <div class="px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                        <button onclick="toggleLikePost('${p.id}')" class="flex items-center gap-1.5 font-bold ${isLiked ? 'text-red-500' : 'text-slate-400 hover:text-slate-600'} transition-colors">
+                            <i class="${isLiked ? 'fas' : 'far'} fa-heart text-sm"></i>
+                            <span>${likedBy.length} ${likedBy.length === 1 ? 'Like' : 'Likes'}</span>
+                        </button>
+                        <button onclick="toggleCommentSection('${p.id}')" class="flex items-center gap-1.5 font-bold text-slate-400 hover:text-slate-600 transition-colors">
+                            <i class="far fa-comment text-sm"></i>
+                            <span>${comments.length} ${comments.length === 1 ? 'Comment' : 'Comments'}</span>
+                        </button>
+                    </div>
+
+                    <div id="comments-sec-${p.id}" class="hidden px-4 pb-4 border-t border-slate-100 dark:border-slate-800/50 pt-3 space-y-3">
+                        <div class="space-y-1.5 max-h-40 overflow-y-auto">
+                            ${commentsListHtml || '<p class="text-[11px] text-slate-400 italic">No comments yet. Be the first!</p>'}
+                        </div>
+                        <form onsubmit="addCommentToPost(event, '${p.id}')" class="flex gap-2">
+                            <input type="text" id="comment-input-${p.id}" placeholder="Write a comment..." required class="input-field !py-1.5 !px-3 text-xs flex-1">
+                            <button type="submit" class="bg-[#00853F] text-white font-bold px-3 py-1.5 rounded-lg text-xs">Post</button>
+                        </form>
+                    </div>
+                </div>`;
+            }).join('');
         }
+
+        window.toggleCommentSection = function(postId) {
+            const sec = document.getElementById(`comments-sec-${postId}`);
+            if (sec) sec.classList.toggle('hidden');
+        };
+
+        window.toggleLikePost = async function(postId) {
+            if (!state.user) return;
+            const post = state.feedPosts.find(p => p.id === postId);
+            if (!post) return;
+
+            let likedBy = Array.isArray(post.liked_by) ? [...post.liked_by] : [];
+            const userIdx = likedBy.indexOf(state.user.id);
+            if (userIdx > -1) {
+                likedBy.splice(userIdx, 1);
+            } else {
+                likedBy.push(state.user.id);
+            }
+            
+            post.liked_by = likedBy;
+            const fCont = document.getElementById('feed-container');
+            if (fCont) fCont.innerHTML = renderFeedHTML(state.feedPosts);
+
+            try {
+                await sb.from('feed_posts').update({ liked_by: likedBy }).eq('id', postId);
+            } catch(err) {
+                console.error("Error updating likes:", err);
+            }
+        };
+
+        window.addCommentToPost = async function(e, postId) {
+            e.preventDefault();
+            if (!state.user) return;
+            const input = document.getElementById(`comment-input-${postId}`);
+            if (!input || !input.value.trim()) return;
+
+            const post = state.feedPosts.find(p => p.id === postId);
+            if (!post) return;
+
+            const newComment = {
+                user_id: state.user.id,
+                user_name: state.profile?.name || 'Cadet',
+                text: input.value.trim(),
+                created_at: new Date().toISOString()
+            };
+
+            let comments = Array.isArray(post.comments) ? [...post.comments] : [];
+            comments.push(newComment);
+            post.comments = comments;
+
+            const fCont = document.getElementById('feed-container');
+            if (fCont) fCont.innerHTML = renderFeedHTML(state.feedPosts);
+            const sec = document.getElementById(`comments-sec-${postId}`);
+            if (sec) sec.classList.remove('hidden');
+
+            try {
+                await sb.from('feed_posts').update({ comments }).eq('id', postId);
+            } catch(err) {
+                console.error("Error posting comment:", err);
+            }
+        };
 
         async function loadDashboardData() {
             try {
