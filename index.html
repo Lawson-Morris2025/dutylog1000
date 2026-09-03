@@ -13,7 +13,7 @@
     <meta name="theme-color" content="#00853F">
     
     <!-- Dynamic Manifest Injection for Independent Home Screen Standalone Execution -->
-    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkR1dHlMb2cgUHJvIiwKICAic2hvcnRfbmFtZSI6ICJEdXR5TG9nIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNGOEY5RkEiLAogICJ0aGVtZV9jb2xvciI6ICIjMUIyNjNCIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9hcGkuZGljZWJlYXIuY29tLzcueC9pZGVudGljb24vc3ZnP3NlZWQ9ZHV0eWxvZyIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkR1dHlMb2cgUHJvIiwKICAic2hvcnRfbmFtZSI6ICJEdXR5TG9nIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNGOEY5RkEiLAogICJ0aGVtZV9jb2xvciI6ICIjMUIyNjNCIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9hcGkuZGljZWJlYXIuY29tLzcueC9pZGVudGljb24vc3ZnP3NlZWQ9ZHV0eWxvZyIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICA5XQp9">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -227,14 +227,8 @@
         const supabaseUrl = 'https://qgyjfyazkkepmkztnezv.supabase.co';
         const supabaseKey = 'sb_publishable_xea7e2zxnarbh2bT6vG5ew__2DhOj34';
         
-        // Primary Supabase Client (Maintained for active user session)
         const sb = window.supabase.createClient(supabaseUrl, supabaseKey, {
             auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
-        });
-
-        // Isolated Secondary Supabase Client for Admin User Provisioning
-        const secondaryAuthClient = window.supabase.createClient(supabaseUrl, supabaseKey, {
-            auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
 
         const ADMIN_UID = 'f3a6c15d-8663-41fe-bfd7-6a4e891b4db9';
@@ -509,21 +503,21 @@
                         </div>
                     </div>
 
-                    <!-- Invite User Section -->
+                    <!-- Invite User Section (Mailto integration) -->
                     <div class="glass-card p-5 space-y-4 border-2 border-amber-500/30">
                         <div class="flex items-center gap-2 text-amber-600 dark:text-amber-400">
                             <i class="fas fa-user-plus text-base"></i>
                             <h3 class="font-bold text-sm">Invite New Cadet / Member</h3>
                         </div>
-                        <p class="text-xs text-slate-400 leading-relaxed">Enter an email address to send an invitation to join DutyLog Pro.</p>
+                        <p class="text-xs text-slate-400 leading-relaxed">Send an invitation email directly via your mail app with pre-populated DutyLog admin text.</p>
 
-                        <form onsubmit="handleInviteUser(event)" class="space-y-3">
+                        <form onsubmit="handleMailtoInvite(event)" class="space-y-3">
                             <div>
                                 <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Cadet Email Address</label>
                                 <input type="email" id="invite-email" placeholder="cadet@example.com" required class="input-field text-sm">
                             </div>
                             <button type="submit" id="invite-btn" class="btn-primary !bg-amber-600 hover:!bg-amber-700 flex items-center justify-center gap-2">
-                                <i class="fas fa-paper-plane"></i> Invite
+                                <i class="fas fa-envelope"></i> Send Mailto Invite
                             </button>
                         </form>
                     </div>
@@ -775,46 +769,19 @@
             }
         };
 
-        window.handleInviteUser = async function(e) {
+        window.handleMailtoInvite = function(e) {
             e.preventDefault();
             if (!isAdmin()) return alert("Unauthorized access.");
 
-            const email = document.getElementById('invite-email').value.trim().toLowerCase();
-            const btn = document.getElementById('invite-btn');
+            const emailInput = document.getElementById('invite-email');
+            const email = emailInput ? emailInput.value.trim() : '';
+            if (!email) return alert("Please enter a valid cadet email address.");
 
-            if (!email) return alert("Please enter a valid user email address.");
+            const subject = encodeURIComponent("You have been invited by DutyLog admins");
+            const body = encodeURIComponent(`Hello,\n\nYou have been invited by DutyLog admins to join DutyLog Pro, your operational hour tracking and division utility platform.\n\nPlease sign up or log in to your account using this email address (${email}) to start tracking your operational hours and participating in the division feed.\n\nBest regards,\nDutyLog Administration`);
 
-            if (btn) { btn.innerText = "Sending Invite..."; btn.disabled = true; }
-
-            try {
-                let inviteError = null;
-                
-                if (sb.auth.inviteUserByEmail) {
-                    const { error } = await sb.auth.inviteUserByEmail(email);
-                    inviteError = error;
-                } else {
-                    const { error } = await sb.auth.resetPasswordForEmail(email, {
-                        redirectTo: window.location.href.split('#')[0]
-                    });
-                    inviteError = error;
-                }
-
-                if (inviteError) throw inviteError;
-
-                await sb.from('profiles').upsert({
-                    email: email,
-                    invited_by: state.user.id,
-                    created_at: new Date().toISOString()
-                }, { onConflict: 'email' });
-
-                alert(`Invitation sent successfully to ${email}!`);
-                e.target.reset();
-                loadAdminData();
-            } catch(err) {
-                alert(`Invite failed: ${err.message || 'Error sending invitation.'}`);
-            } finally {
-                if (btn) { btn.innerText = "Invite"; btn.disabled = false; }
-            }
+            // Trigger mailto client directly
+            window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
         };
 
         window.handleForcePasswordChange = async function(e) {
@@ -1200,7 +1167,7 @@
         };
 
         function renderFeedHTML(posts) {
-           [cite: 5]if (!posts || posts.length === 0) return '<p class="text-center py-12 text-slate-400 text-xs">No media uploads found in stream.</p>';
+            if (!posts || posts.length === 0) return '<p class="text-center py-12 text-slate-400 text-xs">No media uploads found in stream.</p>';
             return posts.map(p => {
                 const likedBy = Array.isArray(p.liked_by) ? p.liked_by : [];
                 const comments = Array.isArray(p.comments) ? p.comments : [];
@@ -1454,7 +1421,7 @@
         };
 
         async function submitFeedPost() {
-           [cite: 5]const btn = document.getElementById('post-submit-btn');
+            const btn = document.getElementById('post-submit-btn');
             const desc = document.getElementById('post-desc').value;
             const fileInput = document.getElementById('feed-file-input');
             const file = fileInput.files ? fileInput.files[0] : null;
