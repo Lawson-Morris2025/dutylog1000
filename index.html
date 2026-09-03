@@ -913,7 +913,27 @@
             }
         }
 
-        function buildHoursExportBody() {
+        function getSmtpConfig() {
+            try {
+                const saved = localStorage.getItem('dutylog_smtp_settings');
+                if (saved) return JSON.parse(saved);
+            } catch(e) {}
+            return {
+                senderEmail: 'noreply@dutylog.lawsonmorris.uk',
+                replyToEmail: 'hello@lawsonmorris.uk',
+                senderName: 'DutyLog Pro Verification System',
+                zohoHost: 'smtppro.zoho.eu',
+                zohoPort: '465',
+                supabaseFunctionName: 'send-export-email',
+                webhookUrl: ''
+            };
+        }
+
+        function saveSmtpConfig(cfg) {
+            localStorage.setItem('dutylog_smtp_settings', JSON.stringify(cfg));
+        }
+
+        function buildHoursExportBody(notes = '') {
             const volunteer = state.profile?.name || 'Member';
             const division = state.profile?.division || 'City of Cardiff';
             const badge = state.profile?.badge || 'Cadet';
@@ -934,8 +954,11 @@
             body += `Badge:      ${badge}\n`;
             body += `Generated:  ${generated}\n`;
             body += `Total time: ${state.totalHoursString}\n`;
-            body += `Shifts:     ${state.currentDuties.length}\n\n`;
-            body += `SHIFT RECORDS\n`;
+            body += `Shifts:     ${state.currentDuties.length}\n`;
+            if (notes && notes.trim()) {
+                body += `Notes:      ${notes.trim()}\n`;
+            }
+            body += `\nSHIFT RECORDS\n`;
             body += `${thin}\n`;
 
             state.currentDuties.forEach((d, i) => {
@@ -952,54 +975,370 @@
             return body;
         }
 
+        function buildHoursExportHtml(notes = '') {
+            const volunteer = state.profile?.name || 'Cadet Member';
+            const division = state.profile?.division || 'City of Cardiff';
+            const badge = state.profile?.badge || 'Cadet';
+            const generated = new Date().toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' });
+
+            const rowsHtml = state.currentDuties.map((d, i) => {
+                const t = parseDatabaseHoursToUiTime(d.total_hours);
+                return `<tr>
+                    <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #64748B;">${d.date}</td>
+                    <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 13px; font-weight: 600; color: #1B263B;">${d.title || 'Untitled shift'}</td>
+                    <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 13px; font-weight: 700; color: #00853F; text-align: right;">+${t.hours}h ${t.minutes}m</td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="3" style="padding: 12px; text-align: center; color: #94A3B8;">No shifts logged</td></tr>';
+
+            return `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 620px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; overflow: hidden; color: #1B263B; box-shadow: 0 4px 16px rgba(0,0,0,0.05);">
+                <div style="background-color: #1B263B; padding: 24px; color: #FFFFFF; text-align: center;">
+                    <h1 style="margin: 0; font-size: 24px; font-weight: 900; letter-spacing: -0.5px;">DutyLog Pro</h1>
+                    <p style="margin: 6px 0 0; font-size: 11px; color: #94A3B8; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Operational Hour Verification Record</p>
+                </div>
+                
+                <div style="padding: 24px;">
+                    <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <tr>
+                                <td style="padding: 4px 0; color: #64748B; font-weight: 600;">Volunteer:</td>
+                                <td style="padding: 4px 0; color: #1B263B; font-weight: 700; text-align: right;">${volunteer}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px 0; color: #64748B; font-weight: 600;">Division:</td>
+                                <td style="padding: 4px 0; color: #1B263B; font-weight: 700; text-align: right;">${division}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px 0; color: #64748B; font-weight: 600;">Badge / Rank:</td>
+                                <td style="padding: 4px 0; color: #0284C7; font-weight: 700; text-align: right;">${badge}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px 0; color: #64748B; font-weight: 600;">Generated:</td>
+                                <td style="padding: 4px 0; color: #64748B; text-align: right;">${generated}</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div style="background-color: #00853F; border-radius: 12px; padding: 18px; color: #FFFFFF; text-align: center; margin-bottom: 24px;">
+                        <p style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.9; font-weight: 700;">Total Logged Shift Time</p>
+                        <h2 style="margin: 4px 0 0; font-size: 34px; font-weight: 900; letter-spacing: -0.5px;">${state.totalHoursString}</h2>
+                        <p style="margin: 4px 0 0; font-size: 12px; opacity: 0.85;">Verified across ${state.currentDuties.length} recorded duties</p>
+                    </div>
+
+                    ${notes && notes.trim() ? `
+                    <div style="margin-bottom: 20px; padding: 12px 14px; background-color: #EFF6FF; border-left: 4px solid #3B82F6; border-radius: 8px; font-size: 12px; color: #1E3A8A;">
+                        <strong style="display: block; margin-bottom: 2px;">Verification / Officer Note:</strong>
+                        ${notes.trim()}
+                    </div>` : ''}
+
+                    <h3 style="font-size: 14px; font-weight: 800; margin: 0 0 12px; color: #1B263B;">Operational Shift Breakdown</h3>
+                    <table style="width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 16px;">
+                        <thead>
+                            <tr style="background-color: #F1F5F9;">
+                                <th style="padding: 8px 12px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">Date</th>
+                                <th style="padding: 8px 12px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">Event / Shift</th>
+                                <th style="padding: 8px 12px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; text-align: right;">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="background-color: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 16px; text-align: center; font-size: 11px; color: #94A3B8;">
+                    <p style="margin: 0;">Verified service hours report dispatched from <strong>DutyLog Pro</strong></p>
+                    <p style="margin: 4px 0 0; color: #00853F; font-weight: 700;">Made by Lawson Morris · lawsonmorris.uk</p>
+                </div>
+            </div>`;
+        }
+
         window.openExportModal = function() {
+            const existing = document.getElementById('export-modal');
+            if (existing) existing.remove();
+
+            const smtpConfig = getSmtpConfig();
+            const volunteer = state.profile?.name || 'Member';
+            const division = state.profile?.division || 'City of Cardiff';
+            const userEmail = state.user?.email || '';
+
             const modal = document.createElement('div');
             modal.id = 'export-modal';
-            modal.className = 'fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-sm';
+            modal.className = 'fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm';
             modal.innerHTML = `
-                <div class="glass-card w-full max-w-md p-6 space-y-4 shadow-2xl" style="background-color: var(--card-bg);">
-                    <div class="flex items-center justify-between text-[#00853F] font-black text-sm">
-                        <span class="flex items-center gap-2"><i class="fas fa-file-export"></i> Export Hours Utility</span>
-                        <button onclick="document.getElementById('export-modal').remove()" class="text-slate-400"><i class="fas fa-times"></i></button>
+                <div class="glass-card w-full max-w-lg p-5 space-y-4 shadow-2xl max-h-[92vh] flex flex-col overflow-hidden" style="background-color: var(--card-bg);">
+                    <div class="flex items-center justify-between border-b pb-3 border-slate-200 dark:border-slate-800 flex-shrink-0">
+                        <div class="flex items-center gap-2 text-[#00853F]">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-sm font-black">
+                                <i class="fas fa-file-export"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-black text-sm text-slate-800 dark:text-slate-100">Export Hours & Email Dispatch</h3>
+                                <p class="text-[10px] text-slate-400">Total: ${state.totalHoursString} (${state.currentDuties.length} shifts)</p>
+                            </div>
+                        </div>
+                        <button onclick="document.getElementById('export-modal').remove()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base p-1">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
-                    <p class="text-[11px] text-slate-400 leading-relaxed">Choose how you want to compile and share your operational hours.</p>
-                    
-                    <div class="grid grid-cols-1 gap-2.5 pt-2">
-                        <button onclick="exportToEmail()" class="w-full flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl text-left transition-all">
-                            <div class="w-10 h-10 bg-green-100 text-green-700 rounded-lg flex items-center justify-center text-sm font-black"><i class="fas fa-envelope"></i></div>
-                            <div class="truncate">
-                                <p class="text-xs font-bold">Export to Email</p>
-                                <p class="text-[10px] text-slate-400 truncate">Opens Mail with a branded DutyLog summary.</p>
-                            </div>
+
+                    <div class="flex border-b border-slate-200 dark:border-slate-800 text-xs font-bold gap-1 flex-shrink-0">
+                        <button type="button" id="exp-tab-send" onclick="switchExportTab('send')" class="tab-btn active !py-1.5 !px-3">
+                            <i class="fas fa-paper-plane mr-1.5 text-emerald-500"></i>Send via DutyLog Email
                         </button>
-                        
-                        <button onclick="exportToCSV()" class="w-full flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl text-left transition-all">
-                            <div class="w-10 h-10 bg-indigo-100 text-indigo-700 rounded-lg flex items-center justify-center text-sm font-black"><i class="fas fa-file-csv"></i></div>
-                            <div class="truncate">
-                                <p class="text-xs font-bold">Download Spreadsheet (.CSV)</p>
-                                <p class="text-[10px] text-slate-400 truncate">Save a structured file for Excel.</p>
-                            </div>
+                        <button type="button" id="exp-tab-files" onclick="switchExportTab('files')" class="tab-btn !py-1.5 !px-3">
+                            <i class="fas fa-download mr-1.5 text-indigo-500"></i>Files & Copy
                         </button>
-                        
-                        <button onclick="copyHoursToClipboard()" class="w-full flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl text-left transition-all">
-                            <div class="w-10 h-10 bg-blue-100 text-blue-700 rounded-lg flex items-center justify-center text-sm font-black"><i class="fas fa-copy"></i></div>
-                            <div class="truncate">
-                                <p class="text-xs font-bold">Copy Plain-Text Summary</p>
-                                <p class="text-[10px] text-slate-400 truncate">Copy summary directly to clipboard.</p>
-                            </div>
-                        </button>
+                    </div>
+
+                    <div id="export-tab-content" class="overflow-y-auto pr-1 space-y-4 flex-1">
+                        <!-- Send tab will render here -->
                     </div>
                 </div>`;
             document.getElementById('app').appendChild(modal);
+            switchExportTab('send');
         };
 
-        window.exportToEmail = function() {
+        window.switchExportTab = function(tab) {
+            const tSend = document.getElementById('exp-tab-send');
+            const tFiles = document.getElementById('exp-tab-files');
+            const mount = document.getElementById('export-tab-content');
+            if (!mount) return;
+
+            if (tSend) tSend.classList.toggle('active', tab === 'send');
+            if (tFiles) tFiles.classList.toggle('active', tab === 'files');
+
+            const smtpConfig = getSmtpConfig();
+            const userEmail = state.user?.email || '';
+
+            if (tab === 'send') {
+                mount.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                                    <i class="fas fa-shield-alt"></i> Official DutyLog Dispatch
+                                </span>
+                                <span class="tag tag-badge !text-[8px]">Verified Email</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
+                                Dispatches an authenticated, formatted operational report directly from 
+                                <strong class="text-emerald-600 dark:text-emerald-400">${smtpConfig.senderEmail}</strong> 
+                                to your officer, division, or yourself.
+                            </p>
+                        </div>
+
+                        <form onsubmit="handleSendDutyLogEmail(event)" class="space-y-3">
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="text-[11px] font-bold text-slate-500 block">Recipient Email Address</label>
+                                    ${userEmail ? `
+                                        <button type="button" onclick="document.getElementById('export-recipient-input').value = '${userEmail}'" class="text-[10px] font-bold text-emerald-600 hover:underline">
+                                            Send to Myself (${userEmail})
+                                        </button>
+                                    ` : ''}
+                                </div>
+                                <input type="email" id="export-recipient-input" placeholder="e.g. officer@lawsonmorris.uk" required value="" class="input-field text-sm">
+                            </div>
+
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-500 block mb-1">Optional Officer Note</label>
+                                <input type="text" id="export-notes-input" placeholder="e.g. Monthly shift verification sign-off" class="input-field text-xs">
+                            </div>
+
+                            <div class="pt-1 flex flex-col gap-2">
+                                <button type="submit" id="export-send-btn" class="btn-primary !bg-[#00853F] flex items-center justify-center gap-2 shadow-md">
+                                    <i class="fas fa-paper-plane"></i> Send via DutyLog Email
+                                </button>
+                            </div>
+                        </form>
+
+                        <div class="border-t border-slate-100 dark:border-slate-800 pt-2">
+                            <button type="button" onclick="toggleExportPreview()" class="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center gap-1.5">
+                                <i class="fas fa-eye"></i> <span id="preview-toggle-text">Preview DutyLog Email Certificate</span>
+                            </button>
+                            <div id="export-preview-container" class="hidden mt-2 p-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-h-60 overflow-y-auto"></div>
+                        </div>
+                    </div>`;
+            } else if (tab === 'files') {
+                mount.innerHTML = `
+                    <div class="space-y-3">
+                        <p class="text-[11px] text-slate-400">Save structured copies of your shifts for spreadsheets, external audits, or offline records.</p>
+                        
+                        <button onclick="exportToCSV()" class="w-full flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-left hover:border-indigo-500 transition-all">
+                            <div class="w-10 h-10 bg-indigo-100 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 rounded-lg flex items-center justify-center text-base font-black flex-shrink-0">
+                                <i class="fas fa-file-csv"></i>
+                            </div>
+                            <div class="truncate">
+                                <p class="text-xs font-bold text-slate-800 dark:text-slate-100">Download Spreadsheet (.CSV)</p>
+                                <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">Formatted with titles, dates, decimal hours, and display time.</p>
+                            </div>
+                        </button>
+                        
+                        <button onclick="copyHoursToClipboard()" class="w-full flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-left hover:border-blue-500 transition-all">
+                            <div class="w-10 h-10 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 rounded-lg flex items-center justify-center text-base font-black flex-shrink-0">
+                                <i class="fas fa-copy"></i>
+                            </div>
+                            <div class="truncate">
+                                <p class="text-xs font-bold text-slate-800 dark:text-slate-100">Copy Plain-Text DutyLog Summary</p>
+                                <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">Instant copy to paste into WhatsApp, Slack, or Word.</p>
+                            </div>
+                        </button>
+                    </div>`;
+            }
+        };
+
+        window.toggleExportPreview = function() {
+            const box = document.getElementById('export-preview-container');
+            const txt = document.getElementById('preview-toggle-text');
+            if (!box) return;
+            const isHidden = box.classList.contains('hidden');
+            if (isHidden) {
+                const notes = document.getElementById('export-notes-input')?.value || '';
+                box.innerHTML = buildHoursExportHtml(notes);
+                box.classList.remove('hidden');
+                if (txt) txt.innerText = 'Hide Preview';
+            } else {
+                box.classList.add('hidden');
+                if (txt) txt.innerText = 'Preview DutyLog Email Certificate';
+            }
+        };
+
+        window.handleSendDutyLogEmail = async function(e) {
+            e.preventDefault();
             if (state.currentDuties.length === 0) return alert("No shift logs available to export.");
+
+            const recipient = document.getElementById('export-recipient-input')?.value.trim();
+            const notes = document.getElementById('export-notes-input')?.value.trim() || '';
+            const btn = document.getElementById('export-send-btn');
+
+            if (!recipient) return alert("Please enter a recipient email address.");
+
+            const smtpConfig = getSmtpConfig();
             const volunteer = state.profile?.name || 'Member';
             const division = state.profile?.division || 'City of Cardiff';
-            const emailSubject = encodeURIComponent(`DutyLog Pro — Hours Summary | ${volunteer} | ${division}`);
-            const emailBody = encodeURIComponent(buildHoursExportBody());
-            window.location.href = `mailto:?subject=${emailSubject}&body=${emailBody}`;
+            const subject = `DutyLog Pro — Operational Hours Summary | ${volunteer} | ${division}`;
+            const plainText = buildHoursExportBody(notes);
+            const htmlContent = buildHoursExportHtml(notes);
+
+            if (btn) {
+                btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Sending from ${smtpConfig.senderEmail}...`;
+                btn.disabled = true;
+            }
+
+            let dispatched = false;
+            let failureReason = '';
+
+            // Attempt 1: Invoke dispatch function
+            try {
+                const { data, error } = await sb.functions.invoke(smtpConfig.supabaseFunctionName || 'send-export-email', {
+                    body: {
+                        to: recipient,
+                        from: smtpConfig.senderEmail,
+                        from_name: smtpConfig.senderName,
+                        reply_to: smtpConfig.replyToEmail || 'hello@lawsonmorris.uk',
+                        subject: subject,
+                        text: plainText,
+                        html: htmlContent,
+                        volunteer: volunteer,
+                        division: division,
+                        total_hours: state.totalHoursString,
+                        shift_count: state.currentDuties.length,
+                        notes: notes
+                    }
+                });
+
+                if (!error && (data?.ok || data?.success || !data?.error)) {
+                    dispatched = true;
+                } else if (error) {
+                    failureReason = error.message || 'Dispatch error';
+                }
+            } catch(edgeErr) {
+                failureReason = edgeErr.message || 'Failed to dispatch email';
+            }
+
+            // Attempt 2: Direct HTTP fetch to function URL if client invocation had issues
+            if (!dispatched) {
+                try {
+                    const funcEndpoint = `https://qgyjfyazkkepmkztnezv.supabase.co/functions/v1/${smtpConfig.supabaseFunctionName || 'send-export-email'}`;
+                    const res = await fetch(funcEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': supabaseKey,
+                            'Authorization': `Bearer ${supabaseKey}`
+                        },
+                        body: JSON.stringify({
+                            to: recipient,
+                            from: smtpConfig.senderEmail,
+                            from_name: smtpConfig.senderName,
+                            reply_to: smtpConfig.replyToEmail || 'hello@lawsonmorris.uk',
+                            subject: subject,
+                            text: plainText,
+                            html: htmlContent,
+                            volunteer: volunteer,
+                            division: division,
+                            total_hours: state.totalHoursString,
+                            shift_count: state.currentDuties.length,
+                            notes: notes
+                        })
+                    });
+                    const resJson = await res.json().catch(() => ({}));
+                    if (res.ok && (resJson.success || resJson.ok || !resJson.error)) {
+                        dispatched = true;
+                    } else if (resJson.error) {
+                        failureReason = resJson.error;
+                    }
+                } catch(fetchErr) {
+                    console.warn("Direct dispatch fetch error:", fetchErr);
+                }
+            }
+
+            // Attempt 3: Optional Custom Webhook Relay if configured
+            if (!dispatched && smtpConfig.webhookUrl) {
+                try {
+                    const res = await fetch(smtpConfig.webhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            to: recipient,
+                            from: smtpConfig.senderEmail,
+                            subject: subject,
+                            text: plainText,
+                            html: htmlContent
+                        })
+                    });
+                    if (res.ok) dispatched = true;
+                } catch(webErr) {
+                    console.warn("Webhook relay error:", webErr);
+                }
+            }
+
+            // Log dispatch record if table exists
+            try {
+                if (state.user) {
+                    await sb.from('hours_exports').insert({
+                        user_id: state.user.id,
+                        recipient: recipient,
+                        sender: smtpConfig.senderEmail,
+                        subject: subject,
+                        total_hours: state.totalHoursString,
+                        status: dispatched ? 'delivered' : 'pending_relay',
+                        created_at: new Date().toISOString()
+                    });
+                }
+            } catch(logErr) {}
+
+            if (dispatched) {
+                alert(`✓ Success! Shift records successfully dispatched from ${smtpConfig.senderEmail} to ${recipient}.`);
+                document.getElementById('export-modal')?.remove();
+            } else {
+                alert(`Unable to dispatch email: ${failureReason || 'Dispatch service temporarily unavailable'}.\n\nPlease check recipient email or try again shortly.`);
+                if (btn) {
+                    btn.innerHTML = `<i class="fas fa-paper-plane"></i> Send via DutyLog Email`;
+                    btn.disabled = false;
+                }
+            }
         };
 
         window.exportToCSV = function() {
