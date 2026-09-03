@@ -355,6 +355,22 @@
             return { hours, minutes };
         }
 
+        function formatDutyDate(date) {
+            if (!date) return 'N/A — Date forgotten';
+            return date;
+        }
+
+        window.toggleForgottenDutyDate = function(forgotten) {
+            const dateInput = document.getElementById('duty-date');
+            if (!dateInput) return;
+            dateInput.disabled = forgotten;
+            if (forgotten) {
+                dateInput.value = '';
+            } else if (!dateInput.value) {
+                dateInput.value = new Date().toISOString().split('T')[0];
+            }
+        };
+
         function renderDashboardHTML(hoursStr, duties) {
             let liveCardHtml = '';
             if (state.activeDuty) {
@@ -380,7 +396,7 @@
                 return `<div class="glass-card p-4 flex justify-between items-center cursor-pointer hover:opacity-80 transition-all" onclick="triggerEditDuty('${d.id}')">
                     <div class="truncate mr-2">
                         <p class="font-bold text-sm truncate" style="color: var(--text-main);">${d.title || 'Untitled Shift'}</p>
-                        <p class="text-[10px] text-slate-400">${d.date}</p>
+                        <p class="text-[10px] text-slate-400">${formatDutyDate(d.date)}</p>
                     </div>
                     <p class="font-black text-green-600 text-sm flex-shrink-0">+${t.hours}h ${t.minutes}m</p>
                 </div>`;
@@ -602,8 +618,18 @@
                     <h2 class="text-2xl font-bold">${state.editingDutyId ? 'Modify Shift Record' : 'Log Operational Duty'}</h2>
                     
                     <form onsubmit="handleSaveDuty(event)" class="space-y-4">
-                        <input type="text" id="duty-title" placeholder="Event / Shift Title" value="${targetLog.title}" required class="input-field">
-                        <input type="date" id="duty-date" value="${targetLog.date}" class="input-field">
+                        <input type="text" id="duty-title" placeholder="Event / Shift Title" value="${targetLog.title || ''}" required class="input-field">
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-slate-400 block">Duty Date</label>
+                            <input type="date" id="duty-date" value="${targetLog.date || ''}" ${targetLog.date ? '' : 'disabled'} class="input-field">
+                            <label class="flex items-center gap-3 px-1 py-1 cursor-pointer select-none">
+                                <input type="checkbox" id="duty-date-forgotten" onchange="toggleForgottenDutyDate(this.checked)" ${targetLog.date ? '' : 'checked'} class="w-5 h-5 accent-[#00853F]">
+                                <span>
+                                    <span class="block text-sm font-bold" style="color: var(--text-main);">I don't know the date</span>
+                                    <span class="block text-[10px] text-slate-400">Save this duty as N/A — Date forgotten</span>
+                                </span>
+                            </label>
+                        </div>
                         
                         <div class="glass-card p-4 space-y-4">
                             <div class="flex justify-center gap-2 border-b pb-3 border-slate-100 dark:border-slate-800">
@@ -964,7 +990,7 @@
             state.currentDuties.forEach((d, i) => {
                 const t = parseDatabaseHoursToUiTime(d.total_hours);
                 const n = String(i + 1).padStart(2, '0');
-                body += `${n}.  ${d.date}  |  ${d.title || 'Untitled shift'}  |  ${t.hours}h ${t.minutes}m\n`;
+                body += `${n}.  ${formatDutyDate(d.date)}  |  ${d.title || 'Untitled shift'}  |  ${t.hours}h ${t.minutes}m\n`;
             });
 
             body += `\n${line}\n`;
@@ -984,7 +1010,7 @@
             const rowsHtml = state.currentDuties.map((d, i) => {
                 const t = parseDatabaseHoursToUiTime(d.total_hours);
                 return `<tr>
-                    <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #64748B;">${d.date}</td>
+                    <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #64748B;">${formatDutyDate(d.date)}</td>
                     <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 13px; font-weight: 600; color: #1B263B;">${d.title || 'Untitled shift'}</td>
                     <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 13px; font-weight: 700; color: #00853F; text-align: right;">+${t.hours}h ${t.minutes}m</td>
                 </tr>`;
@@ -1542,7 +1568,12 @@
             try {
                 const { data, error } = await sb.from('hours_logs').select('*').eq('user_id', state.user.id).order('date', { ascending: false });
                 if (error) throw error;
-                state.currentDuties = data || [];
+                state.currentDuties = (data || []).sort((a, b) => {
+                    if (!a.date && !b.date) return 0;
+                    if (!a.date) return 1;
+                    if (!b.date) return -1;
+                    return String(b.date).localeCompare(String(a.date));
+                });
                 let totalMin = 0;
                 state.currentDuties.forEach(d => {
                     const t = parseDatabaseHoursToUiTime(d.total_hours);
@@ -1601,7 +1632,9 @@
             const logObj = { 
                 user_id: state.user.id, 
                 title: document.getElementById('duty-title').value, 
-                date: document.getElementById('duty-date').value, 
+                date: document.getElementById('duty-date-forgotten').checked
+                    ? null
+                    : (document.getElementById('duty-date').value || null),
                 total_hours: decimalVal 
             };
             
