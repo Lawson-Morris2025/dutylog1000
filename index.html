@@ -1200,7 +1200,7 @@
         };
 
         function renderFeedHTML(posts) {
-            if (!posts || posts.length === 0) return '<p class="text-center py-12 text-slate-400 text-xs">No media uploads found in stream.</p>';
+           [cite: 5]if (!posts || posts.length === 0) return '<p class="text-center py-12 text-slate-400 text-xs">No media uploads found in stream.</p>';
             return posts.map(p => {
                 const likedBy = Array.isArray(p.liked_by) ? p.liked_by : [];
                 const comments = Array.isArray(p.comments) ? p.comments : [];
@@ -1454,7 +1454,7 @@
         };
 
         async function submitFeedPost() {
-            const btn = document.getElementById('post-submit-btn');
+           [cite: 5]const btn = document.getElementById('post-submit-btn');
             const desc = document.getElementById('post-desc').value;
             const fileInput = document.getElementById('feed-file-input');
             const file = fileInput.files ? fileInput.files[0] : null;
