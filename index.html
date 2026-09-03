@@ -515,41 +515,15 @@
                             <i class="fas fa-user-plus text-base"></i>
                             <h3 class="font-bold text-sm">Invite New Cadet / Member</h3>
                         </div>
-                        <p class="text-xs text-slate-400 leading-relaxed">Provisions a genuine Supabase authentication user account with a temporary password. The member is forced to set a new private password upon first sign-in.</p>
+                        <p class="text-xs text-slate-400 leading-relaxed">Enter an email address to send an invitation to join DutyLog Pro.</p>
 
                         <form onsubmit="handleInviteUser(event)" class="space-y-3">
                             <div>
                                 <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Cadet Email Address</label>
                                 <input type="email" id="invite-email" placeholder="cadet@example.com" required class="input-field text-sm">
                             </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Full Name</label>
-                                    <input type="text" id="invite-name" placeholder="John Doe" required class="input-field text-sm">
-                                </div>
-                                <div>
-                                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Division</label>
-                                    <input type="text" id="invite-division" value="City of Cardiff" required class="input-field text-sm">
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Role / Rank Badge</label>
-                                    <select id="invite-badge" class="input-field text-sm font-semibold">
-                                        <option value="Cadet">Cadet</option>
-                                        <option value="Corporal">Corporal</option>
-                                        <option value="Sergeant">Sergeant</option>
-                                        <option value="Staff Officer">Staff Officer</option>
-                                        <option value="Division Lead">Division Lead</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Temp Password</label>
-                                    <input type="text" id="invite-temp-password" value="ChangeMe123!" required class="input-field text-sm font-mono font-bold">
-                                </div>
-                            </div>
                             <button type="submit" id="invite-btn" class="btn-primary !bg-amber-600 hover:!bg-amber-700 flex items-center justify-center gap-2">
-                                <i class="fas fa-paper-plane"></i> Create Auth Account & Send Invite
+                                <i class="fas fa-paper-plane"></i> Invite
                             </button>
                         </form>
                     </div>
@@ -801,225 +775,45 @@
             }
         };
 
-        // Helper function to generate clean HTML string for HTML email invitations
-        function generateEmailHtmlTemplate(name, email, division, badge, tempPassword, loginUrl) {
-            return `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>You've Been Invited to DutyLog Pro</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #F8F9FA; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8F9FA; padding: 40px 0;">
-        <tr>
-            <td align="center">
-                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 550px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
-                    <tr>
-                        <td align="center" style="background-color: #1B263B; padding: 35px 20px; border-bottom: 4px solid #00853F;">
-                            <div style="background-color: rgba(255,255,255,0.1); width: 60px; height: 60px; border-radius: 16px; border: 2px solid #00853F; text-align: center; line-height: 60px; display: inline-block;">
-                                <span style="font-size: 30px; color: #00853F;">&#9200;</span>
-                            </div>
-                            <h1 style="color: #ffffff; margin: 15px 0 0 0; font-size: 26px; font-weight: 800;">DutyLog Pro</h1>
-                            <p style="color: #94A3B8; margin: 5px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700;">Operational Hour Tracking</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 35px 30px;">
-                            <p style="font-size: 16px; color: #1B263B; font-weight: bold; margin: 0 0 10px 0;">Hello ${name || 'Cadet'},</p>
-                            <p style="font-size: 14px; color: #64748B; line-height: 1.6; margin: 0 0 25px 0;">
-                                You have been invited to join <strong>DutyLog Pro</strong> for tracking division duties, shifts, and operational hours in <strong>${division}</strong>.
-                            </p>
-                            
-                            <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
-                                <p style="font-size: 11px; font-weight: 800; color: #00853F; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 12px 0;">Your Account Credentials</p>
-                                <table border="0" cellpadding="0" cellspacing="0" width="100%">
-                                    <tr>
-                                        <td style="font-size: 13px; color: #64748B; padding: 4px 0;"><strong>Email:</strong></td>
-                                        <td style="font-size: 13px; color: #1B263B; font-weight: bold; padding: 4px 0;" align="right">${email}</td>
-                                    </tr>
-                                    <tr>
-                                        <td style="font-size: 13px; color: #64748B; padding: 4px 0;"><strong>Temp Password:</strong></td>
-                                        <td style="font-size: 13px; color: #00853F; font-family: monospace; font-weight: bold; padding: 4px 0;" align="right">${tempPassword}</td>
-                                    </tr>
-                                    <tr>
-                                        <td style="font-size: 13px; color: #64748B; padding: 4px 0;"><strong>Division:</strong></td>
-                                        <td style="font-size: 13px; color: #1B263B; font-weight: bold; padding: 4px 0;" align="right">${division}</td>
-                                    </tr>
-                                    <tr>
-                                        <td style="font-size: 13px; color: #64748B; padding: 4px 0;"><strong>Role / Rank:</strong></td>
-                                        <td style="font-size: 13px; color: #1B263B; font-weight: bold; padding: 4px 0;" align="right">${badge}</td>
-                                    </tr>
-                                </table>
-                            </div>
-
-                            <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 12px 15px; border-radius: 6px; margin-bottom: 25px;">
-                                <p style="font-size: 12px; color: #92400E; margin: 0; line-height: 1.5;">
-                                    <strong>Security Notice:</strong> Upon your first sign-in, you will be automatically prompted to set a new private password.
-                                </p>
-                            </div>
-
-                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
-                                <tr>
-                                    <td align="center">
-                                        <a href="${loginUrl}" target="_blank" style="background-color: #00853F; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-size: 14px; font-weight: bold; display: inline-block;">Sign In & Set Up Account &rarr;</a>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td align="center" style="background-color: #F1F5F9; padding: 20px; border-top: 1px solid #E2E8F0;">
-                            <p style="font-size: 12px; font-weight: bold; color: #1B263B; margin: 0;">DutyLog Pro &bull; Made by Lawson Morris</p>
-                            <p style="font-size: 10px; color: #64748B; margin: 4px 0 0 0;">lawsonmorris.uk</p>
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-</body>
-</html>`;
-        }
-
-        window.openInvitePreviewModal = function(email, tempPassword, name, division, badge) {
-            const loginUrl = window.location.href.split('#')[0];
-            const mailSubject = encodeURIComponent("You've Been Invited to DutyLog Pro");
-            const rawTextBody = `Hello ${name || 'Cadet'},\n\nYou have been invited to join DutyLog Pro for operational hour tracking in ${division}.\n\nACCOUNT CREDENTIALS:\n• Email: ${email}\n• Temporary Password: ${tempPassword}\n• Division: ${division}\n• Rank / Role: ${badge}\n\nIMPORTANT SECURITY NOTE:\nWhen you log in for the first time, you will be automatically prompted to change your temporary password to a private password of your choice.\n\nLog in here: ${loginUrl}\n\nBest regards,\nDutyLog Pro Administration`;
-            const htmlEmail = generateEmailHtmlTemplate(name, email, division, badge, tempPassword, loginUrl);
-
-            const modal = document.createElement('div');
-            modal.id = 'invite-modal';
-            modal.className = 'fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 backdrop-blur-sm overflow-y-auto';
-            modal.innerHTML = `
-                <div class="glass-card w-full max-w-lg p-5 space-y-4 shadow-2xl my-auto max-h-[90vh] overflow-y-auto" style="background-color: var(--card-bg);">
-                    <div class="flex items-center justify-between text-amber-600 dark:text-amber-400 font-black text-sm border-b pb-2">
-                        <span class="flex items-center gap-2"><i class="fas fa-envelope-open-text"></i> Invitation Dispatch Console</span>
-                        <button onclick="document.getElementById('invite-modal').remove()" class="text-slate-400"><i class="fas fa-times"></i></button>
-                    </div>
-
-                    <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center gap-3 text-xs text-emerald-800 dark:text-emerald-300 font-medium">
-                        <i class="fas fa-check-circle text-emerald-500 text-lg"></i>
-                        <div>
-                            <p class="font-bold">Account Created Successfully!</p>
-                            <p class="text-[10px] opacity-80">Credentials are ready to send to <strong>${email}</strong>.</p>
-                        </div>
-                    </div>
-
-                    <!-- Email Preview Section -->
-                    <div class="border rounded-xl overflow-hidden bg-white">
-                        <div class="bg-slate-100 p-2 border-b flex justify-between items-center text-[10px] font-bold text-slate-500">
-                            <span>HTML EMAIL PREVIEW</span>
-                            <span>To: ${email}</span>
-                        </div>
-                        <iframe id="invite-email-iframe" class="w-full h-64 border-none"></iframe>
-                    </div>
-
-                    <!-- Dispatch Actions -->
-                    <div class="grid grid-cols-1 gap-2 pt-1">
-                        <a href="mailto:${email}?subject=${mailSubject}&body=${encodeURIComponent(rawTextBody)}" class="w-full py-3 bg-amber-600 text-white font-bold rounded-xl text-xs text-center shadow-md flex items-center justify-center gap-2 hover:bg-amber-700">
-                            <i class="fas fa-paper-plane"></i> Launch Mail Client (Text Invite)
-                        </a>
-                        <button onclick="copyInviteHtmlToClipboard()" class="w-full py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold rounded-xl text-xs flex items-center justify-center gap-2">
-                            <i class="fas fa-code"></i> Copy Full HTML Email Source
-                        </button>
-                        <button onclick="copyInviteTextToClipboard()" class="w-full py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold rounded-xl text-xs flex items-center justify-center gap-2">
-                            <i class="fas fa-copy"></i> Copy Plain Text Credentials
-                        </button>
-                    </div>
-                </div>`;
-
-            document.getElementById('app').appendChild(modal);
-
-            // Inject rendered HTML into iframe preview safely
-            setTimeout(() => {
-                const iframe = document.getElementById('invite-email-iframe');
-                if (iframe) {
-                    const doc = iframe.contentDocument || iframe.contentWindow.document;
-                    doc.open();
-                    doc.write(htmlEmail);
-                    doc.close();
-                }
-            }, 50);
-
-            window.copyInviteHtmlToClipboard = function() {
-                navigator.clipboard.writeText(htmlEmail).then(() => alert("HTML Email markup copied to clipboard! You can paste this directly into HTML email senders or templates.")).catch(() => alert("Failed to copy automatically."));
-            };
-
-            window.copyInviteTextToClipboard = function() {
-                navigator.clipboard.writeText(rawTextBody).then(() => alert("Plain text invitation copied to clipboard!")).catch(() => alert("Failed to copy automatically."));
-            };
-        };
-
         window.handleInviteUser = async function(e) {
             e.preventDefault();
             if (!isAdmin()) return alert("Unauthorized access.");
 
             const email = document.getElementById('invite-email').value.trim().toLowerCase();
-            const name = document.getElementById('invite-name').value.trim();
-            const division = document.getElementById('invite-division').value.trim();
-            const badge = document.getElementById('invite-badge').value;
-            const tempPassword = document.getElementById('invite-temp-password').value.trim() || 'ChangeMe123!';
             const btn = document.getElementById('invite-btn');
 
             if (!email) return alert("Please enter a valid user email address.");
 
-            if (btn) { btn.innerText = "Creating Supabase Auth Account..."; btn.disabled = true; }
+            if (btn) { btn.innerText = "Sending Invite..."; btn.disabled = true; }
 
             try {
-                // Step 1: Create genuine Supabase Auth user via isolated secondary client
-                const { data: authData, error: authErr } = await secondaryAuthClient.auth.signUp({
-                    email: email,
-                    password: tempPassword,
-                    options: {
-                        data: { name: name || 'Cadet Member', division: division || 'City of Cardiff', badge: badge || 'Cadet' }
-                    }
-                });
-
-                if (authErr) {
-                    if (authErr.message.includes('User already registered') || authErr.status === 400) {
-                        alert(`Account with email ${email} already exists in Supabase Authentication.\nWe will update their profile record.`);
-                    } else {
-                        throw authErr;
-                    }
+                let inviteError = null;
+                
+                if (sb.auth.inviteUserByEmail) {
+                    const { error } = await sb.auth.inviteUserByEmail(email);
+                    inviteError = error;
+                } else {
+                    const { error } = await sb.auth.resetPasswordForEmail(email, {
+                        redirectTo: window.location.href.split('#')[0]
+                    });
+                    inviteError = error;
                 }
 
-                const newUserId = authData?.user?.id;
+                if (inviteError) throw inviteError;
 
-                // Step 2: Create or update profile record bound to the Auth User ID
-                const profilePayload = {
+                await sb.from('profiles').upsert({
                     email: email,
-                    name: name || 'Cadet Member',
-                    division: division || 'City of Cardiff',
-                    badge: badge || 'Cadet',
-                    must_change_password: true,
                     invited_by: state.user.id,
                     created_at: new Date().toISOString()
-                };
+                }, { onConflict: 'email' });
 
-                if (newUserId) {
-                    profilePayload.id = newUserId;
-                }
-
-                const { error: profileErr } = await sb.from('profiles').upsert(profilePayload, { onConflict: 'email' });
-                if (profileErr) console.warn("Profile save warning:", profileErr);
-
-                // Step 3: Trigger Supabase system email reset/notification if configured
-                try {
-                    await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.href.split('#')[0] });
-                } catch(emailErr) {
-                    console.log("Supabase system email trigger status:", emailErr);
-                }
-
-                // Step 4: Open rich invitation preview modal
-                openInvitePreviewModal(email, tempPassword, name, division, badge);
-
+                alert(`Invitation sent successfully to ${email}!`);
                 e.target.reset();
-                document.getElementById('invite-temp-password').value = 'ChangeMe123!';
                 loadAdminData();
             } catch(err) {
-                alert(`Invite failed: ${err.message || 'Error provisioning account.'}`);
+                alert(`Invite failed: ${err.message || 'Error sending invitation.'}`);
             } finally {
-                if (btn) { btn.innerText = "Create Auth Account & Send Invite"; btn.disabled = false; }
+                if (btn) { btn.innerText = "Invite"; btn.disabled = false; }
             }
         };
 
