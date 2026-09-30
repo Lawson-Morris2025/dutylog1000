@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>DutyLog Pro</title>
+    <title>DutyLog</title>
     
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -125,11 +125,11 @@
             position: fixed;
             left: 0;
             right: 0;
-            bottom: 0;
+            bottom: 0 !important;
             z-index: 50;
             background-color: var(--nav-bg);
             border-top: 1px solid var(--border-color);
-            padding: 0.65rem 1rem max(1rem, env(safe-area-inset-bottom, 0px));
+            padding: 0.65rem 1rem max(0.85rem, env(safe-area-inset-bottom, 12px));
             display: none;
             justify-content: space-around;
             align-items: flex-end;
@@ -211,8 +211,8 @@
                 <div class="w-24 h-24 bg-white/10 border-4 border-[#00853F] rounded-[2rem] flex items-center justify-center shadow-2xl mb-6 backdrop-blur-md">
                     <i class="fas fa-clock text-[#00853F] text-5xl"></i>
                 </div>
-                <h1 class="text-4xl font-black tracking-tight">DutyLog Pro</h1>
-                <p class="text-xs text-slate-300 font-semibold tracking-wider mt-2 uppercase">Operational Hour Tracking</p>
+                <h1 class="text-4xl font-black tracking-tight">DutyLog</h1>
+                <p class="text-xs text-slate-300 font-semibold tracking-wider mt-2 uppercase">Shift & Hours Tracking</p>
             </div>
 
             <div id="splash-stage-2" class="splash-stage">
@@ -288,8 +288,49 @@
 
         if (state.darkMode) document.body.classList.add('dark-theme');
 
-        const saveLocalCache = (key, data) => localStorage.setItem(`dutylog_pro_${key}`, JSON.stringify(data));
-        const getLocalCache = (key) => JSON.parse(localStorage.getItem(`dutylog_pro_${key}`));
+        const safeSetItem = (key, value) => {
+            try {
+                localStorage.setItem(key, value);
+            } catch (err) {
+                console.warn('LocalStorage quota warning:', err);
+                try {
+                    // Evict heavy feed cache to free up space
+                    localStorage.removeItem('dutylog_pro_feed');
+                    localStorage.setItem(key, value);
+                } catch (retryErr) {
+                    console.warn('Storage quota reached, skipping persistence for', key);
+                }
+            }
+        };
+
+        const saveLocalCache = (key, data) => {
+            try {
+                if (key === 'feed') {
+                    // Strip large data URLs before caching to avoid filling 5MB localStorage quota
+                    const lightweight = (Array.isArray(data) ? data : []).slice(0, 15).map(p => {
+                        const isHeavy = typeof p.media_url === 'string' && p.media_url.length > 2048;
+                        return {
+                            ...p,
+                            media_url: isHeavy ? (p.media_url.startsWith('http') ? p.media_url : null) : p.media_url
+                        };
+                    });
+                    safeSetItem(`dutylog_pro_${key}`, JSON.stringify(lightweight));
+                    return;
+                }
+                safeSetItem(`dutylog_pro_${key}`, JSON.stringify(data));
+            } catch (e) {
+                console.warn('saveLocalCache error:', e);
+            }
+        };
+
+        const getLocalCache = (key) => {
+            try {
+                const item = localStorage.getItem(`dutylog_pro_${key}`);
+                return item ? JSON.parse(item) : null;
+            } catch (e) {
+                return null;
+            }
+        };
         const getUserPFP = (url, id) => url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${id || 'volunteer'}`;
 
         function pinAppToVisualViewport() {
@@ -298,11 +339,8 @@
             document.documentElement.style.setProperty('--app-height', `${height}px`);
 
             const nav = document.getElementById('bottom-nav');
-            if (!nav) return;
-            if (vv) {
-                const inset = window.innerHeight - vv.height - vv.offsetTop;
-                nav.style.bottom = `${Math.max(0, inset)}px`;
-            } else {
+            if (nav) {
+                // Keep bottom navigation firmly docked to the actual bottom of the screen
                 nav.style.bottom = '0px';
             }
         }
@@ -355,22 +393,6 @@
             return { hours, minutes };
         }
 
-        function formatDutyDate(date) {
-            if (!date) return 'N/A — Date forgotten';
-            return date;
-        }
-
-        window.toggleForgottenDutyDate = function(forgotten) {
-            const dateInput = document.getElementById('duty-date');
-            if (!dateInput) return;
-            dateInput.disabled = forgotten;
-            if (forgotten) {
-                dateInput.value = '';
-            } else if (!dateInput.value) {
-                dateInput.value = new Date().toISOString().split('T')[0];
-            }
-        };
-
         function renderDashboardHTML(hoursStr, duties) {
             let liveCardHtml = '';
             if (state.activeDuty) {
@@ -396,7 +418,7 @@
                 return `<div class="glass-card p-4 flex justify-between items-center cursor-pointer hover:opacity-80 transition-all" onclick="triggerEditDuty('${d.id}')">
                     <div class="truncate mr-2">
                         <p class="font-bold text-sm truncate" style="color: var(--text-main);">${d.title || 'Untitled Shift'}</p>
-                        <p class="text-[10px] text-slate-400">${formatDutyDate(d.date)}</p>
+                        <p class="text-[10px] text-slate-400">${d.date}</p>
                     </div>
                     <p class="font-black text-green-600 text-sm flex-shrink-0">+${t.hours}h ${t.minutes}m</p>
                 </div>`;
@@ -409,8 +431,8 @@
             welcome: async () => `<div class="flex flex-col items-center justify-center min-h-[80vh] text-center space-y-8">
                 <div class="w-24 h-24 bg-white border-4 border-[#00853F] rounded-[2rem] flex items-center justify-center shadow-2xl"><i class="fas fa-clock text-[#00853F] text-5xl"></i></div>
                 <div>
-                    <h1 class="text-4xl font-black" style="color: var(--text-main);">DutyLog Pro</h1>
-                    <p class="text-xs text-slate-400 font-medium mt-1">Operational Hour Tracking Utility</p>
+                    <h1 class="text-4xl font-black" style="color: var(--text-main);">DutyLog</h1>
+                    <p class="text-xs text-slate-400 font-medium mt-1">Shift & Hours Tracking Utility</p>
                 </div>
                 <div class="w-full space-y-3 px-4 max-w-xs">
                     <button onclick="router.navigate('login')" class="btn-primary">Login</button>
@@ -522,13 +544,34 @@
 
             feed: async () => {
                 const cachedFeed = getLocalCache('feed') || [];
-                setTimeout(loadFeedPosts, 10);
+                setTimeout(() => loadFeedPosts(false), 10);
+                
+                const hasPosts = state.feedPosts.length > 0;
+                const initialPosts = hasPosts ? state.feedPosts : cachedFeed;
+                const initialHtml = initialPosts.length > 0 ? renderFeedHTML(initialPosts) : `
+                    <div id="feed-loading-state" class="py-14 flex flex-col items-center justify-center text-slate-400">
+                        <div class="spinner mb-3"></div>
+                        <p class="text-xs font-semibold">Loading division stream...</p>
+                    </div>
+                `;
+
                 return `<div class="space-y-4">
                     <div class="flex justify-between items-center">
-                        <h2 class="text-2xl font-bold">Division Feed</h2>
-                        <button onclick="openPublishMediaModal()" class="bg-green-600 text-white text-xs font-bold py-2 px-4 rounded-xl"><i class="fas fa-camera mr-1"></i> Post Media</button>
+                        <div>
+                            <h2 class="text-2xl font-bold">Division Feed</h2>
+                            <p class="text-[10px] text-slate-400">Cadet and division activity stream</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="loadFeedPosts(true)" class="p-2 text-slate-500 hover:text-emerald-600 dark:text-slate-400 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors" title="Refresh feed">
+                                <i class="fas fa-sync-alt text-xs" id="feed-refresh-icon"></i>
+                                <span class="hidden sm:inline">Refresh</span>
+                            </button>
+                            <button onclick="openPublishMediaModal()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 px-3.5 rounded-xl shadow-sm transition-all flex items-center gap-1.5">
+                                <i class="fas fa-camera text-xs"></i> Post
+                            </button>
+                        </div>
                     </div>
-                    <div id="feed-container" class="space-y-6 pb-12">${renderFeedHTML(state.feedPosts.length ? state.feedPosts : cachedFeed)}</div>
+                    <div id="feed-container" class="space-y-6 pb-12">${initialHtml}</div>
                 </div>`;
             },
 
@@ -540,7 +583,7 @@
                                 <i class="fas fa-lock"></i>
                             </div>
                             <h2 class="text-2xl font-black">Beta Access Required</h2>
-                            <p class="text-xs text-slate-400">Enter a valid cadet or division access key to unlock DutyTracker Live.</p>
+                            <p class="text-xs text-slate-400">Enter a valid cadet or division access key to unlock beta features.</p>
                         </div>
 
                         <form onsubmit="handleUnlockBeta(event)" class="glass-card p-6 space-y-4">
@@ -552,9 +595,9 @@
                         </form>
 
                         <div class="text-center pt-2">
-                            <a href="mailto:hello@lawsonmorris.uk?subject=Beta%20Access%20Request&body=Name%3A%20%0ADivision%3A%20%0AEmail%3A%20%0AReason%20for%20Beta%20Access%3A%20" class="inline-flex items-center justify-center gap-2.5 w-full py-3.5 px-5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-2xl text-base font-extrabold hover:text-[#00853F] hover:border-[#00853F] transition-all shadow-sm">
+                            <button type="button" onclick="openBetaRequestModal()" class="inline-flex items-center justify-center gap-2.5 w-full py-3.5 px-5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-2xl text-base font-extrabold hover:text-[#00853F] hover:border-[#00853F] transition-all shadow-sm cursor-pointer">
                                 <i class="fas fa-envelope text-lg"></i> Request Beta Access
-                            </a>
+                            </button>
                         </div>
                     </div>`;
                 }
@@ -615,21 +658,11 @@
                 }, 15);
 
                 return `<div class="px-2 space-y-4 pb-12">
-                    <h2 class="text-2xl font-bold">${state.editingDutyId ? 'Modify Shift Record' : 'Log Operational Duty'}</h2>
+                    <h2 class="text-2xl font-bold">${state.editingDutyId ? 'Modify Shift Record' : 'Log Shift Record'}</h2>
                     
                     <form onsubmit="handleSaveDuty(event)" class="space-y-4">
-                        <input type="text" id="duty-title" placeholder="Event / Shift Title" value="${targetLog.title || ''}" required class="input-field">
-                        <div class="space-y-2">
-                            <label class="text-xs font-bold text-slate-400 block">Duty Date</label>
-                            <input type="date" id="duty-date" value="${targetLog.date || ''}" ${targetLog.date ? '' : 'disabled'} class="input-field">
-                            <label class="flex items-center gap-3 px-1 py-1 cursor-pointer select-none">
-                                <input type="checkbox" id="duty-date-forgotten" onchange="toggleForgottenDutyDate(this.checked)" ${targetLog.date ? '' : 'checked'} class="w-5 h-5 accent-[#00853F]">
-                                <span>
-                                    <span class="block text-sm font-bold" style="color: var(--text-main);">I don't know the date</span>
-                                    <span class="block text-[10px] text-slate-400">Save this duty as N/A — Date forgotten</span>
-                                </span>
-                            </label>
-                        </div>
+                        <input type="text" id="duty-title" placeholder="Event / Shift Title" value="${targetLog.title}" required class="input-field">
+                        <input type="date" id="duty-date" value="${targetLog.date}" class="input-field">
                         
                         <div class="glass-card p-4 space-y-4">
                             <div class="flex justify-center gap-2 border-b pb-3 border-slate-100 dark:border-slate-800">
@@ -751,6 +784,204 @@
             }
         };
 
+        window.openBetaRequestModal = function() {
+            const existing = document.getElementById('beta-request-modal');
+            if (existing) existing.remove();
+
+            const userName = state.profile?.name || state.user?.user_metadata?.name || state.user?.user_metadata?.full_name || '';
+            const userEmail = state.user?.email || state.user?.user_metadata?.email || '';
+
+            const modal = document.createElement('div');
+            modal.id = 'beta-request-modal';
+            modal.className = 'fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm';
+            modal.innerHTML = `
+                <div class="glass-card w-full max-w-md p-6 space-y-4 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col" style="background-color: var(--card-bg);">
+                    <div class="flex items-center justify-between border-b pb-3 border-slate-200 dark:border-slate-800 flex-shrink-0">
+                        <div class="flex items-center gap-2.5 text-[#00853F]">
+                            <div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-base font-black">
+                                <i class="fas fa-vial"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-black text-base text-slate-800 dark:text-slate-100">Request Beta Access</h3>
+                                <p class="text-[11px] text-slate-400">Unlock Beta Features</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="closeBetaRequestModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg p-1">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <form onsubmit="handleBetaRequestSubmit(event)" class="overflow-y-auto space-y-3.5 pr-0.5 flex-1">
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">Your Full Name</label>
+                            <input type="text" id="beta-req-name" value="${userName}" placeholder="e.g. John Doe" required class="input-field text-sm">
+                        </div>
+
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">Email Address</label>
+                            <input type="email" id="beta-req-email" value="${userEmail}" placeholder="e.g. cadet@lawsonmorris.uk" required class="input-field text-sm">
+                        </div>
+
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">Division / Unit</label>
+                            <input type="text" id="beta-req-division" value="" placeholder="e.g. City of Cardiff" required class="input-field text-sm">
+                        </div>
+
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">Reason for Request</label>
+                            <textarea id="beta-req-reason" rows="3" placeholder="Tell us why you would like access to test beta features..." required class="input-field text-sm resize-none"></textarea>
+                        </div>
+
+                        <div class="pt-2">
+                            <button type="submit" id="beta-req-submit-btn" class="btn-primary !bg-[#00853F] flex items-center justify-center gap-2">
+                                <i class="fas fa-paper-plane"></i> Submit Request
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            document.getElementById('app').appendChild(modal);
+        };
+
+        window.closeBetaRequestModal = function() {
+            const modal = document.getElementById('beta-request-modal');
+            if (modal) modal.remove();
+        };
+
+        window.handleBetaRequestSubmit = async function(e) {
+            e.preventDefault();
+            const name = document.getElementById('beta-req-name')?.value.trim();
+            const email = document.getElementById('beta-req-email')?.value.trim();
+            const division = document.getElementById('beta-req-division')?.value.trim();
+            const reason = document.getElementById('beta-req-reason')?.value.trim();
+            const btn = document.getElementById('beta-req-submit-btn');
+
+            if (!name || !email || !division || !reason) {
+                return alert("Please fill in all fields before submitting.");
+            }
+
+            if (btn) {
+                btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Submitting Request...`;
+                btn.disabled = true;
+            }
+
+            const subject = `DutyLog — Beta Access Request: ${name} (${division})`;
+            const htmlContent = `
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; background: #ffffff; border: 1px solid #E2E8F0; border-radius: 16px; overflow: hidden;">
+                    <div style="background-color: #1B263B; padding: 24px; text-align: center; color: #ffffff;">
+                        <h1 style="margin: 0; font-size: 20px; font-weight: 800;">DutyLog</h1>
+                        <p style="margin: 6px 0 0; font-size: 13px; color: #94A3B8;">Beta Features Access Request</p>
+                    </div>
+                    <div style="padding: 24px;">
+                        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                            <p style="margin: 0 0 10px 0; font-size: 14px; color: #1E293B;"><strong>Applicant Name:</strong> ${name}</p>
+                            <p style="margin: 0 0 10px 0; font-size: 14px; color: #1E293B;"><strong>Email Address:</strong> <a href="mailto:${email}" style="color: #00853F; font-weight: bold; text-decoration: none;">${email}</a></p>
+                            <p style="margin: 0; font-size: 14px; color: #1E293B;"><strong>Division / Unit:</strong> ${division}</p>
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;">Reason for Request:</p>
+                            <div style="background-color: #F1F5F9; border-left: 4px solid #00853F; border-radius: 0 8px 8px 0; padding: 14px 16px; font-size: 14px; line-height: 1.6; color: #334155; white-space: pre-wrap;">${reason}</div>
+                        </div>
+                        <div style="border-top: 1px solid #E2E8F0; padding-top: 16px; text-align: center; font-size: 12px; color: #94A3B8;">
+                            Dispatched via Resend · Reply directly to this email to respond to ${name}.
+                        </div>
+                    </div>
+                </div>
+            `;
+            const plainText = `DutyLog - Beta Access Request\\n\\nName: ${name}\\nEmail: ${email}\\nDivision: ${division}\\n\\nReason for Request:\\n${reason}\\n\\nReply-To: ${email}`;
+
+            let sent = false;
+            let failureMsg = '';
+
+            // Attempt 1: Invoke Supabase Edge Function configured with Resend
+            try {
+                const { data, error } = await sb.functions.invoke('send-export-email', {
+                    body: {
+                        to: 'hello@lawsonmorris.uk',
+                        reply_to: email,
+                        subject: subject,
+                        html: htmlContent,
+                        text: plainText
+                    }
+                });
+                if (!error && (data?.ok || data?.success || !data?.error)) {
+                    sent = true;
+                } else if (error) {
+                    failureMsg = error.message || '';
+                }
+            } catch (invokeErr) {
+                failureMsg = invokeErr.message || '';
+            }
+
+            // Attempt 2: Direct HTTP fetch to the Supabase Edge Function
+            if (!sent) {
+                try {
+                    const funcUrl = 'https://qgyjfyazkkepmkztnezv.supabase.co/functions/v1/send-export-email';
+                    const res = await fetch(funcUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': supabaseKey,
+                            'Authorization': `Bearer ${supabaseKey}`
+                        },
+                        body: JSON.stringify({
+                            to: 'hello@lawsonmorris.uk',
+                            reply_to: email,
+                            subject: subject,
+                            html: htmlContent,
+                            text: plainText
+                        })
+                    });
+                    const resJson = await res.json().catch(() => ({}));
+                    if (res.ok && (resJson.success || resJson.ok || !resJson.error)) {
+                        sent = true;
+                    } else if (resJson.error) {
+                        failureMsg = resJson.error;
+                    }
+                } catch (fetchErr) {
+                    console.warn("Direct edge function fetch error:", fetchErr);
+                }
+            }
+
+            // Attempt 3: Direct Resend API call with the project Resend key
+            if (!sent) {
+                try {
+                    const resendKey = 're_UCkHgTC7_72kJGAfrSVH4Z9tKA41ej1tV';
+                    const res = await fetch('https://api.resend.com/emails', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${resendKey}`
+                        },
+                        body: JSON.stringify({
+                            from: 'DutyLog <noreply@dutylog.lawsonmorris.uk>',
+                            to: ['hello@lawsonmorris.uk'],
+                            reply_to: email,
+                            subject: subject,
+                            html: htmlContent,
+                            text: plainText
+                        })
+                    });
+                    if (res.ok) {
+                        sent = true;
+                    }
+                } catch (resendErr) {
+                    console.warn("Direct Resend fetch error:", resendErr);
+                }
+            }
+
+            if (sent) {
+                alert(`✓ Request submitted! Your beta application has been sent to Lawson Morris (hello@lawsonmorris.uk). You will be contacted once reviewed.`);
+                closeBetaRequestModal();
+            } else {
+                alert(`Unable to dispatch request automatically: ${failureMsg || 'Service temporarily unavailable'}.\n\nPlease contact hello@lawsonmorris.uk directly.`);
+                if (btn) {
+                    btn.innerHTML = `<i class="fas fa-paper-plane"></i> Submit Request`;
+                    btn.disabled = false;
+                }
+            }
+        };
+
         window.handleForcePasswordChange = async function(e) {
             e.preventDefault();
             const pw1 = document.getElementById('new-password-input').value;
@@ -771,7 +1002,7 @@
                 }
 
                 state.mustChangePassword = false;
-                alert("Password updated successfully! Welcome to DutyLog Pro.");
+                alert("Password updated successfully! Welcome to DutyLog.");
                 await router.navigate('dashboard');
             } catch(err) {
                 alert(`Password update failed: ${err.message}`);
@@ -870,7 +1101,7 @@
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.metadata = new MediaMetadata({
                         title: state.activeDuty.title,
-                        artist: 'DutyLog Pro - Live Shift Active',
+                        artist: 'DutyLog - Live Shift Active',
                         album: `Elapsed: ${timeStr}`
                     });
                 }
@@ -939,6 +1170,16 @@
             }
         }
 
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function getSmtpConfig() {
             try {
                 const saved = localStorage.getItem('dutylog_smtp_settings');
@@ -947,7 +1188,7 @@
             return {
                 senderEmail: 'noreply@dutylog.lawsonmorris.uk',
                 replyToEmail: 'hello@lawsonmorris.uk',
-                senderName: 'DutyLog Pro Verification System',
+                senderName: 'DutyLog System',
                 zohoHost: 'smtppro.zoho.eu',
                 zohoPort: '465',
                 supabaseFunctionName: 'send-export-email',
@@ -964,40 +1205,38 @@
             const division = state.profile?.division || 'City of Cardiff';
             const badge = state.profile?.badge || 'Cadet';
             const generated = new Date().toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' });
-            const line = '========================================';
-            const thin = '----------------------------------------';
+            const line = '----------------------------------------';
 
             let body = '';
-            body += `${line}\n`;
-            body += `DUTYLOG PRO\n`;
-            body += `Operational Hour Tracking\n`;
+            body += `DUTYLOG\n`;
+            body += `Shift & Hours Summary\n`;
             body += `lawsonmorris.uk\n`;
             body += `${line}\n\n`;
-            body += `HOURS SUMMARY\n`;
-            body += `${thin}\n`;
             body += `Volunteer:  ${volunteer}\n`;
             body += `Division:   ${division}\n`;
             body += `Badge:      ${badge}\n`;
             body += `Generated:  ${generated}\n`;
-            body += `Total time: ${state.totalHoursString}\n`;
-            body += `Shifts:     ${state.currentDuties.length}\n`;
+            body += `Total time: ${state.totalHoursString} (${state.currentDuties.length} ${state.currentDuties.length === 1 ? 'shift' : 'shifts'})\n`;
+            
             if (notes && notes.trim()) {
-                body += `Notes:      ${notes.trim()}\n`;
+                body += `\nNote:\n${notes.trim()}\n`;
             }
-            body += `\nSHIFT RECORDS\n`;
-            body += `${thin}\n`;
 
-            state.currentDuties.forEach((d, i) => {
-                const t = parseDatabaseHoursToUiTime(d.total_hours);
-                const n = String(i + 1).padStart(2, '0');
-                body += `${n}.  ${formatDutyDate(d.date)}  |  ${d.title || 'Untitled shift'}  |  ${t.hours}h ${t.minutes}m\n`;
-            });
+            body += `\nSHIFTS\n`;
+            body += `${line}\n`;
+
+            if (state.currentDuties.length === 0) {
+                body += `No shifts logged.\n`;
+            } else {
+                state.currentDuties.forEach((d, i) => {
+                    const t = parseDatabaseHoursToUiTime(d.total_hours);
+                    const n = String(i + 1).padStart(2, '0');
+                    body += `${n}.  ${d.date}  |  ${d.title || 'Shift'}  |  ${t.hours}h ${t.minutes}m\n`;
+                });
+            }
 
             body += `\n${line}\n`;
-            body += `This summary was generated by DutyLog Pro.\n`;
-            body += `Log shifts. Export verified records.\n`;
-            body += `Made by Lawson Morris  ·  lawsonmorris.uk\n`;
-            body += `${line}\n`;
+            body += `Generated by DutyLog · lawsonmorris.uk\n`;
             return body;
         }
 
@@ -1009,71 +1248,79 @@
 
             const rowsHtml = state.currentDuties.map((d, i) => {
                 const t = parseDatabaseHoursToUiTime(d.total_hours);
-                return `<tr>
-                    <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #64748B;">${formatDutyDate(d.date)}</td>
-                    <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 13px; font-weight: 600; color: #1B263B;">${d.title || 'Untitled shift'}</td>
-                    <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 13px; font-weight: 700; color: #00853F; text-align: right;">+${t.hours}h ${t.minutes}m</td>
+                return `<tr style="border-bottom: 1px solid #F1F5F9;">
+                    <td style="padding: 12px 14px; font-size: 13px; color: #64748B; white-space: nowrap;">${escapeHtml(d.date)}</td>
+                    <td style="padding: 12px 14px; font-size: 13px; font-weight: 600; color: #0F172A;">${escapeHtml(d.title || 'Shift')}</td>
+                    <td style="padding: 12px 14px; font-size: 13px; font-weight: 700; color: #00853F; text-align: right; white-space: nowrap;">+${t.hours}h ${t.minutes}m</td>
                 </tr>`;
-            }).join('') || '<tr><td colspan="3" style="padding: 12px; text-align: center; color: #94A3B8;">No shifts logged</td></tr>';
+            }).join('') || '<tr><td colspan="3" style="padding: 16px; text-align: center; color: #94A3B8; font-size: 13px;">No shifts logged</td></tr>';
+
+            const noteBlock = notes && notes.trim() ? `
+                <div style="margin: 0 0 20px 0; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 4px solid #00853F; border-radius: 8px; padding: 14px 16px;">
+                    <strong style="display: block; font-size: 12px; font-weight: 800; color: #00853F; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Note</strong>
+                    <div style="font-size: 13px; color: #334155; line-height: 1.5; white-space: pre-wrap;">${escapeHtml(notes.trim())}</div>
+                </div>
+            ` : '';
 
             return `
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 620px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; overflow: hidden; color: #1B263B; box-shadow: 0 4px 16px rgba(0,0,0,0.05);">
-                <div style="background-color: #1B263B; padding: 24px; color: #FFFFFF; text-align: center;">
-                    <h1 style="margin: 0; font-size: 24px; font-weight: 900; letter-spacing: -0.5px;">DutyLog Pro</h1>
-                    <p style="margin: 6px 0 0; font-size: 11px; color: #94A3B8; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Operational Hour Verification Record</p>
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; overflow: hidden; color: #0F172A; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
+                <div style="background-color: #1B263B; padding: 24px 20px; color: #FFFFFF; text-align: center;">
+                    <h1 style="margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -0.3px;">DutyLog</h1>
+                    <p style="margin: 4px 0 0; font-size: 12px; color: #94A3B8; font-weight: 600;">Shift & Hours Summary</p>
                 </div>
                 
                 <div style="padding: 24px;">
-                    <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                    <!-- Total Time Banner -->
+                    <div style="background-color: #00853F; border-radius: 12px; padding: 18px 20px; color: #FFFFFF; text-align: center; margin-bottom: 20px;">
+                        <p style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9; font-weight: 700;">Total Time</p>
+                        <h2 style="margin: 4px 0 0; font-size: 32px; font-weight: 900; letter-spacing: -0.5px;">${state.totalHoursString}</h2>
+                        <p style="margin: 4px 0 0; font-size: 12px; opacity: 0.9;">${state.currentDuties.length} ${state.currentDuties.length === 1 ? 'shift' : 'shifts'} recorded</p>
+                    </div>
+
+                    <!-- Summary Info Box -->
+                    <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px 16px; margin-bottom: 20px;">
                         <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                             <tr>
                                 <td style="padding: 4px 0; color: #64748B; font-weight: 600;">Volunteer:</td>
-                                <td style="padding: 4px 0; color: #1B263B; font-weight: 700; text-align: right;">${volunteer}</td>
+                                <td style="padding: 4px 0; color: #0F172A; font-weight: 700; text-align: right;">${escapeHtml(volunteer)}</td>
                             </tr>
                             <tr>
                                 <td style="padding: 4px 0; color: #64748B; font-weight: 600;">Division:</td>
-                                <td style="padding: 4px 0; color: #1B263B; font-weight: 700; text-align: right;">${division}</td>
+                                <td style="padding: 4px 0; color: #0F172A; font-weight: 700; text-align: right;">${escapeHtml(division)}</td>
                             </tr>
                             <tr>
                                 <td style="padding: 4px 0; color: #64748B; font-weight: 600;">Badge / Rank:</td>
-                                <td style="padding: 4px 0; color: #0284C7; font-weight: 700; text-align: right;">${badge}</td>
+                                <td style="padding: 4px 0; color: #0284C7; font-weight: 700; text-align: right;">${escapeHtml(badge)}</td>
                             </tr>
                             <tr>
                                 <td style="padding: 4px 0; color: #64748B; font-weight: 600;">Generated:</td>
-                                <td style="padding: 4px 0; color: #64748B; text-align: right;">${generated}</td>
+                                <td style="padding: 4px 0; color: #64748B; text-align: right;">${escapeHtml(generated)}</td>
                             </tr>
                         </table>
                     </div>
 
-                    <div style="background-color: #00853F; border-radius: 12px; padding: 18px; color: #FFFFFF; text-align: center; margin-bottom: 24px;">
-                        <p style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.9; font-weight: 700;">Total Logged Shift Time</p>
-                        <h2 style="margin: 4px 0 0; font-size: 34px; font-weight: 900; letter-spacing: -0.5px;">${state.totalHoursString}</h2>
-                        <p style="margin: 4px 0 0; font-size: 12px; opacity: 0.85;">Verified across ${state.currentDuties.length} recorded duties</p>
+                    ${noteBlock}
+
+                    <!-- Shifts Table -->
+                    <div style="margin-top: 10px;">
+                        <h3 style="font-size: 14px; font-weight: 800; margin: 0 0 10px; color: #0F172A;">Shifts (${state.currentDuties.length})</h3>
+                        <table style="width: 100%; border-collapse: collapse; text-align: left; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden;">
+                            <thead>
+                                <tr style="background-color: #F8FAFC; border-bottom: 1px solid #E2E8F0;">
+                                    <th style="padding: 10px 14px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">Date</th>
+                                    <th style="padding: 10px 14px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">Duty / Shift</th>
+                                    <th style="padding: 10px 14px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; text-align: right;">Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHtml}
+                            </tbody>
+                        </table>
                     </div>
-
-                    ${notes && notes.trim() ? `
-                    <div style="margin-bottom: 20px; padding: 12px 14px; background-color: #EFF6FF; border-left: 4px solid #3B82F6; border-radius: 8px; font-size: 12px; color: #1E3A8A;">
-                        <strong style="display: block; margin-bottom: 2px;">Verification / Officer Note:</strong>
-                        ${notes.trim()}
-                    </div>` : ''}
-
-                    <h3 style="font-size: 14px; font-weight: 800; margin: 0 0 12px; color: #1B263B;">Operational Shift Breakdown</h3>
-                    <table style="width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 16px;">
-                        <thead>
-                            <tr style="background-color: #F1F5F9;">
-                                <th style="padding: 8px 12px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">Date</th>
-                                <th style="padding: 8px 12px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">Event / Shift</th>
-                                <th style="padding: 8px 12px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; text-align: right;">Time</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rowsHtml}
-                        </tbody>
-                    </table>
                 </div>
 
                 <div style="background-color: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 16px; text-align: center; font-size: 11px; color: #94A3B8;">
-                    <p style="margin: 0;">Verified service hours report dispatched from <strong>DutyLog Pro</strong></p>
+                    <p style="margin: 0;">Sent via <strong>DutyLog</strong></p>
                     <p style="margin: 4px 0 0; color: #00853F; font-weight: 700;">Made by Lawson Morris · lawsonmorris.uk</p>
                 </div>
             </div>`;
@@ -1148,7 +1395,7 @@
                                 <span class="tag tag-badge !text-[8px]">Verified Email</span>
                             </div>
                             <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
-                                Dispatches an authenticated, formatted operational report directly from 
+                                Dispatches a verified, formatted shift summary directly from 
                                 <strong class="text-emerald-600 dark:text-emerald-400">${smtpConfig.senderEmail}</strong> 
                                 to your officer, division, or yourself.
                             </p>
@@ -1160,7 +1407,7 @@
                                     <label class="text-[11px] font-bold text-slate-500 block">Recipient Email Address</label>
                                     ${userEmail ? `
                                         <button type="button" onclick="document.getElementById('export-recipient-input').value = '${userEmail}'" class="text-[10px] font-bold text-emerald-600 hover:underline">
-                                            Send to Myself (${userEmail})
+                                             Send to Myself (${userEmail})
                                         </button>
                                     ` : ''}
                                 </div>
@@ -1168,8 +1415,8 @@
                             </div>
 
                             <div>
-                                <label class="text-[11px] font-bold text-slate-500 block mb-1">Optional Officer Note</label>
-                                <input type="text" id="export-notes-input" placeholder="e.g. Monthly shift verification sign-off" class="input-field text-xs">
+                                <label class="text-[11px] font-bold text-slate-500 block mb-1">Optional Note</label>
+                                <input type="text" id="export-notes-input" placeholder="e.g. Monthly shift sign-off or remarks" class="input-field text-xs">
                             </div>
 
                             <div class="pt-1 flex flex-col gap-2">
@@ -1181,7 +1428,7 @@
 
                         <div class="border-t border-slate-100 dark:border-slate-800 pt-2">
                             <button type="button" onclick="toggleExportPreview()" class="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center gap-1.5">
-                                <i class="fas fa-eye"></i> <span id="preview-toggle-text">Preview DutyLog Email Certificate</span>
+                                <i class="fas fa-eye"></i> <span id="preview-toggle-text">Preview DutyLog Email Summary</span>
                             </button>
                             <div id="export-preview-container" class="hidden mt-2 p-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-h-60 overflow-y-auto"></div>
                         </div>
@@ -1226,7 +1473,7 @@
                 if (txt) txt.innerText = 'Hide Preview';
             } else {
                 box.classList.add('hidden');
-                if (txt) txt.innerText = 'Preview DutyLog Email Certificate';
+                if (txt) txt.innerText = 'Preview DutyLog Email Summary';
             }
         };
 
@@ -1243,7 +1490,7 @@
             const smtpConfig = getSmtpConfig();
             const volunteer = state.profile?.name || 'Member';
             const division = state.profile?.division || 'City of Cardiff';
-            const subject = `DutyLog Pro — Operational Hours Summary | ${volunteer} | ${division}`;
+            const subject = `DutyLog — Shift Summary | ${volunteer} | ${division}`;
             const plainText = buildHoursExportBody(notes);
             const htmlContent = buildHoursExportHtml(notes);
 
@@ -1568,12 +1815,7 @@
             try {
                 const { data, error } = await sb.from('hours_logs').select('*').eq('user_id', state.user.id).order('date', { ascending: false });
                 if (error) throw error;
-                state.currentDuties = (data || []).sort((a, b) => {
-                    if (!a.date && !b.date) return 0;
-                    if (!a.date) return 1;
-                    if (!b.date) return -1;
-                    return String(b.date).localeCompare(String(a.date));
-                });
+                state.currentDuties = data || [];
                 let totalMin = 0;
                 state.currentDuties.forEach(d => {
                     const t = parseDatabaseHoursToUiTime(d.total_hours);
@@ -1592,17 +1834,109 @@
             } catch(e){}
         }
 
-        async function loadFeedPosts() {
+        let isFeedLoading = false;
+        async function loadFeedPosts(isManual = false) {
+            if (isFeedLoading) return;
+            isFeedLoading = true;
+
+            const icon = document.getElementById('feed-refresh-icon');
+            if (icon) icon.classList.add('fa-spin');
+
+            const fCont = document.getElementById('feed-container');
+
             try {
-                const { data, error } = await sb.from('feed_posts').select('*, profiles(name, avatar_url, badge)').order('created_at', { ascending: false });
-                if (error) throw error;
-                state.feedPosts = data || [];
-                saveLocalCache('feed', state.feedPosts);
-                if (state.currentView === 'feed') {
-                    const fCont = document.getElementById('feed-container');
-                    if(fCont) fCont.innerHTML = renderFeedHTML(state.feedPosts);
+                let posts = null;
+
+                // Strategy 1: Relational join with profiles
+                try {
+                    const res = await sb.from('feed_posts')
+                        .select('*, profiles(name, avatar_url, badge)')
+                        .order('created_at', { ascending: false });
+                    if (!res.error && Array.isArray(res.data)) {
+                        posts = res.data;
+                    }
+                } catch(joinErr) {}
+
+                // Strategy 2: Flat select if relational foreign-key query failed
+                if (!posts) {
+                    try {
+                        const res2 = await sb.from('feed_posts')
+                            .select('*')
+                            .order('created_at', { ascending: false });
+                        if (!res2.error && Array.isArray(res2.data)) {
+                            const userIds = [...new Set(res2.data.map(p => p.user_id).filter(Boolean))];
+                            let profilesMap = {};
+                            if (userIds.length > 0) {
+                                try {
+                                    const profRes = await sb.from('profiles').select('id, name, avatar_url, badge').in('id', userIds);
+                                    if (profRes.data) {
+                                        profRes.data.forEach(pr => { profilesMap[pr.id] = pr; });
+                                    }
+                                } catch(pErr){}
+                            }
+                            posts = res2.data.map(p => ({
+                                ...p,
+                                profiles: profilesMap[p.user_id] || { name: 'Member', badge: 'Cadet', avatar_url: null }
+                            }));
+                        }
+                    } catch(selErr) {}
                 }
-            } catch(e){}
+
+                // Strategy 3: Direct fetch to Supabase REST endpoint with abort timeout
+                if (!posts) {
+                    try {
+                        const controller = new AbortController();
+                        const timer = setTimeout(() => controller.abort(), 6000);
+                        const restRes = await fetch(`${supabaseUrl}/rest/v1/feed_posts?select=*&order=created_at.desc`, {
+                            headers: {
+                                'apikey': supabaseKey,
+                                'Authorization': `Bearer ${supabaseKey}`
+                            },
+                            signal: controller.signal
+                        });
+                        clearTimeout(timer);
+                        if (restRes.ok) {
+                            const raw = await restRes.json();
+                            if (Array.isArray(raw)) {
+                                posts = raw;
+                            }
+                        }
+                    } catch(restErr){}
+                }
+
+                if (posts) {
+                    state.feedPosts = posts;
+                    if (state.currentView === 'feed' && fCont) {
+                        fCont.innerHTML = renderFeedHTML(state.feedPosts);
+                    }
+                    try {
+                        saveLocalCache('feed', state.feedPosts);
+                    } catch (cacheErr) {
+                        console.warn("Feed caching error ignored:", cacheErr);
+                    }
+                } else if (state.currentView === 'feed' && fCont) {
+                    const cached = getLocalCache('feed');
+                    if (cached && cached.length) {
+                        state.feedPosts = cached;
+                        fCont.innerHTML = renderFeedHTML(cached);
+                    } else if (!state.feedPosts.length) {
+                        fCont.innerHTML = `
+                            <div class="text-center py-12 px-4 space-y-3 glass-card">
+                                <i class="fas fa-satellite-dish text-slate-400 text-2xl"></i>
+                                <p class="text-xs text-slate-500 font-semibold">Could not refresh stream just now.</p>
+                                <button onclick="loadFeedPosts(true)" class="px-4 py-2 bg-[#00853F] text-white rounded-xl text-xs font-bold shadow-sm hover:opacity-90">
+                                    <i class="fas fa-redo mr-1.5"></i> Try Again
+                                </button>
+                            </div>
+                        `;
+                    }
+                }
+            } catch(e) {
+                console.error("loadFeedPosts error:", e);
+            } finally {
+                isFeedLoading = false;
+                if (icon) icon.classList.remove('fa-spin');
+            }
         }
 
         async function handleLogin(e) {
@@ -1632,9 +1966,7 @@
             const logObj = { 
                 user_id: state.user.id, 
                 title: document.getElementById('duty-title').value, 
-                date: document.getElementById('duty-date-forgotten').checked
-                    ? null
-                    : (document.getElementById('duty-date').value || null),
+                date: document.getElementById('duty-date').value, 
                 total_hours: decimalVal 
             };
             
@@ -1717,27 +2049,85 @@
             const fileInput = document.getElementById('feed-file-input');
             const file = fileInput.files ? fileInput.files[0] : null;
             
-            if (btn) { btn.innerText = "Uploading..."; btn.disabled = true; }
+            if (btn) { btn.innerText = "Publishing..."; btn.disabled = true; }
             let mediaUrl = null, mediaType = 'image';
 
             if (file) {
                 mediaType = file.type.startsWith('video') ? 'video' : 'image';
-                mediaUrl = await new Promise((res) => {
-                    const r = new FileReader();
-                    r.onload = (e) => res(e.target.result);
-                    r.readAsDataURL(file);
-                });
+                if (mediaType === 'image') {
+                    // Compress camera images to max 900x900 JPEG to keep data size tiny (<80KB)
+                    mediaUrl = await new Promise((res) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const img = new Image();
+                            img.onload = () => {
+                                const maxDim = 900;
+                                let w = img.width, h = img.height;
+                                if (w > maxDim || h > maxDim) {
+                                    if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+                                    else { w = Math.round((w * maxDim) / h); h = maxDim; }
+                                }
+                                const canvas = document.createElement('canvas');
+                                canvas.width = w; canvas.height = h;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(img, 0, 0, w, h);
+                                res(canvas.toDataURL('image/jpeg', 0.75));
+                            };
+                            img.onerror = () => res(e.target.result);
+                            img.src = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                } else {
+                    mediaUrl = await new Promise((res) => {
+                        const r = new FileReader();
+                        r.onload = (e) => res(e.target.result);
+                        r.readAsDataURL(file);
+                    });
+                }
             }
+
+            // Optimistic prepend
+            const optimisticPost = {
+                id: 'local-' + Date.now(),
+                user_id: state.user.id,
+                description: desc,
+                media_url: mediaUrl,
+                media_type: mediaType,
+                liked_by: [],
+                comments: [],
+                created_at: new Date().toISOString(),
+                profiles: {
+                    name: state.profile?.name || 'Member',
+                    badge: state.profile?.badge || 'Cadet',
+                    avatar_url: state.profile?.avatar_url || null
+                }
+            };
+            state.feedPosts = [optimisticPost, ...state.feedPosts];
+            const fCont = document.getElementById('feed-container');
+            if (fCont && state.currentView === 'feed') {
+                fCont.innerHTML = renderFeedHTML(state.feedPosts);
+            }
+            try {
+                saveLocalCache('feed', state.feedPosts);
+            } catch(e) {}
+            document.getElementById('publish-modal')?.remove();
 
             try {
                 const { error } = await sb.from('feed_posts').insert({
-                    user_id: state.user.id, description: desc, media_url: mediaUrl, media_type: mediaType, liked_by: [], comments: [], created_at: new Date().toISOString()
+                    user_id: state.user.id,
+                    description: desc,
+                    media_url: mediaUrl,
+                    media_type: mediaType,
+                    liked_by: [],
+                    comments: [],
+                    created_at: optimisticPost.created_at
                 });
                 if (error) throw error;
-                document.getElementById('publish-modal').remove();
-                loadFeedPosts();
+                loadFeedPosts(true);
             } catch(e) { 
-                if (btn) { btn.innerText = "Publish Post"; btn.disabled = false; }
+                console.warn("Post insert notice:", e);
+                loadFeedPosts(true);
             }
         }
 
@@ -1779,12 +2169,25 @@
                 const fiveDays = 5 * 24 * 60 * 60 * 1000;
                 if (!lastPing || (now - parseInt(lastPing)) > fiveDays) {
                     await sb.from('profiles').select('id').limit(1);
-                    localStorage.setItem('dutylog_last_keepalive_ping', now.toString());
+                    safeSetItem('dutylog_last_keepalive_ping', now.toString());
                 }
             } catch(err) {}
         }
 
         async function init() {
+            // Proactively prune any oversized storage keys to guarantee quota availability
+            try {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && (k.startsWith('dutylog_pro_feed') || k.startsWith('dutylog_feed'))) {
+                        const val = localStorage.getItem(k);
+                        if (val && val.length > 200000) {
+                            localStorage.removeItem(k);
+                        }
+                    }
+                }
+            } catch(e) {}
+
             pinAppToVisualViewport();
             window.addEventListener('resize', pinAppToVisualViewport);
             window.visualViewport?.addEventListener('resize', pinAppToVisualViewport);
