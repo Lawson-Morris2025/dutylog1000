@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ping Supabase</title>
+</head>
+<body style="font-family: monospace; padding: 20px; background: #0f172a; color: #f8fafc;">
+    <div id="status">Pinging Supabase...</div>
+
+    <script>
+        const url = 'https://qgyjfyazkkepmkztnezv.supabase.co/auth/v1/health';
+        const key = 'sb_publishable_xea7e2zxnarbh2bT6vG5ew__2DhOj34';
+        const statusEl = document.getElementById('status');
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'apikey': key
+            }
+        })
+        .then(async (res) => {
+            // Also ping database endpoint to wake up database
+            await fetch('https://qgyjfyazkkepmkztnezv.supabase.co/rest/v1/profiles?select=id&limit=1', {
+                method: 'GET',
+                headers: {
+                    'apikey': key,
+                    'Authorization': `Bearer ${key}`
+                }
+            }).catch(() => {});
+
+            if (res.ok) {
+                statusEl.textContent = 'OK - Supabase pinged successfully at ' + new Date().toISOString();
+            } else {
+                statusEl.textContent = 'Ping responded with status ' + res.status;
+            }
+        })
+        .catch(err => {
+            statusEl.textContent = 'Error pinging Supabase: ' + err.message;
+        });
+    </script>
+</body>
+</html>
