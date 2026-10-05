@@ -256,6 +256,11 @@
     </div>
 
     <script>
+        // If arrived with recovery tokens from Supabase email, redirect to dedicated reset password page
+        if (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery')) {
+            window.location.href = '/reset-password.html' + window.location.search + window.location.hash;
+        }
+
         const supabaseUrl = 'https://qgyjfyazkkepmkztnezv.supabase.co';
         const supabaseKey = 'sb_publishable_xea7e2zxnarbh2bT6vG5ew__2DhOj34';
         
@@ -359,7 +364,7 @@
                 const nav = document.getElementById('bottom-nav');
                 if (!container || !nav) return;
                 
-                const isAuthView = ['welcome', 'login', 'signup', 'verify-email', 'force-change-password'].includes(view);
+                const isAuthView = ['welcome', 'login', 'signup', 'verify-email', 'force-change-password', 'reset-password', 'forgot-password'].includes(view);
                 
                 if (!state.user && !isAuthView) {
                     state.currentView = 'welcome';
@@ -418,7 +423,7 @@
                 return `<div class="glass-card p-4 flex justify-between items-center cursor-pointer hover:opacity-80 transition-all" onclick="triggerEditDuty('${d.id}')">
                     <div class="truncate mr-2">
                         <p class="font-bold text-sm truncate" style="color: var(--text-main);">${d.title || 'Untitled Shift'}</p>
-                        <p class="text-[10px] text-slate-400">${d.date}</p>
+                        <p class="text-[10px] text-slate-400 font-medium">${d.date ? d.date : '<span class="text-amber-500 font-semibold">Date: N/A</span>'}</p>
                     </div>
                     <p class="font-black text-green-600 text-sm flex-shrink-0">+${t.hours}h ${t.minutes}m</p>
                 </div>`;
@@ -446,9 +451,51 @@
                 <form onsubmit="handleLogin(event)" class="space-y-4">
                     <input type="email" id="login-email" placeholder="Email" autocomplete="username" required class="input-field">
                     <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" required class="input-field">
+                    <div class="flex justify-end pt-0.5">
+                        <button type="button" onclick="openForgotPasswordFlow()" class="text-xs font-semibold text-[#00853F] hover:underline inline-flex items-center gap-1 cursor-pointer">
+                            <i class="fas fa-key text-[10px]"></i> Forgot Password?
+                        </button>
+                    </div>
                     <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
                 </form>
             </div>`,
+
+            'forgot-password': async () => {
+                const prefilledEmail = state.cachedLoginEmail || '';
+                return `<div class="pt-4 max-w-sm mx-auto space-y-4">
+                    <div onclick="router.navigate('login')" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Login</div>
+                    
+                    <div class="text-center py-4 space-y-2">
+                        <div class="w-14 h-14 bg-emerald-50 dark:bg-emerald-950/40 border-2 border-[#00853F] text-[#00853F] rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-sm">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold tracking-tight">Forgot Password</h2>
+                        <p class="text-xs text-slate-400">Enter your email and we'll send you a link to reset your password.</p>
+                    </div>
+
+                    <form onsubmit="handleSendResetEmail(event)" class="space-y-4">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Account Email</label>
+                            <input type="email" id="forgot-password-email" value="${prefilledEmail}" placeholder="your.email@example.com" required autocomplete="email" class="input-field">
+                        </div>
+                        <button type="submit" id="send-reset-btn" class="btn-primary">
+                            <i class="fas fa-paper-plane mr-1.5"></i> Send Reset Link
+                        </button>
+                    </form>
+
+                    <div id="forgot-pw-success-box" class="hidden mt-4 p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 rounded-2xl text-xs space-y-2 text-emerald-800 dark:text-emerald-300">
+                        <div class="font-bold flex items-center gap-1.5 text-sm">
+                            <i class="fas fa-check-circle text-emerald-600"></i> Reset Link Dispatched!
+                        </div>
+                        <p class="leading-relaxed">We sent a reset link to <strong id="sent-confirmation-email" class="underline"></strong>. Open the email and click the link to go to the password reset page.</p>
+                    </div>
+                </div>`;
+            },
+
+            'reset-password': async () => {
+                window.location.href = '/reset-password.html';
+                return `<div class="p-8 text-center text-xs text-slate-400">Opening Password Reset...</div>`;
+            },
 
             signup: async () => `<div class="pt-4 max-w-sm mx-auto">
                 <div onclick="router.navigate('welcome')" class="back-btn"><i class="fas fa-arrow-left"></i> Back</div>
@@ -657,12 +704,30 @@
                     switchTimeInputMode('duration', parsedTime.hours, parsedTime.minutes);
                 }, 15);
 
+                const isDateNA = !targetLog.date || targetLog.date === 'N/A';
+                const initialDateValue = isDateNA ? '' : targetLog.date;
+
                 return `<div class="px-2 space-y-4 pb-12">
                     <h2 class="text-2xl font-bold">${state.editingDutyId ? 'Modify Shift Record' : 'Log Shift Record'}</h2>
                     
                     <form onsubmit="handleSaveDuty(event)" class="space-y-4">
                         <input type="text" id="duty-title" placeholder="Event / Shift Title" value="${targetLog.title}" required class="input-field">
-                        <input type="date" id="duty-date" value="${targetLog.date}" class="input-field">
+                        
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Shift Date</label>
+                                <label class="inline-flex items-center gap-1.5 cursor-pointer select-none text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100">
+                                    <input type="checkbox" id="duty-date-na-check" onchange="toggleDutyDateNA(this.checked)" ${isDateNA ? 'checked' : ''} class="w-3.5 h-3.5 rounded text-[#00853F] accent-[#00853F] cursor-pointer">
+                                    <span>Date Unknown / N/A</span>
+                                </label>
+                            </div>
+                            <div class="relative">
+                                <input type="date" id="duty-date" value="${initialDateValue}" class="input-field ${isDateNA ? 'opacity-30 pointer-events-none' : ''}">
+                                <div id="duty-date-na-badge" class="${isDateNA ? 'flex' : 'hidden'} absolute inset-0 items-center px-4 bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-xl text-slate-500 dark:text-slate-400 font-bold text-xs select-none">
+                                    <i class="fas fa-calendar-times mr-2 text-amber-500"></i> Date: Not Applicable (N/A)
+                                </div>
+                            </div>
+                        </div>
                         
                         <div class="glass-card p-4 space-y-4">
                             <div class="flex justify-center gap-2 border-b pb-3 border-slate-100 dark:border-slate-800">
@@ -725,6 +790,14 @@
                     <h3 class="font-bold text-sm border-b pb-2 border-slate-100 dark:border-slate-800"><i class="fas fa-file-export mr-2 text-indigo-600"></i>Export Hours Data</h3>
                     <p class="text-[11px] text-slate-400">Compile your logged shift timeline to spreadsheets, text summaries, or structured emails.</p>
                     <button onclick="openExportModal()" class="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold text-xs shadow-sm"><i class="fas fa-file-export mr-2"></i>Export Summary</button>
+                </div>
+
+                <div class="glass-card p-5 space-y-3">
+                    <h3 class="font-bold text-sm border-b pb-2 border-slate-100 dark:border-slate-800"><i class="fas fa-shield-alt mr-2 text-[#00853F]"></i>Account Security</h3>
+                    <p class="text-[11px] text-slate-400">Update your account password or request a password reset link.</p>
+                    <a href="/reset-password.html" class="w-full inline-flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 p-3 rounded-xl font-bold text-xs shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                        <i class="fas fa-key mr-2 text-[#00853F]"></i>Reset / Change Password
+                    </a>
                 </div>
 
                 <button onclick="handleLogout()" class="w-full bg-red-500 text-white p-4 rounded-2xl font-bold shadow-md">Sign Out Account</button>
@@ -1253,7 +1326,7 @@
                 state.currentDuties.forEach((d, i) => {
                     const t = parseDatabaseHoursToUiTime(d.total_hours);
                     const n = String(i + 1).padStart(2, '0');
-                    body += `${n}.  ${d.date}  |  ${d.title || 'Shift'}  |  ${t.hours}h ${t.minutes}m\n`;
+                    body += `${n}.  ${d.date || 'N/A'}  |  ${d.title || 'Shift'}  |  ${t.hours}h ${t.minutes}m\n`;
                 });
             }
 
@@ -1271,7 +1344,7 @@
             const rowsHtml = state.currentDuties.map((d, i) => {
                 const t = parseDatabaseHoursToUiTime(d.total_hours);
                 return `<tr style="border-bottom: 1px solid #F1F5F9;">
-                    <td style="padding: 12px 14px; font-size: 13px; color: #64748B; white-space: nowrap;">${escapeHtml(d.date)}</td>
+                    <td style="padding: 12px 14px; font-size: 13px; color: #64748B; white-space: nowrap;">${escapeHtml(d.date || 'N/A')}</td>
                     <td style="padding: 12px 14px; font-size: 13px; font-weight: 600; color: #0F172A;">${escapeHtml(d.title || 'Shift')}</td>
                     <td style="padding: 12px 14px; font-size: 13px; font-weight: 700; color: #00853F; text-align: right; white-space: nowrap;">+${t.hours}h ${t.minutes}m</td>
                 </tr>`;
@@ -1675,7 +1748,7 @@
             state.currentDuties.forEach(d => {
                 const t = parseDatabaseHoursToUiTime(d.total_hours);
                 const decimalHours = (t.hours + (t.minutes / 60)).toFixed(2);
-                csvRows.push(`"${(d.title || 'Untitled').replace(/"/g, '""')}","${d.date}",${decimalHours},"${t.hours}h ${t.minutes}m"`);
+                csvRows.push(`"${(d.title || 'Untitled').replace(/"/g, '""')}","${d.date || 'N/A'}",${decimalHours},"${t.hours}h ${t.minutes}m"`);
             });
             const blob = new Blob([csvRows.join("\r\n")], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
@@ -1994,6 +2067,47 @@
             }
         }
 
+        window.openForgotPasswordFlow = function() {
+            const loginEmailInput = document.getElementById('login-email');
+            state.cachedLoginEmail = loginEmailInput?.value?.trim() || '';
+            router.navigate('forgot-password');
+        };
+
+        window.handleSendResetEmail = async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('forgot-password-email')?.value?.trim();
+            if (!email) return;
+
+            const btn = document.getElementById('send-reset-btn');
+            const orig = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i> Sending Link...';
+            }
+
+            try {
+                // Point the reset link directly to the reset password page
+                const resetRedirectUrl = window.location.origin + '/reset-password.html';
+                const { error } = await sb.auth.resetPasswordForEmail(email, {
+                    redirectTo: resetRedirectUrl
+                });
+
+                if (error) throw error;
+
+                const successBox = document.getElementById('forgot-pw-success-box');
+                const emailSpan = document.getElementById('sent-confirmation-email');
+                if (emailSpan) emailSpan.innerText = email;
+                if (successBox) successBox.classList.remove('hidden');
+                if (btn) btn.innerHTML = '<i class="fas fa-check mr-1.5"></i> Reset Email Sent';
+            } catch (err) {
+                alert('Failed to send reset link: ' + (err.message || 'Please check the email and try again.'));
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = orig;
+                }
+            }
+        };
+
         async function handleLogin(e) {
             e.preventDefault();
             const btn = document.getElementById('login-btn');
@@ -2012,16 +2126,45 @@
 
         window.triggerEditDuty = function(id) { state.editingDutyId = id; router.navigate('add-duty'); };
 
+        window.toggleDutyDateNA = function(isNA) {
+            const dateInput = document.getElementById('duty-date');
+            const naBadge = document.getElementById('duty-date-na-badge');
+            if (isNA) {
+                if (dateInput) {
+                    if (dateInput.value) dateInput.dataset.savedDate = dateInput.value;
+                    dateInput.value = '';
+                    dateInput.classList.add('opacity-30', 'pointer-events-none');
+                }
+                if (naBadge) {
+                    naBadge.classList.remove('hidden');
+                    naBadge.classList.add('flex');
+                }
+            } else {
+                if (dateInput) {
+                    dateInput.value = dateInput.dataset.savedDate || new Date().toISOString().split('T')[0];
+                    dateInput.classList.remove('opacity-30', 'pointer-events-none');
+                }
+                if (naBadge) {
+                    naBadge.classList.remove('flex');
+                    naBadge.classList.add('hidden');
+                }
+            }
+        };
+
         async function handleSaveDuty(e) {
             e.preventDefault();
             const h = state.calculatedHours;
             const m = state.calculatedMinutes;
             const decimalVal = parseFloat(`${h}.${m < 10 ? '0' + m : m}`);
             
+            const isNA = document.getElementById('duty-date-na-check')?.checked;
+            const enteredDate = document.getElementById('duty-date')?.value?.trim();
+            const dateValue = isNA ? null : (enteredDate || null);
+
             const logObj = { 
                 user_id: state.user.id, 
                 title: document.getElementById('duty-title').value, 
-                date: document.getElementById('duty-date').value, 
+                date: dateValue, 
                 total_hours: decimalVal 
             };
             
@@ -2034,7 +2177,9 @@
                     const { error } = await sb.from('hours_logs').insert(logObj);
                     if (error) throw error;
                 }
-            } catch(err){}
+            } catch(err){
+                console.error("Save duty error:", err);
+            }
             router.navigate('dashboard');
         }
 
