@@ -5,11 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DutyLog</title>
     
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="manifest" href="/site.webmanifest">
-    
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1010,8 +1005,8 @@
                     return __RESEND_API_KEY__.trim();
                 }
                 if (typeof process !== 'undefined' && process.env) {
-                    if (process.env.Resend_api_key) return process.env.Resend_api_key.trim();
                     if (process.env.RESEND_API_KEY) return process.env.RESEND_API_KEY.trim();
+                    if (process.env.Resend_api_key) return process.env.Resend_api_key.trim();
                 }
             } catch(e) {}
             // 2. Custom override from local storage
