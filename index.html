@@ -4,11 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DutyLog</title>
-
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="manifest" href="/site.webmanifest">
     
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -224,7 +219,7 @@
                 <div class="w-20 h-20 bg-emerald-500/20 border-2 border-emerald-400 rounded-full flex items-center justify-center mb-6">
                     <i class="fas fa-user-shield text-emerald-400 text-3xl"></i>
                 </div>
-                <h2 class="text-2xl font-black px-6 text-emerald-400">Built by a cadet, for cadets</h2>
+                <h2 class="text-2xl font-black px-6 text-emerald-400">Shift & Hours Tracking</h2>
                 <p class="text-xs text-slate-300 font-medium mt-3 px-8 leading-relaxed">Designed specifically for divisional duty logging and service tracking.</p>
             </div>
 
@@ -238,8 +233,8 @@
         </div>
 
         <div class="text-center space-y-1">
-            <p class="text-xs font-semibold text-slate-200 tracking-wide">Made by Lawson Morris</p>
-            <p class="text-[10px] font-mono text-emerald-400/80 tracking-widest uppercase">lawsonmorris.uk</p>
+            <p class="text-xs font-semibold text-slate-200 tracking-wide">Made by Lawson Morris | lawsonmorris.uk</p>
+            <p class="text-[10px] font-mono text-emerald-400/80 tracking-widest uppercase">dutylog.uk</p>
         </div>
     </div>
 
@@ -286,7 +281,7 @@
             timeInputMode: 'duration',
             calculatedHours: 0,
             calculatedMinutes: 0,
-            pendingSignup: null,
+            pendingSignup: (() => { try { return JSON.parse(sessionStorage.getItem('dutylog_pending_signup')); } catch(e) { return null; } })(),
             betaUnlocked: localStorage.getItem('dutylog_beta_unlocked') === 'true',
             settingsOpen: false,
             darkMode: localStorage.getItem('dutylog_theme') === 'dark',
@@ -438,15 +433,21 @@
         }
 
         const views = {
-            welcome: async () => `<div class="flex flex-col items-center justify-center min-h-[80vh] text-center space-y-8">
-                <div class="w-24 h-24 bg-white border-4 border-[#00853F] rounded-[2rem] flex items-center justify-center shadow-2xl"><i class="fas fa-clock text-[#00853F] text-5xl"></i></div>
+            welcome: async () => `<div class="flex flex-col items-center justify-center min-h-[85vh] text-center space-y-6 max-w-md mx-auto px-4 py-8">
+                <div>
+                    <div class="w-24 h-24 bg-white dark:bg-slate-900 border-4 border-[#00853F] rounded-[2rem] flex items-center justify-center shadow-2xl mx-auto"><i class="fas fa-clock text-[#00853F] text-5xl"></i></div>
+                </div>
                 <div>
                     <h1 class="text-4xl font-black" style="color: var(--text-main);">DutyLog</h1>
-                    <p class="text-xs text-slate-400 font-medium mt-1">Shift & Hours Tracking Utility</p>
+                    <p class="text-xs text-slate-400 font-medium mt-1">Shift &amp; Hours Tracking Utility</p>
                 </div>
-                <div class="w-full space-y-3 px-4 max-w-xs">
+                <div class="w-full space-y-3 max-w-xs">
                     <button onclick="router.navigate('login')" class="btn-primary">Login</button>
-                    <button onclick="router.navigate('signup')" class="w-full bg-white dark:bg-slate-800 border-2 border-[#1B263B] dark:border-slate-600 py-4 rounded-2xl font-bold" style="color: var(--text-main);">Register Division Account</button>
+                    <button onclick="router.navigate('signup')" class="w-full bg-white dark:bg-slate-800 border-2 border-[#1B263B] dark:border-slate-600 py-3.5 rounded-2xl font-bold text-sm" style="color: var(--text-main);">Register Division Account</button>
+                </div>
+                <div class="text-[11px] text-slate-400 pt-3 border-t border-slate-200 dark:border-slate-800 w-full max-w-xs flex flex-col items-center gap-1">
+                    <span>Questions?</span>
+                    <a href="mailto:lawson@dutylog.uk" class="text-[#00853F] dark:text-emerald-400 font-bold font-mono hover:underline">lawson@dutylog.uk</a>
                 </div>
             </div>`,
 
@@ -493,6 +494,11 @@
                             <i class="fas fa-check-circle text-emerald-600"></i> Reset Link Dispatched!
                         </div>
                         <p class="leading-relaxed">We sent a reset link to <strong id="sent-confirmation-email" class="underline"></strong>. Open the email and click the link to go to the password reset page.</p>
+                        <div class="pt-1 border-t border-emerald-500/20">
+                            <a href="/reset-password.html" class="inline-flex items-center gap-1.5 font-bold text-[#00853F] dark:text-emerald-400 hover:underline">
+                                <i class="fas fa-external-link-alt text-xs"></i> Open Password Reset Page Directly
+                            </a>
+                        </div>
                     </div>
                 </div>`;
             },
@@ -502,15 +508,78 @@
                 return `<div class="p-8 text-center text-xs text-slate-400">Opening Password Reset...</div>`;
             },
 
-            signup: async () => `<div class="pt-4 max-w-sm mx-auto">
+            signup: async () => `<div class="pt-4 max-w-sm mx-auto space-y-4">
                 <div onclick="router.navigate('welcome')" class="back-btn"><i class="fas fa-arrow-left"></i> Back</div>
-                <h2 class="text-2xl font-bold mb-6">Create Account</h2>
+                <div>
+                    <h2 class="text-2xl font-bold">Create Account</h2>
+                    <p class="text-xs text-slate-400 mt-1">Join DutyLog to track shifts, log hours, and display your role badge.</p>
+                </div>
                 <form onsubmit="handleSignup(event)" class="space-y-4">
-                    <input type="text" id="signup-name" placeholder="Full Name" required class="input-field">
-                    <input type="text" id="signup-division" placeholder="Division (e.g. City of Cardiff)" required class="input-field">
-                    <input type="email" id="signup-email" placeholder="Email" required class="input-field">
-                    <input type="password" id="signup-password" placeholder="Password" required class="input-field">
-                    <button type="submit" id="signup-btn" class="btn-primary">Continue to Email Verification</button>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Full Name</label>
+                        <input type="text" id="signup-name" placeholder="e.g. Alex Morgan" required class="input-field">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Division</label>
+                        <input type="text" id="signup-division" placeholder="e.g. City of Cardiff" required class="input-field">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                            <i class="fas fa-id-badge text-[#00853F] mr-1"></i> Role (Sets Profile Badge)
+                        </label>
+                        <select id="signup-role-select" onchange="handleSignupRoleSelect(this.value)" required class="input-field font-semibold text-sm cursor-pointer">
+                            <option value="Cadet" selected>Cadet</option>
+                            <option value="Cadet Responder">Cadet Responder</option>
+                            <option value="Cadet First Aider">Cadet First Aider</option>
+                            <option value="Cadet Leader">Cadet Leader</option>
+                            <option value="__other__">Other / Custom Role...</option>
+                        </select>
+                        <div id="signup-custom-role-container" class="hidden mt-2">
+                            <input type="text" id="signup-role-custom" placeholder="Enter custom role / badge (e.g. Cadet Sergeant)" class="input-field text-sm">
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1">This role will be updated as your badge in your profiles column.</p>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Email Address</label>
+                        <input type="email" id="signup-email" placeholder="name@example.com" required class="input-field">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Password</label>
+                        <div class="relative">
+                            <input type="password" id="signup-password" placeholder="Create password" required oninput="validateSignupPasswordLive()" class="input-field pr-10">
+                            <button type="button" onclick="togglePasswordVisibility('signup-password', 'toggle-signup-pw-icon')" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" aria-label="Toggle password view">
+                                <i id="toggle-signup-pw-icon" class="fas fa-eye text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Confirm Password</label>
+                        <div class="relative">
+                            <input type="password" id="signup-password-confirm" placeholder="Re-enter password" required oninput="validateSignupPasswordLive()" class="input-field pr-10">
+                            <button type="button" onclick="togglePasswordVisibility('signup-password-confirm', 'toggle-signup-pw-confirm-icon')" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" aria-label="Toggle password view">
+                                <i id="toggle-signup-pw-confirm-icon" class="fas fa-eye text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Password rules checklist -->
+                    <div class="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-xs space-y-1.5">
+                        <div class="font-bold text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Password Requirements:</div>
+                        <div id="req-len" class="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-xs transition-colors">
+                            <i class="fas fa-circle text-[8px] opacity-40"></i> <span>At least 6 characters</span>
+                        </div>
+                        <div id="req-cap" class="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-xs transition-colors">
+                            <i class="fas fa-circle text-[8px] opacity-40"></i> <span>At least 1 capital letter (A-Z)</span>
+                        </div>
+                        <div id="req-spec" class="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-xs transition-colors">
+                            <i class="fas fa-circle text-[8px] opacity-40"></i> <span>At least 1 special character (!@#$...)</span>
+                        </div>
+                        <div id="req-match" class="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-xs transition-colors">
+                            <i class="fas fa-circle text-[8px] opacity-40"></i> <span>Passwords match</span>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="signup-btn" class="btn-primary !bg-[#00853F]">Continue to Email Verification</button>
                 </form>
             </div>`,
 
@@ -897,7 +966,7 @@
 
                         <div>
                             <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">Email Address</label>
-                            <input type="email" id="beta-req-email" value="${userEmail}" placeholder="e.g. cadet@lawsonmorris.uk" required class="input-field text-sm">
+                            <input type="email" id="beta-req-email" value="${userEmail}" placeholder="e.g. cadet@dutylog.uk" required class="input-field text-sm">
                         </div>
 
                         <div>
@@ -927,17 +996,26 @@
         };
 
         function getResendApiKey() {
+            // 1. Injected from GitHub secret Resend_api_key at build time or runtime
+            try {
+                if (typeof window !== 'undefined' && window.__RESEND_API_KEY__ && typeof window.__RESEND_API_KEY__ === 'string' && window.__RESEND_API_KEY__.trim()) {
+                    return window.__RESEND_API_KEY__.trim();
+                }
+                if (typeof __RESEND_API_KEY__ !== 'undefined' && typeof __RESEND_API_KEY__ === 'string' && __RESEND_API_KEY__.trim()) {
+                    return __RESEND_API_KEY__.trim();
+                }
+                if (typeof process !== 'undefined' && process.env) {
+                    if (process.env.Resend_api_key) return process.env.Resend_api_key.trim();
+                    if (process.env.RESEND_API_KEY) return process.env.RESEND_API_KEY.trim();
+                }
+            } catch(e) {}
+            // 2. Custom override from local storage
             try {
                 const custom = localStorage.getItem('dutylog_resend_api_key');
                 if (custom && custom.trim()) return custom.trim();
             } catch(e) {}
-            // Deconstructed & Base64 encoded token to hide from automated web scanners
-            const chunks = ['cmVf', 'VUNrSGdUQzdf', 'NzJrSkdBZnJTVkg0', 'Wjl0S0E0MWVqMXRW'];
-            try {
-                return atob(chunks.join(''));
-            } catch(e) {
-                return '';
-            }
+            // 3. Configured API Key
+            return 're_BLghjV9v_3DM3cmYU2jUqL3YnnGT3Hbqt';
         }
 
         window.handleBetaRequestSubmit = async function(e) {
@@ -987,13 +1065,15 @@
 
             // Attempt 1: Invoke Supabase Edge Function configured with Resend
             try {
+                const activeResendKey = getResendApiKey();
                 const { data, error } = await sb.functions.invoke('send-export-email', {
                     body: {
-                        to: 'hello@lawsonmorris.uk',
+                        to: 'lawson@dutylog.uk',
                         reply_to: email,
                         subject: subject,
                         html: htmlContent,
-                        text: plainText
+                        text: plainText,
+                        resend_api_key: activeResendKey
                     }
                 });
                 if (!error && (data?.ok || data?.success || !data?.error)) {
@@ -1010,6 +1090,7 @@
             // Attempt 2: Direct HTTP fetch to the Supabase Edge Function
             if (!sent) {
                 try {
+                    const activeResendKey = getResendApiKey();
                     const funcUrl = 'https://qgyjfyazkkepmkztnezv.supabase.co/functions/v1/send-export-email';
                     const res = await fetch(funcUrl, {
                         method: 'POST',
@@ -1019,11 +1100,12 @@
                             'Authorization': `Bearer ${supabaseKey}`
                         },
                         body: JSON.stringify({
-                            to: 'hello@lawsonmorris.uk',
+                            to: 'lawson@dutylog.uk',
                             reply_to: email,
                             subject: subject,
                             html: htmlContent,
-                            text: plainText
+                            text: plainText,
+                            resend_api_key: activeResendKey
                         })
                     });
                     const resJson = await res.json().catch(() => ({}));
@@ -1049,8 +1131,8 @@
                                 'Authorization': `Bearer ${activeResendKey}`
                             },
                             body: JSON.stringify({
-                                from: 'DutyLog <noreply@dutylog.lawsonmorris.uk>',
-                                to: ['hello@lawsonmorris.uk'],
+                                from: 'DutyLog <noreply@dutylog.uk>',
+                                to: ['lawson@dutylog.uk'],
                                 reply_to: email,
                                 subject: subject,
                                 html: htmlContent,
@@ -1073,7 +1155,7 @@
                 alert(`✓ Request submitted! Your beta application has been sent. You will be contacted once reviewed.`);
                 closeBetaRequestModal();
             } else {
-                alert(`Failed to send. Please contact Lawson. Email him if you want (hello@lawsonmorris.uk) or message him if you have his number.`);
+                alert(`It has failed to send. Please contact me by email (lawson@dutylog.uk) or text me.`);
 
                 if (btn) {
                     btn.innerHTML = `<i class="fas fa-paper-plane"></i> Submit Request`;
@@ -1088,8 +1170,10 @@
             const pw2 = document.getElementById('confirm-password-input').value;
             const btn = document.getElementById('save-pw-btn');
 
-            if (pw1 !== pw2) return alert("Passwords do not match. Please re-enter.");
             if (pw1.length < 6) return alert("Password must be at least 6 characters long.");
+            if (!/[A-Z]/.test(pw1)) return alert("Password must contain at least 1 capital letter (A-Z).");
+            if (!/[^A-Za-z0-9\s]/.test(pw1)) return alert("Password must contain at least 1 special character (e.g. !@#$%^&*).");
+            if (pw1 !== pw2) return alert("Passwords do not match. Please re-enter.");
 
             if (btn) { btn.innerText = "Updating Password..."; btn.disabled = true; }
 
@@ -1211,21 +1295,148 @@
             dutyTimerInterval = setInterval(updateClocks, 1000);
         }
 
+        window.togglePasswordVisibility = function(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            if (!input) return;
+            if (input.type === 'password') {
+                input.type = 'text';
+                if (icon) {
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                }
+            } else {
+                input.type = 'password';
+                if (icon) {
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                }
+            }
+        };
+
+        window.handleSignupRoleSelect = function(val) {
+            const customContainer = document.getElementById('signup-custom-role-container');
+            const customInput = document.getElementById('signup-role-custom');
+            if (!customContainer) return;
+            if (val === '__other__') {
+                customContainer.classList.remove('hidden');
+                if (customInput) {
+                    customInput.focus();
+                    customInput.required = true;
+                }
+            } else {
+                customContainer.classList.add('hidden');
+                if (customInput) customInput.required = false;
+            }
+        };
+
+        window.validateSignupPasswordLive = function() {
+            const pw = document.getElementById('signup-password')?.value || '';
+            const pwConfirm = document.getElementById('signup-password-confirm')?.value || '';
+
+            const reqLen = document.getElementById('req-len');
+            const reqCap = document.getElementById('req-cap');
+            const reqSpec = document.getElementById('req-spec');
+            const reqMatch = document.getElementById('req-match');
+
+            const isLen = pw.length >= 6;
+            const isCap = /[A-Z]/.test(pw);
+            const isSpec = /[^A-Za-z0-9\s]/.test(pw);
+            const isMatch = pw.length > 0 && pw === pwConfirm;
+
+            const updateReq = (el, valid, text) => {
+                if (!el) return;
+                if (valid) {
+                    el.className = 'flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-semibold transition-colors';
+                    el.innerHTML = `<i class="fas fa-check-circle text-xs text-emerald-500"></i> <span>${text}</span>`;
+                } else {
+                    el.className = 'flex items-center gap-2 text-slate-400 dark:text-slate-500 text-xs transition-colors';
+                    el.innerHTML = `<i class="fas fa-circle text-[8px] opacity-40"></i> <span>${text}</span>`;
+                }
+            };
+
+            updateReq(reqLen, isLen, "At least 6 characters");
+            updateReq(reqCap, isCap, "At least 1 capital letter (A-Z)");
+            updateReq(reqSpec, isSpec, "At least 1 special character (!@#$...)");
+            updateReq(reqMatch, isMatch, isMatch ? "Passwords match" : (pwConfirm ? "Passwords do not match yet" : "Passwords match"));
+        };
+
         async function handleSignup(e) {
             e.preventDefault();
             const btn = document.getElementById('signup-btn');
-            const name = document.getElementById('signup-name').value;
-            const division = document.getElementById('signup-division').value;
-            const email = document.getElementById('signup-email').value;
-            const password = document.getElementById('signup-password').value;
+            const name = (document.getElementById('signup-name')?.value || '').trim();
+            const division = (document.getElementById('signup-division')?.value || '').trim();
+            const email = (document.getElementById('signup-email')?.value || '').trim();
+            const password = document.getElementById('signup-password')?.value || '';
+            const passwordConfirm = document.getElementById('signup-password-confirm')?.value || '';
+
+            const roleSelect = document.getElementById('signup-role-select')?.value;
+            let role = roleSelect;
+            if (roleSelect === '__other__') {
+                const customRole = (document.getElementById('signup-role-custom')?.value || '').trim();
+                role = customRole || 'Cadet';
+            }
+            if (!role) role = 'Cadet';
+
+            // Validate password requirements: at least 6 characters, 1 capital letter, 1 special character
+            if (password.length < 6) {
+                alert("Password must be at least 6 characters long.");
+                document.getElementById('signup-password')?.focus();
+                return;
+            }
+            if (!/[A-Z]/.test(password)) {
+                alert("Password must contain at least 1 capital letter (A-Z).");
+                document.getElementById('signup-password')?.focus();
+                return;
+            }
+            if (!/[^A-Za-z0-9\s]/.test(password)) {
+                alert("Password must contain at least 1 special character (e.g. !@#$%^&*).");
+                document.getElementById('signup-password')?.focus();
+                return;
+            }
+            if (password !== passwordConfirm) {
+                alert("Passwords do not match. Please make sure you enter your password twice and that both match.");
+                document.getElementById('signup-password-confirm')?.focus();
+                return;
+            }
 
             if (btn) { btn.innerText = "Sending Code..."; btn.disabled = true; }
 
             try {
-                const { data, error } = await sb.auth.signUp({ email, password });
+                const { data, error } = await sb.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            name,
+                            division,
+                            badge: role,
+                            role: role
+                        }
+                    }
+                });
                 if (error) throw error;
                 
-                state.pendingSignup = { email, password, name, division, userId: data?.user?.id };
+                state.pendingSignup = { email, password, name, division, role, userId: data?.user?.id };
+                try {
+                    sessionStorage.setItem('dutylog_pending_signup', JSON.stringify(state.pendingSignup));
+                } catch(err){}
+
+                // If session is immediately available (e.g. auto-confirm enabled)
+                if (data?.session) {
+                    const userId = data.session.user.id;
+                    await sb.from('profiles').upsert({
+                        id: userId,
+                        email: email,
+                        name: name,
+                        division: division,
+                        badge: role
+                    });
+                    alert(`Account created successfully! Profile badge set to ${role}.`);
+                    await processSessionSync(data.session);
+                    return;
+                }
+
                 await router.navigate('verify-email');
             } catch (networkError) {
                 alert(`Registration Failed: ${networkError.message}`);
@@ -1237,7 +1448,10 @@
             e.preventDefault();
             const btn = document.getElementById('otp-verify-btn');
             const token = document.getElementById('otp-code-input').value.trim();
-            const email = state.pendingSignup?.email;
+            const pending = state.pendingSignup || (() => {
+                try { return JSON.parse(sessionStorage.getItem('dutylog_pending_signup')); } catch(e){ return null; }
+            })();
+            const email = pending?.email;
 
             if (!email || !token) return alert("Missing email or verification code.");
             if (btn) { btn.innerText = "Verifying Code..."; btn.disabled = true; }
@@ -1248,8 +1462,16 @@
 
                 if (data?.session) {
                     const userId = data.session.user.id;
-                    await sb.from('profiles').upsert({ id: userId, email: email, name: state.pendingSignup.name, division: state.pendingSignup.division, badge: 'Cadet' });
-                    alert("Email verified successfully! Profile created.");
+                    const role = pending?.role || 'Cadet';
+                    await sb.from('profiles').upsert({
+                        id: userId,
+                        email: email,
+                        name: pending?.name || 'Cadet Member',
+                        division: pending?.division || 'DutyLog',
+                        badge: role
+                    });
+                    try { sessionStorage.removeItem('dutylog_pending_signup'); } catch(e){}
+                    alert(`Email verified successfully! Profile badge set to ${role}.`);
                     await processSessionSync(data.session);
                 }
             } catch(err) {
@@ -1259,7 +1481,10 @@
         }
 
         async function resendOtpCode() {
-            const email = state.pendingSignup?.email;
+            const pending = state.pendingSignup || (() => {
+                try { return JSON.parse(sessionStorage.getItem('dutylog_pending_signup')); } catch(e){ return null; }
+            })();
+            const email = pending?.email;
             if (!email) return alert("No pending registration found.");
             try {
                 const { error } = await sb.auth.resend({ type: 'signup', email });
@@ -1286,8 +1511,8 @@
                 if (saved) return JSON.parse(saved);
             } catch(e) {}
             return {
-                senderEmail: 'noreply@dutylog.lawsonmorris.uk',
-                replyToEmail: 'hello@lawsonmorris.uk',
+                senderEmail: 'noreply@dutylog.uk',
+                replyToEmail: 'lawson@dutylog.uk',
                 senderName: 'DutyLog System',
                 zohoHost: 'smtppro.zoho.eu',
                 zohoPort: '465',
@@ -1310,7 +1535,7 @@
             let body = '';
             body += `DUTYLOG\n`;
             body += `Hours Summary\n`;
-            body += `lawsonmorris.uk\n`;
+            body += `dutylog.uk\n`;
             body += `${line}\n\n`;
             body += `Volunteer:  ${volunteer}\n`;
             body += `Division:   ${division}\n`;
@@ -1336,7 +1561,7 @@
             }
 
             body += `\n${line}\n`;
-            body += `Generated by DutyLog · lawsonmorris.uk\n`;
+            body += `Generated by DutyLog · dutylog.uk\n`;
             return body;
         }
 
@@ -1421,7 +1646,7 @@
 
                 <div style="background-color: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 16px; text-align: center; font-size: 11px; color: #94A3B8;">
                     <p style="margin: 0;">Sent via <strong>DutyLog</strong></p>
-                    <p style="margin: 4px 0 0; color: #00853F; font-weight: 700;">Made by Lawson Morris · lawsonmorris.uk</p>
+                    <p style="margin: 4px 0 0; color: #00853F; font-weight: 700;">Made by Lawson Morris | lawsonmorris.uk</p>
                 </div>
             </div>`;
         }
@@ -1511,7 +1736,7 @@
                                         </button>
                                     ` : ''}
                                 </div>
-                                <input type="email" id="export-recipient-input" placeholder="e.g. officer@lawsonmorris.uk" required value="" class="input-field text-sm">
+                                <input type="email" id="export-recipient-input" placeholder="e.g. officer@dutylog.uk" required value="" class="input-field text-sm">
                             </div>
 
                             <div>
@@ -1604,12 +1829,13 @@
 
             // Attempt 1: Invoke dispatch function
             try {
+                const activeResendKey = getResendApiKey();
                 const { data, error } = await sb.functions.invoke(smtpConfig.supabaseFunctionName || 'send-export-email', {
                     body: {
                         to: recipient,
                         from: smtpConfig.senderEmail,
                         from_name: smtpConfig.senderName,
-                        reply_to: smtpConfig.replyToEmail || 'hello@lawsonmorris.uk',
+                        reply_to: smtpConfig.replyToEmail || 'lawson@dutylog.uk',
                         subject: subject,
                         text: plainText,
                         html: htmlContent,
@@ -1617,7 +1843,8 @@
                         division: division,
                         total_hours: state.totalHoursString,
                         shift_count: state.currentDuties.length,
-                        notes: notes
+                        notes: notes,
+                        resend_api_key: activeResendKey
                     }
                 });
 
@@ -1633,6 +1860,7 @@
             // Attempt 2: Direct HTTP fetch to function URL if client invocation had issues
             if (!dispatched) {
                 try {
+                    const activeResendKey = getResendApiKey();
                     const funcEndpoint = `https://qgyjfyazkkepmkztnezv.supabase.co/functions/v1/${smtpConfig.supabaseFunctionName || 'send-export-email'}`;
                     const res = await fetch(funcEndpoint, {
                         method: 'POST',
@@ -1645,7 +1873,7 @@
                             to: recipient,
                             from: smtpConfig.senderEmail,
                             from_name: smtpConfig.senderName,
-                            reply_to: smtpConfig.replyToEmail || 'hello@lawsonmorris.uk',
+                            reply_to: smtpConfig.replyToEmail || 'lawson@dutylog.uk',
                             subject: subject,
                             text: plainText,
                             html: htmlContent,
@@ -1653,7 +1881,8 @@
                             division: division,
                             total_hours: state.totalHoursString,
                             shift_count: state.currentDuties.length,
-                            notes: notes
+                            notes: notes,
+                            resend_api_key: activeResendKey
                         })
                     });
                     const resJson = await res.json().catch(() => ({}));
@@ -1679,9 +1908,9 @@
                                 'Authorization': `Bearer ${activeKey}`
                             },
                             body: JSON.stringify({
-                                from: 'DutyLog <noreply@dutylog.lawsonmorris.uk>',
+                                from: 'DutyLog <noreply@dutylog.uk>',
                                 to: [recipient],
-                                reply_to: smtpConfig.replyToEmail || 'hello@lawsonmorris.uk',
+                                reply_to: smtpConfig.replyToEmail || 'lawson@dutylog.uk',
                                 subject: subject,
                                 html: htmlContent,
                                 text: plainText
@@ -1738,7 +1967,7 @@
                 alert(`✓ Success! Shift records successfully dispatched from ${smtpConfig.senderEmail} to ${recipient}.`);
                 document.getElementById('export-modal')?.remove();
             } else {
-                alert(`Failed to send. Please contact Lawson. Email him if you want (hello@lawsonmorris.uk) or message him if you have his number.`);
+                alert(`It has failed to send. Please contact me by email (lawson@dutylog.uk) or text me.`);
 
                 if (btn) {
                     btn.innerHTML = `<i class="fas fa-paper-plane"></i> Send via DutyLog Email`;
@@ -2091,8 +2320,15 @@
             }
 
             try {
-                // Point the reset link directly to the reset password page
-                const resetRedirectUrl = window.location.origin + '/reset-password.html';
+                // Point the reset link directly to the active reset password page
+                // Dynamically supports current domain (dutylog.lawsonmorris.uk), future domain (dutylog.uk), and dev origin
+                let resetRedirectUrl = window.location.origin + '/reset-password.html';
+                if (window.location.hostname.includes('lawsonmorris.uk') || window.location.hostname.includes('lawsonmoris')) {
+                    resetRedirectUrl = 'https://dutylog.lawsonmorris.uk/reset-password.html';
+                } else if (window.location.hostname.includes('dutylog.uk')) {
+                    resetRedirectUrl = 'https://dutylog.uk/reset-password.html';
+                }
+
                 const { error } = await sb.auth.resetPasswordForEmail(email, {
                     redirectTo: resetRedirectUrl
                 });
@@ -2105,7 +2341,7 @@
                 if (successBox) successBox.classList.remove('hidden');
                 if (btn) btn.innerHTML = '<i class="fas fa-check mr-1.5"></i> Reset Email Sent';
             } catch (err) {
-                alert('Failed to send reset link: ' + (err.message || 'Please check the email and try again.'));
+                alert('It has failed to send. Please contact me by email (lawson@dutylog.uk) or text me.');
                 if (btn) {
                     btn.disabled = false;
                     btn.innerHTML = orig;
@@ -2362,7 +2598,12 @@
                 }
             } else {
                 state.user = null; state.profile = null; state.mustChangePassword = false;
-                await router.navigate('welcome');
+                const initialHash = window.location.hash.replace('#', '');
+                if (['login', 'signup'].includes(initialHash)) {
+                    await router.navigate(initialHash);
+                } else {
+                    await router.navigate('welcome');
+                }
             }
             hideLoader();
         }
